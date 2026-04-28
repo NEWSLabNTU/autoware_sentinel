@@ -733,6 +733,6 @@ If the budget is exceeded, options (in order of preference):
 
 ## 10. Roadmap
 
-See [Phase 11: Orin SPE Deployment](../roadmap/phase-11-orin-spe.md) for the phased
+See [Phase 11: Orin SPE Deployment](../roadmap/11-orin-spe.md) for the phased
 implementation plan, covering IVC verification, zenoh-pico link backend, board crate,
 cross-compilation, sentinel adaptation, bridge daemon, and deployment.

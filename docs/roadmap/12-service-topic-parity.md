@@ -402,7 +402,7 @@ fall into two categories:
 
 ## References
 
-- Phase 8 topic parity: `docs/roadmap/phase-8-topic-parity.md`
+- Phase 8 topic parity: `docs/roadmap/8-topic-parity.md`
 - Autoware ADAPI specs: `/opt/autoware/1.5.0/include/autoware/adapi_specs/`
 - vehicle_cmd_gate source: `~/repos/autoware/1.5.0-ws/src/universe/autoware_universe/control/autoware_vehicle_cmd_gate/`
 - operation_mode_transition_manager: `~/repos/autoware/1.5.0-ws/src/universe/autoware_universe/control/autoware_operation_mode_transition_manager/`

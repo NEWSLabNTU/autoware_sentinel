@@ -476,7 +476,7 @@ The nano-ros repo is at `~/repos/nano-ros/`. Key references:
 
 ## Phase 12: Service & Topic Parity
 
-Full roadmap: `docs/roadmap/phase-12-service-topic-parity.md`
+Full roadmap: `docs/roadmap/12-service-topic-parity.md`
 
 ### Completed (12.1 – 12.8 + 12.9 parameter services)
 
@@ -503,7 +503,7 @@ All acceptance criteria verified:
   - 0 missing topics (full parity, +1 extra: `/control/is_autonomous_available`)
   - 84 missing services — all per-node parameter services (by design: sentinel is one node)
   - 0 missing functional services
-  - Full analysis in `docs/roadmap/phase-12-service-topic-parity.md`
+  - Full analysis in `docs/roadmap/12-service-topic-parity.md`
 
 **Important:** The sentinel must NOT inherit `ZENOH_SESSION_CONFIG_URI` or `ZENOH_ROUTER_CONFIG_URI`
 from the shell. Those env vars interfere with zenoh-pico's liveliness token setup and prevent

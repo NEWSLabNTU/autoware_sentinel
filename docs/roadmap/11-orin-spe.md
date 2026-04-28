@@ -1,10 +1,79 @@
 # Phase 11: Orin SPE Deployment
 
 **Status:** Not started
-**Depends on:** Phase 7 (integration testing), Phase 10 (actuation porting)
+**Depends on:** Phase 7 (integration testing), Phase 10 (actuation porting),
+**nano-ros Phase 100** (Orin SPE infrastructure — Cortex-R5 platform layer, `Z_FEATURE_LINK_IVC` in zenoh-pico, `nros-board-orin-spe`).
 **Goal:** Run the Autoware Sentinel safety island on the Jetson AGX Orin SPE (Cortex-R5F,
 FreeRTOS), communicating with Autoware on the CCPLEX via IVC shared memory through a
 zenohd router.
+
+## Split with nano-ros (read first)
+
+The platform/infra subset of this phase is **owned by `nano-ros` Phase 100** (see
+`docs/roadmap/phase-100-orin-spe-infra.md` in that repo). The driver/platform/board
+stack lands as four independent crates with strict layering:
+
+```
+nvidia-ivc                 (packages/drivers/nvidia-ivc)
+  ├─ feature `fsp`          → tegra_ivc_channel_* (NVIDIA FSP)
+  └─ feature `unix-mock`    → Unix-socket pair (dev/CI)
+
+nros-platform-api::PlatformIvc                                  ← contract
+  └─ implemented by ───────► nros-platform-orin-spe (platforms/) ── delegates to nvidia-ivc
+
+zpico-platform-shim::ivc_helpers (cargo feature `ivc`)
+  └─ exports _z_open_ivc / _z_read_ivc / … → <P as PlatformIvc>
+
+zenoh-pico Z_FEATURE_LINK_IVC (vendored C, link/unicast/ivc.c)
+  └─ calls the shim forwarders
+
+nros-board-orin-spe                                             ← packages/boards/
+  └─ Config { zenoh_locator: "ivc/2", … }, run<F>, FSP println
+```
+
+Phase 100 sub-items deliver:
+
+- **100.0** — `packages/drivers/nvidia-ivc` driver crate (HAL only, no
+  `nros-platform`/`nros-rmw`/zenoh-pico deps). Two backends behind cargo features:
+  `fsp` (real NVIDIA FSP, no_std) and `unix-mock` (Unix-domain-socket pair, std,
+  Linux-only). Reusable in this repo's `src/ivc-bridge/` too.
+- **100.0a** — `PlatformIvc` trait in `nros-platform-api`.
+- **100.1** — Cortex-R5 critical-section support in `nros-platform-freertos`.
+- **100.2** — `armv7r-none-eabihf` workspace toolchain wiring.
+- **100.3** — `zpico-platform-shim` Cortex-R5 build + `ivc` feature for the
+  `_z_open_ivc` / `_z_read_ivc` / … forwarders.
+- **100.4** — `Z_FEATURE_LINK_IVC` link transport in vendored zenoh-pico.
+- **100.5** — `nros-platform-orin-spe` (impl PlatformIvc + Clock + Sleep + Alloc +
+  Threading + Random).
+- **100.6** — `nros-board-orin-spe` board crate (Config, run, FSP println, links
+  nano-ros into the SPE firmware via `ENABLE_NROS_APP := 1`).
+- **100.7** — `just orin_spe` recipe set.
+- **100.8** — POSIX-mock end-to-end smoke test in nano-ros CI.
+
+This phase (`autoware_sentinel` Phase 11) consumes those pieces and adds:
+
+- The reduced sentinel algorithm set selection that fits the 256 KB BTCM budget
+  (11.3 / 11.5).
+- The Linux-side **IVC bridge daemon** in `src/ivc-bridge/` (11.2 mock, 11.6 real
+  hardware). May also depend on `nano-ros::nvidia-ivc` (with `unix-mock` for test
+  builds, plain sysfs `read(2)`/`write(2)` in production) for a single Rust API
+  both sides of the wire.
+- Hardware verification on the AGX Orin DevKit (11.4, 11.7).
+- Production deployment (firmware flashing, capsule update, systemd service).
+- Float-ABI mismatch resolution at the application FFI boundary.
+
+Before starting any 11.x sub-item, confirm the matching nano-ros 100.x is at least
+in-progress. The dependency direction is strict:
+
+| Sentinel sub-item | nano-ros prerequisites |
+|---|---|
+| 11.1p (FreeRTOS POSIX setup) | 100.1, 100.2, 100.3 |
+| 11.2 (mock IVC transport)    | 100.0 (`unix-mock`), 100.0a, 100.4, 100.5 |
+| 11.3 (POSIX sentinel + tests)| 100.7, 100.8 |
+| 11.4 (real IVC echo)         | none (hardware-only) |
+| 11.5 (board + cross-compile) | 100.0 (`fsp`), 100.5, 100.6 |
+| 11.6 (real bridge daemon)    | 100.0 (CCPLEX-side use of the driver) |
+| 11.7 (flash + integration)   | all above |
 
 ## Description
 

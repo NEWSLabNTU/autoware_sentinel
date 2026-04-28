@@ -192,7 +192,7 @@ on `nros` with `features = ["std", "rmw-zenoh", "platform-posix"]` for native te
 
 Formal verification work items for Phase 2. Uses both Kani (bounded model checking) and Verus
 (deductive proofs via Z3). Verus proofs operate on integer ghost models to avoid floating-point
-arithmetic, which Verus cannot reason about. See [Phase 5](phase-5-verification.md) for the
+arithmetic, which Verus cannot reason about. See [Phase 5](5-verification.md) for the
 full verification strategy and ghost type bridge architecture.
 
 ### Emergency stop convergence proof (Verus)

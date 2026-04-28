@@ -415,4 +415,4 @@ All tests skip gracefully if TAP network or Zephyr binary isn't available.
 - `~/repos/nano-ros/packages/testing/nros-tests/tests/rmw_interop.rs` — ROS 2 interop tests
 - `~/repos/play_launch/tests/fixtures/autoware/scripts/test_autonomous_drive.py` — autonomous
   driving test sequence
-- `docs/roadmap/phase-6-zephyr-application.md` — Zephyr application (predecessor phase)
+- `docs/roadmap/6-zephyr-application.md` — Zephyr application (predecessor phase)

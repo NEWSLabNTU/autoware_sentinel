@@ -251,7 +251,7 @@ convention (see [Per-Package Structure](#per-package-structure) above).
 
 Formal verification work items for Phase 1 crates. Kani (bounded model checking) is used for
 per-call correctness, panic-freedom, and IEEE 754 edge-case analysis. See
-[Phase 5](phase-5-verification.md) for the full verification strategy.
+[Phase 5](5-verification.md) for the full verification strategy.
 
 ### Build setup
 

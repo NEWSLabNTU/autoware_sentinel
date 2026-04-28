@@ -35,9 +35,9 @@ members = [
 [patch.crates-io]
 # nano-ros — all internal crates (nros-core, nros-node, zpico-sys, etc.) are resolved
 # automatically from the same git repo via cargo workspace dependency resolution.
-nros = { git = "https://github.com/jerry73204/nano-ros.git", rev = "839f07cd" }
-nros-core = { git = "https://github.com/jerry73204/nano-ros.git", rev = "839f07cd" }
-nros-serdes = { git = "https://github.com/jerry73204/nano-ros.git", rev = "839f07cd" }
+nros = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
+nros-core = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
+nros-serdes = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
 
 # Generated message packages (from sentinel_linux — the superset of all packages)
 autoware_adapi_v1_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }
@@ -62,7 +62,6 @@ geographic_msgs = { path = "src/autoware_sentinel_linux/generated/geographic_msg
 logging_demo = { path = "src/autoware_sentinel_linux/generated/logging_demo" }
 geometry_msgs = { path = "src/autoware_sentinel_linux/generated/geometry_msgs" }
 nav_msgs = { path = "src/autoware_sentinel_linux/generated/nav_msgs" }
-rcl_interfaces = { path = "src/autoware_sentinel_linux/generated/rcl_interfaces" }
 sensor_msgs = { path = "src/autoware_sentinel_linux/generated/sensor_msgs" }
 shape_msgs = { path = "src/autoware_sentinel_linux/generated/shape_msgs" }
 std_msgs = { path = "src/autoware_sentinel_linux/generated/std_msgs" }

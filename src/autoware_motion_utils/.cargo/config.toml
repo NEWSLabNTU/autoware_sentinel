@@ -13,12 +13,6 @@ path = "generated/geometry_msgs"
 [patch.crates-io.nav_msgs]
 path = "generated/nav_msgs"
 
-[patch.crates-io.nros-core]
-path = "../../../nano-ros/packages/core/nros-core"
-
-[patch.crates-io.nros-serdes]
-path = "../../../nano-ros/packages/core/nros-serdes"
-
 [patch.crates-io.std_msgs]
 path = "generated/std_msgs"
 

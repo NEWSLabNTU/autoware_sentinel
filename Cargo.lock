@@ -13,27 +13,12 @@ dependencies = [
 
 [[package]]
 name = "anstream"
-version = "0.6.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43d5b281e737544384e969a5ccad3f1cdd24b48086a0fc1b2a5262a26b8f4f4a"
-dependencies = [
- "anstyle",
- "anstyle-parse 0.2.7",
- "anstyle-query",
- "anstyle-wincon",
- "colorchoice",
- "is_terminal_polyfill",
- "utf8parse",
-]
-
-[[package]]
-name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "824a212faf96e9acacdbd09febd34438f8f711fb84e09a8916013cd7815ca28d"
 dependencies = [
  "anstyle",
- "anstyle-parse 1.0.0",
+ "anstyle-parse",
  "anstyle-query",
  "anstyle-wincon",
  "colorchoice",
@@ -46,15 +31,6 @@ name = "anstyle"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "940b3a0ca603d1eade50a4846a2afffd5ef57a9feac2c0e2ec2e14f9ead76000"
-
-[[package]]
-name = "anstyle-parse"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e7644824f0aa2c7b9384579234ef10eb7efb6a0deb83f9630a49594dd9c15c2"
-dependencies = [
- "utf8parse",
-]
 
 [[package]]
 name = "anstyle-parse"
@@ -172,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "autoware_internal_debug_msgs"
-version = "1.12.0"
+version = "1.12.1"
 dependencies = [
  "builtin_interfaces",
  "heapless",
@@ -183,7 +159,7 @@ dependencies = [
 
 [[package]]
 name = "autoware_internal_msgs"
-version = "1.12.0"
+version = "1.12.1"
 dependencies = [
  "builtin_interfaces",
  "heapless",
@@ -452,10 +428,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitflags"
-version = "2.11.0"
+name = "bindgen"
+version = "0.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
+checksum = "f49d8fed880d473ea71efb9bf597651e77201bdd4893efe54c9e5d65ae04ce6f"
+dependencies = [
+ "bitflags",
+ "cexpr",
+ "clang-sys",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash",
+ "shlex",
+ "syn",
+]
+
+[[package]]
+name = "bitflags"
+version = "2.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
 name = "builtin_interfaces"
@@ -488,17 +482,26 @@ dependencies = [
  "serde_json",
  "syn",
  "tempfile",
- "toml",
+ "toml 0.9.12+spec-1.1.0",
 ]
 
 [[package]]
 name = "cc"
-version = "1.2.57"
+version = "1.2.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a0dd1ca384932ff3641c8718a02769f1698e7563dc6974ffd03346116310423"
+checksum = "d16d90359e986641506914ba71350897565610e87ce0ad9e6f28569db3dd5c6d"
 dependencies = [
  "find-msvc-tools",
  "shlex",
+]
+
+[[package]]
+name = "cexpr"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fac387a98bb7c37292057cffc56d62ecb629900026402633ae9160df93a8766"
+dependencies = [
+ "nom",
 ]
 
 [[package]]
@@ -508,10 +511,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "clap"
-version = "4.6.0"
+name = "clang-sys"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b193af5b67834b676abd72466a96c1024e6a6ad978a1f484bd90b85c94041351"
+checksum = "0b023947811758c97c59bf9d1c188fd619ad4718dcaa767947df1cadb14f39f4"
+dependencies = [
+ "glob",
+ "libc",
+ "libloading",
+]
+
+[[package]]
+name = "clap"
+version = "4.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ddb117e43bbf7dacf0a4190fef4d345b9bad68dfc649cb349e7d17d28428e51"
 dependencies = [
  "clap_builder",
 ]
@@ -522,7 +536,7 @@ version = "4.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "714a53001bf66416adb0e2ef5ac857140e7dc3a0c48fb28b2f10762fc4b5069f"
 dependencies = [
- "anstream 1.0.0",
+ "anstream",
  "anstyle",
  "clap_lex",
  "strsim",
@@ -536,9 +550,9 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "cmake"
-version = "0.1.57"
+version = "0.1.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75443c44cd6b379beb8c5b45d85d0773baf31cce901fe7bb252f4eff3008ef7d"
+checksum = "c0f78a02292a74a88ac736019ab962ece0bc380e3f977bf72e376c5d78ff0678"
 dependencies = [
  "cc",
 ]
@@ -568,7 +582,7 @@ dependencies = [
 [[package]]
 name = "dust_dds"
 version = "0.15.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "critical-section",
  "dust_dds_derive",
@@ -582,7 +596,7 @@ dependencies = [
 [[package]]
 name = "dust_dds_derive"
 version = "0.15.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -591,10 +605,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_filter"
-version = "1.0.0"
+name = "either"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a1c3cc8e57274ec99de65301228b537f1e4eedc1b8e0f9411c6caac8ae7308f"
+checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+
+[[package]]
+name = "env_filter"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32e90c2accc4b07a8456ea0debdc2e7587bdd890680d71173a15d4ae604f6eef"
 dependencies = [
  "log",
  "regex",
@@ -602,11 +622,11 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.11.9"
+version = "0.11.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2daee4ea451f429a58296525ddf28b45a3b64f1acf6587e2067437bb11e218d"
+checksum = "0621c04f2196ac3f488dd583365b9c09be011a4ab8b9f37248ffcc8f6198b56a"
 dependencies = [
- "anstream 0.6.21",
+ "anstream",
  "anstyle",
  "env_filter",
  "jiff",
@@ -631,9 +651,9 @@ dependencies = [
 
 [[package]]
 name = "fastrand"
-version = "2.3.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
+checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 
 [[package]]
 name = "find-msvc-tools"
@@ -683,6 +703,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
 name = "hash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -702,9 +728,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
 
 [[package]]
 name = "heapless"
@@ -730,12 +756,12 @@ checksum = "3d3067d79b975e8844ca9eb072e16b31c3c1c36928edf9c6789548c524d0d954"
 
 [[package]]
 name = "indexmap"
-version = "2.13.0"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
+checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
 dependencies = [
  "equivalent",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "serde",
  "serde_core",
 ]
@@ -747,6 +773,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -754,9 +789,9 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jiff"
-version = "0.2.23"
+version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a3546dc96b6d42c5f24902af9e2538e82e39ad350b0c766eb3fbf2d8f3d8359"
+checksum = "f00b5dbd620d61dfdcb6007c9c1f6054ebd75319f163d886a9055cec1155073d"
 dependencies = [
  "jiff-static",
  "log",
@@ -767,9 +802,9 @@ dependencies = [
 
 [[package]]
 name = "jiff-static"
-version = "0.2.23"
+version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a8c8b344124222efd714b73bb41f8b5120b27a7cc1c75593a6ff768d9d05aa4"
+checksum = "e000de030ff8022ea1da3f466fbb0f3a809f5e51ed31f6dd931c35181ad8e6d7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -784,9 +819,19 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "libc"
-version = "0.2.183"
+version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5b646652bf6661599e1da8901b3b9522896f01e736bad5f723fe7a3a27f899d"
+checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+
+[[package]]
+name = "libloading"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
+dependencies = [
+ "cfg-if",
+ "windows-link",
+]
 
 [[package]]
 name = "libm"
@@ -808,7 +853,7 @@ checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
 name = "logging_demo"
-version = "0.20.8"
+version = "0.20.9"
 dependencies = [
  "heapless",
  "nros-core",
@@ -826,6 +871,12 @@ name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+
+[[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "nav_msgs"
@@ -852,24 +903,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom"
+version = "7.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
+]
+
+[[package]]
 name = "nros"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "nros-core",
  "nros-macros",
  "nros-node",
  "nros-params",
+ "nros-platform",
  "nros-rmw",
  "nros-rmw-dds",
+ "nros-rmw-uorb",
  "nros-rmw-xrce",
  "nros-rmw-zenoh",
+ "nros-serdes",
+ "paste",
 ]
 
 [[package]]
 name = "nros-builtin-interfaces"
-version = "1.2.2"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
  "nros-core",
@@ -879,7 +944,7 @@ dependencies = [
 [[package]]
 name = "nros-core"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
  "log",
@@ -889,7 +954,7 @@ dependencies = [
 [[package]]
 name = "nros-macros"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -899,7 +964,7 @@ dependencies = [
 [[package]]
 name = "nros-node"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
  "log",
@@ -908,6 +973,7 @@ dependencies = [
  "nros-rcl-interfaces",
  "nros-rmw",
  "nros-rmw-dds",
+ "nros-rmw-uorb",
  "nros-rmw-xrce",
  "nros-rmw-zenoh",
  "portable-atomic",
@@ -916,15 +982,38 @@ dependencies = [
 [[package]]
 name = "nros-params"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
 ]
 
 [[package]]
+name = "nros-platform"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "nros-platform-api",
+ "nros-platform-posix",
+]
+
+[[package]]
+name = "nros-platform-api"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+
+[[package]]
+name = "nros-platform-posix"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "libc",
+ "nros-platform-api",
+]
+
+[[package]]
 name = "nros-rcl-interfaces"
-version = "1.2.2"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
  "nros-builtin-interfaces",
@@ -935,7 +1024,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
  "log",
@@ -945,21 +1034,44 @@ dependencies = [
 [[package]]
 name = "nros-rmw-dds"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "dust_dds",
  "heapless",
  "nros-core",
+ "nros-platform",
  "nros-rmw",
+ "spin",
+]
+
+[[package]]
+name = "nros-rmw-uorb"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "critical-section",
+ "heapless",
+ "nros-core",
+ "nros-rmw",
+ "phf",
+ "phf_codegen",
+ "portable-atomic",
+ "px4-log",
+ "px4-sys",
+ "px4-uorb",
+ "px4-workqueue",
+ "serde",
+ "toml 0.8.23",
 ]
 
 [[package]]
 name = "nros-rmw-xrce"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "atomic-waker",
  "heapless",
+ "nros-platform",
  "nros-rmw",
  "xrce-sys",
 ]
@@ -967,7 +1079,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw-zenoh"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "atomic-waker",
  "heapless",
@@ -981,7 +1093,7 @@ dependencies = [
 [[package]]
 name = "nros-serdes"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
 ]
@@ -999,6 +1111,50 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "phf"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fd6780a80ae0c52cc120a26a1a42c1ae51b247a253e4e06113d23d2c2edd078"
+dependencies = [
+ "phf_shared",
+]
+
+[[package]]
+name = "phf_codegen"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aef8048c789fa5e851558d709946d6d79a8ff88c0440c587967f8e94bfb1216a"
+dependencies = [
+ "phf_generator",
+ "phf_shared",
+]
+
+[[package]]
+name = "phf_generator"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c80231409c20246a13fddb31776fb942c38553c51e871f8cbd687a4cfb5843d"
+dependencies = [
+ "phf_shared",
+ "rand",
+]
+
+[[package]]
+name = "phf_shared"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67eabc2ef2a60eb7faa00097bd1ffdb5bd28e62bf39990626a582201b7a754e5"
+dependencies = [
+ "siphasher",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1012,9 +1168,9 @@ checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 
 [[package]]
 name = "portable-atomic-util"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "091397be61a01d4be58e7841595bd4bfedb15f1cd54977d79b8271e94ed799a3"
+checksum = "c2a106d1259c23fac8e543272398ae0e3c0b8d33c88ed73d0cc71b0f1d902618"
 dependencies = [
  "portable-atomic",
 ]
@@ -1030,12 +1186,68 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-crate"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e67ba7e9b2b56446f1d419b1d807906278ffa1a658a8a5d8a39dcb1f5a78614f"
+dependencies = [
+ "toml_edit 0.25.11+spec-1.1.0",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "px4-log"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "px4-sys",
+]
+
+[[package]]
+name = "px4-sys"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "bindgen",
+ "cc",
+]
+
+[[package]]
+name = "px4-uorb"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "px4-sys",
+ "px4-workqueue",
+]
+
+[[package]]
+name = "px4-workqueue"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "px4-log",
+ "px4-sys",
+ "px4-workqueue-macros",
+]
+
+[[package]]
+name = "px4-workqueue-macros"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1052,6 +1264,21 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+
+[[package]]
+name = "rand"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
+dependencies = [
+ "rand_core",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 
 [[package]]
 name = "regex"
@@ -1083,6 +1310,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
+name = "rustc-hash"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
 name = "rustix"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1097,9 +1330,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 
 [[package]]
 name = "sensor_msgs"
@@ -1158,9 +1391,18 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "1.0.4"
+version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8bbf91e5a4d6315eee45e704372590b30e260ee83af6639d64557f51b067776"
+checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_spanned"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26"
 dependencies = [
  "serde_core",
 ]
@@ -1182,6 +1424,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "siphasher"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
+
+[[package]]
 name = "socket2"
 version = "0.5.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1190,6 +1438,12 @@ dependencies = [
  "libc",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "spin"
+version = "0.9.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "stable_deref_trait"
@@ -1319,17 +1573,38 @@ dependencies = [
 
 [[package]]
 name = "toml"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
+dependencies = [
+ "serde",
+ "serde_spanned 0.6.9",
+ "toml_datetime 0.6.11",
+ "toml_edit 0.22.27",
+]
+
+[[package]]
+name = "toml"
 version = "0.9.12+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf92845e79fc2e2def6a5d828f0801e29a2f8acc037becc5ab08595c7d5e9863"
 dependencies = [
  "indexmap",
  "serde_core",
- "serde_spanned",
- "toml_datetime",
+ "serde_spanned 1.1.1",
+ "toml_datetime 0.7.5+spec-1.1.0",
  "toml_parser",
  "toml_writer",
  "winnow 0.7.15",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1342,19 +1617,60 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml_parser"
-version = "1.0.10+spec-1.1.0"
+name = "toml_datetime"
+version = "1.1.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7df25b4befd31c4816df190124375d5a20c6b6921e2cad937316de3fccd63420"
+checksum = "3165f65f62e28e0115a00b2ebdd37eb6f3b641855f9d636d3cd4103767159ad7"
 dependencies = [
- "winnow 1.0.0",
+ "serde_core",
 ]
 
 [[package]]
-name = "toml_writer"
-version = "1.0.7+spec-1.1.0"
+name = "toml_edit"
+version = "0.22.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f17aaa1c6e3dc22b1da4b6bba97d066e354c7945cac2f7852d4e4e7ca7a6b56d"
+checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned 0.6.9",
+ "toml_datetime 0.6.11",
+ "toml_write",
+ "winnow 0.7.15",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.25.11+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b59c4d22ed448339746c59b905d24568fcbb3ab65a500494f7b8c3e97739f2b"
+dependencies = [
+ "indexmap",
+ "toml_datetime 1.1.1+spec-1.1.0",
+ "toml_parser",
+ "winnow 1.0.2",
+]
+
+[[package]]
+name = "toml_parser"
+version = "1.1.2+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2abe9b86193656635d2411dc43050282ca48aa31c2451210f4202550afb7526"
+dependencies = [
+ "winnow 1.0.2",
+]
+
+[[package]]
+name = "toml_write"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
+
+[[package]]
+name = "toml_writer"
+version = "1.1.1+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "756daf9b1013ebe47a8776667b466417e2d4c5679d441c26230efd9ef78692db"
 
 [[package]]
 name = "tracing"
@@ -1426,11 +1742,11 @@ dependencies = [
 
 [[package]]
 name = "wasip2"
-version = "1.0.2+wasi-0.2.9"
+version = "1.0.3+wasi-0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9517f9239f02c069db75e65f174b3da828fe5f5b945c4dd26bd25d89c03ebcf5"
+checksum = "20064672db26d7cdc89c7798c48a0fdfac8213434a1186e5ef29fd560ae223d6"
 dependencies = [
- "wit-bindgen",
+ "wit-bindgen 0.57.1",
 ]
 
 [[package]]
@@ -1439,7 +1755,7 @@ version = "0.4.0+wasi-0.3.0-rc-2026-01-06"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5428f8bf88ea5ddc08faddef2ac4a67e390b88186c703ce6dbd955e1c145aca5"
 dependencies = [
- "wit-bindgen",
+ "wit-bindgen 0.51.0",
 ]
 
 [[package]]
@@ -1591,12 +1907,18 @@ name = "winnow"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "winnow"
-version = "1.0.0"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a90e88e4667264a994d34e6d1ab2d26d398dcdca8b7f52bec8668957517fc7d8"
+checksum = "2ee1708bef14716a11bae175f579062d4554d95be2c6829f518df847b7b3fdd0"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "wit-bindgen"
@@ -1606,6 +1928,12 @@ checksum = "d7249219f66ced02969388cf2bb044a09756a083d0fab1e566056b04d9fbcaa5"
 dependencies = [
  "wit-bindgen-rust-macro",
 ]
+
+[[package]]
+name = "wit-bindgen"
+version = "0.57.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "wit-bindgen-core"
@@ -1693,11 +2021,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 
 [[package]]
+name = "xrce-platform-shim"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "nros-platform",
+]
+
+[[package]]
 name = "xrce-sys"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "cc",
+ "xrce-platform-shim",
 ]
 
 [[package]]
@@ -1707,31 +2044,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
 [[package]]
+name = "zpico-platform-shim"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "cc",
+ "nros-platform",
+]
+
+[[package]]
 name = "zpico-sys"
 version = "0.1.0"
-source = "git+https://github.com/jerry73204/nano-ros.git?rev=839f07cd#839f07cd04196921ea538be4e74727ebafec652a"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "cbindgen",
  "cc",
  "cmake",
+ "zpico-platform-shim",
 ]
 
 [[patch.unused]]
 name = "autoware_internal_metric_msgs"
-version = "1.12.0"
+version = "1.12.1"
 
 [[patch.unused]]
 name = "autoware_internal_perception_msgs"
-version = "1.12.0"
+version = "1.12.1"
 
 [[patch.unused]]
 name = "autoware_internal_planning_msgs"
-version = "1.12.0"
+version = "1.12.1"
 
 [[patch.unused]]
 name = "autoware_perception_msgs"
 version = "1.11.0"
-
-[[patch.unused]]
-name = "rcl_interfaces"
-version = "1.2.2"

@@ -249,18 +249,61 @@ Linux subset.
 ## Phase 13.K1 work items (post-investigation)
 
 - [ ] **13.K1.5 Fix sentinel network-init regression.** sentinel_freertos
-      hangs after the `IP: 10.0.2.20` printk, before `Network ready.`, on
-      every nano-ros revision tested (`34f1d473` → `3d566711`). Talker
-      example reaches `Network ready.` on the same revisions with the same
-      board/lwIP config — so the hang is sentinel-specific. Suspects:
-      sentinel's larger `.text` (60 KiB more) or `.bss` (19 KiB more);
-      Rust `extern crate alloc` paths consuming FreeRTOS heap before
-      `tcpip_init`; or an interaction with `nros-platform/global-allocator`
-      that ucHeap can't satisfy alongside lwIP's own pvPortMalloc calls.
-      Until this is fixed, the binary cannot reach `wire_executor` for
-      bisection. Mitigations to try: bump `app_stack_bytes`, drop
-      `global-allocator` (may regress allocs), shrink sentinel via the
-      component features below, add printk between init_network steps.
+      hangs **before `app_task_entry` runs** on every nano-ros revision
+      tested (`34f1d473` → `3d566711`). Talker reaches `Network ready.` on
+      the same revisions with the same board/lwIP config — so the hang is
+      sentinel-binary-specific.
+
+      **Investigation 2026-04-30:**
+
+      *Trace placement.* Adding `hprintln!("[run] app task created; starting
+      scheduler")` after `xTaskCreate` and `hprintln!("[app_task_entry]
+      entered")` as the first line of `app_task_entry` shows the first
+      message but **never** the second. The xTaskCreate return value is
+      checked (`ret == 0`); it succeeds. Scheduler starts but the
+      application task is never given the CPU.
+
+      *Closure ablation.* Replacing the user closure with `|_| Ok(())` (only
+      touching `default_params()` to keep symbols linked) makes sentinel
+      boot through `[app_task_entry] entered`, `Network ready.`, the user
+      closure, and `Application completed successfully.` Restoring the
+      full `Executor::open` + 1 publisher closure brings the hang back —
+      so something LTO-pulls in and statically initialises that the
+      minimal closure does not.
+
+      *QEMU `-d guest_errors,unimp` capture.* When the full sentinel
+      hangs, QEMU traces a flood of wild writes to `0x1ef24XXX` — well
+      below RAM start `0x20000000`. The values being written are
+      `0xa5a5a5a5` (FreeRTOS task stack canary) plus context-switch
+      register stacks. Conclusion: `pvPortMalloc` is returning a pointer
+      below `ucHeap`, FreeRTOS canaries it, the access faults, and the
+      first context switch never completes. Some static (or its
+      initialiser) is corrupting `ucHeap`'s prologue / `xFreeBytesRemaining`
+      before `vTaskStartScheduler()`.
+
+      *Suspect.* The corruption appears with sentinel's `nros-platform/global-allocator`
+      enabled and any code path that pulls `nros::Executor::open` into the
+      binary (LTO links the static `g_publishers` / `g_liveliness` arrays
+      and the SUBSCRIBER_BUFFERS / SERVICE_BUFFERS arrays). Likely a
+      pre-`main` allocator call from a Rust static initialiser tries to
+      `pvPortMalloc` before FreeRTOS's heap structures are zeroed (boot
+      ordering: `Reset_Handler` → `_start` → `run()` → `vTaskStartScheduler`;
+      `pvPortMalloc` works inside `run()` for `AppContext` but possibly
+      not for any *earlier* Rust alloc).
+
+      *Mitigations to try next:*
+      1. Drop `global-allocator` and provide a custom `#[global_allocator]`
+         that defers to a thread-local arena until the scheduler is up.
+      2. Shrink sentinel via the component features below so fewer static
+         tables get linked, then incrementally add features back.
+      3. Move `g_publishers` / `g_liveliness` / `SERVICE_BUFFERS` /
+         `SUBSCRIBER_BUFFERS` to explicit zeroed segments aligned after
+         `ucHeap`.
+      4. Bisect the `wire_executor` body — the minimal closure works, so
+         halve the publisher tuple repeatedly until the corruption
+         re-appears.
+      5. Use `tshark -i lo` once we get past this so the bigger bisection
+         can proceed.
 
 - [ ] **13.K1.6 Add component cargo features in `autoware_sentinel_core`.**
       Implement the feature taxonomy from the table above (`comp-mrm`,

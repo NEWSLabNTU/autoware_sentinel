@@ -594,3 +594,103 @@ pub fn read_params(server: &ParameterServer) -> SentinelParams {
         vehicle_info,
     }
 }
+
+/// Compile-time default `SentinelParams` for builds that opt out of the
+/// ROS 2 parameter services (e.g. embedded FreeRTOS / NuttX). Values match
+/// the read-only defaults declared in [`declare_parameters`].
+pub fn default_params() -> SentinelParams {
+    let wheel_base_m = 2.79_f64;
+
+    let filter_params = FilterParams {
+        vel_lim: 25.0,
+        wheel_base: wheel_base_m as f32,
+        ..Default::default()
+    };
+    let gate = GateParams {
+        filter: filter_params,
+        arbiter: ArbiterParams {
+            stop_hold_accel: -1.5,
+            emergency_accel: -2.4,
+        },
+        heartbeat_timeout_ms: 5000,
+    };
+
+    let control_validator = ValidatorParams {
+        accel: autoware_control_validator::accel::AccelValidatorParams {
+            e_offset: 0.8,
+            e_scale: 0.2,
+            lpf_gain: 0.97,
+        },
+        velocity: autoware_control_validator::velocity::VelocityValidatorParams {
+            rolling_back_velocity_th: 0.5,
+            over_velocity_ratio_th: 0.2,
+            over_velocity_offset_th: 2.0,
+            lpf_gain: 0.9,
+        },
+        jerk: autoware_control_validator::jerk::LateralJerkValidatorParams {
+            lateral_jerk_threshold: 10.0,
+            wheel_base: wheel_base_m,
+            lpf_gain: 0.8,
+        },
+    };
+
+    let op_mode_mgr = autoware_operation_mode_transition_manager::Params {
+        allow_autonomous_in_stopped: true,
+        stopped_velocity_threshold: 0.01,
+        enable_engage_on_driving: false,
+        acc_threshold: 1.5,
+        speed_upper_threshold: 10.0,
+        speed_lower_threshold: -10.0,
+        stable_check_duration: 0.1,
+    };
+
+    SentinelParams {
+        stop_filter_vx_threshold: 0.1,
+        stop_filter_wz_threshold: 0.02,
+        velocity_converter_speed_scale: 1.0,
+        velocity_converter_stddev_vx: 0.2,
+        velocity_converter_stddev_wz: 0.1,
+        twist2accel_lpf_gain: 0.9,
+
+        watchdog_timeout_ms: 60000,
+        mrm_handler: autoware_mrm_handler::Params {
+            stopped_velocity_threshold: 0.001,
+        },
+        emergency_stop: autoware_mrm_emergency_stop_operator::Params {
+            target_acceleration: -2.5,
+            target_jerk: -1.5,
+        },
+        comfortable_stop: autoware_mrm_comfortable_stop_operator::Params {
+            min_acceleration: -1.0,
+            min_jerk: -0.3,
+        },
+
+        gate,
+        shift_decider_park_on_goal: true,
+
+        control_validator,
+        op_mode_mgr,
+
+        #[cfg(feature = "controller-node")]
+        controller_node: ControllerNodeParams {
+            ctrl_period: 0.033,
+            lateral: MpcControllerParams::default(),
+            longitudinal: PidControllerParams::default(),
+            ego_nearest_dist_threshold: 3.0,
+            ego_nearest_yaw_threshold: 1.57,
+        },
+        #[cfg(feature = "controller-node")]
+        vehicle_info: VehicleInfo::new(
+            0.383,
+            0.235,
+            wheel_base_m,
+            1.64,
+            1.0,
+            1.1,
+            0.128,
+            0.128,
+            2.5,
+            0.7,
+        ),
+    }
+}

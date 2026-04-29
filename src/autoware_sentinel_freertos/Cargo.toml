@@ -1,0 +1,52 @@
+# Autoware Sentinel — FreeRTOS Safety Island Application
+#
+# Thin platform shim around `autoware_sentinel_core`. Built for
+# QEMU MPS2-AN385 (Cortex-M3) + FreeRTOS + lwIP. Reaches the host's zenohd
+# via QEMU user-mode networking (SLIRP), so no TAP/bridge or sudo is needed.
+#
+# Build: cargo build --release
+# Run:   cargo run --release   (invokes qemu-system-arm via .cargo/config.toml runner)
+
+[package]
+name = "autoware_sentinel_freertos"
+version = "0.1.0"
+edition = "2024"
+description = "Autoware Sentinel safety island — QEMU FreeRTOS binary"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "autoware_sentinel_freertos"
+test = false
+bench = false
+
+[features]
+default = []
+
+[dependencies]
+log = { version = "0.4", default-features = false }
+panic-semihosting = { version = "0.6", features = ["exit"] }
+
+# Provide the GlobalAlloc impl that core's `extern crate alloc` requires.
+# Backed by FreeRTOS's pvPortMalloc/free via nros-platform-freertos.
+nros-platform = { path = "../../../nano-ros/packages/core/nros-platform", default-features = false, features = ["platform-freertos", "global-allocator"] }
+
+# FreeRTOS QEMU MPS2-AN385 board crate (provides run() + Config + println!).
+nros-board-mps2-an385-freertos = { path = "../../../nano-ros/packages/boards/nros-board-mps2-an385-freertos" }
+
+# Shared core wiring. Safety MCU build — no controller-node.
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos"] }
+
+# nros — for `ExecutorConfig`, `Executor`, `NodeError`. Match Zephyr feature set
+# (rmw-zenoh + ros-humble + param-services), no std.
+nros = { version = "*", default-features = false, features = ["rmw-zenoh", "platform-freertos", "link-tcp", "link-udp-unicast", "ros-humble"] }
+
+# Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
+# autoware_adapi_v1_msgs at opt-level=0 for thumbv7m-none-eabi.
+[profile.dev.package.autoware_adapi_v1_msgs]
+opt-level = 1
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false

@@ -1,0 +1,5 @@
+cargo:rerun-if-changed=wrapper.h
+cargo:rerun-if-env-changed=FREERTOS_DIR
+cargo:rerun-if-env-changed=LWIP_DIR
+cargo:rerun-if-env-changed=FREERTOS_PORT
+cargo:rerun-if-env-changed=FREERTOS_CONFIG_DIR

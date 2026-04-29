@@ -37,6 +37,23 @@ build: generate-bindings build-zephyr build-sentinel-linux build-rmw-zenoh
 build-sentinel-linux:
     cargo build -p autoware_sentinel_linux
 
+# FreeRTOS QEMU prereq env (matches nano-ros/just/freertos.just)
+freertos_env := "FREERTOS_DIR=" + justfile_directory() / "../nano-ros/third-party/freertos/kernel" + " LWIP_DIR=" + justfile_directory() / "../nano-ros/third-party/freertos/lwip" + " FREERTOS_PORT=GCC/ARM_CM3 FREERTOS_CONFIG_DIR=" + justfile_directory() / "../nano-ros/packages/boards/nros-board-mps2-an385-freertos/config"
+
+# Build FreeRTOS QEMU MPS2-AN385 sentinel (release; thumbv7m-none-eabi)
+build-sentinel-freertos:
+    #!/usr/bin/env bash
+    set -eo pipefail
+    cd src/autoware_sentinel_freertos
+    {{ freertos_env }} cargo build --release
+
+# Run FreeRTOS QEMU sentinel (requires zenohd listening on 0.0.0.0:7451)
+run-sentinel-freertos: build-sentinel-freertos
+    #!/usr/bin/env bash
+    set -eo pipefail
+    cd src/autoware_sentinel_freertos
+    {{ freertos_env }} cargo run --release
+
 # Build Zephyr application (native_sim)
 build-zephyr:
     #!/usr/bin/env bash

@@ -15,6 +15,13 @@ publish = false
 [features]
 default = []
 
+# Phase 12 monitoring publishers (diag graph + component-state-monitor +
+# hazard_status + op_mode_availability). These ship a 2.1 MB
+# `static DiagGraphStatus` rodata blob (heapless::Vec<_, 64> inline) which
+# blows the 4 MB flash budget on Cortex-M3 boards. Default off — Linux
+# enables it for full Phase 12 parity.
+monitoring-topics = []
+
 # Phase 13: bundle the trajectory follower (MPC + PID + interpolation +
 # vehicle-info-utils). Default off — main compute provides control_cmd on
 # safety MCUs. Linux dev binary enables this for solo planning-simulator runs.

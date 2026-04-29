@@ -3,6 +3,7 @@ resolver = "2"
 exclude = [
     "tests",
     "src/autoware_sentinel_zephyr",
+    "src/autoware_sentinel_freertos",
     "src/verification",
 ]
 members = [
@@ -29,9 +30,10 @@ members = [
     "src/autoware_vehicle_velocity_converter",
 ]
 # Excluded from workspace:
-#   src/autoware_sentinel_zephyr — Zephyr target, built via west
-#   src/verification       — Verus proofs, standalone
-#   tests                  — nextest integration tests, standalone
+#   src/autoware_sentinel_zephyr   — Zephyr target, built via west
+#   src/autoware_sentinel_freertos — FreeRTOS QEMU target, cross-compiled to thumbv7m-none-eabi
+#   src/verification               — Verus proofs, standalone
+#   tests                          — nextest integration tests, standalone
 
 [patch.crates-io]
 # nano-ros — all internal crates (nros-core, nros-node, zpico-sys, etc.) are resolved

@@ -430,12 +430,16 @@ fn quaternion_to_pitch_yaw(x: f64, y: f64, z: f64, w: f64) -> (f64, f64) {
 
 // `DiagGraphStatus` / `DiagGraphStruct` carry large `heapless::Vec`s and would
 // blow the closure stack frame if defaulted inline. Lift them to `static`s.
+// Each static occupies ≈ 2 MB of `.text`/rodata — only emit them when
+// `monitoring-topics` is on (Linux). Cortex-M3 boards default off.
+#[cfg(feature = "monitoring-topics")]
 static DIAG_STATUS_DEFAULT: DiagGraphStatus = DiagGraphStatus {
     stamp: builtin_interfaces::msg::Time { sec: 0, nanosec: 0 },
     id: nros::heapless::String::new(),
     nodes: nros::heapless::Vec::new(),
     diags: nros::heapless::Vec::new(),
 };
+#[cfg(feature = "monitoring-topics")]
 static DIAG_STRUCT_DEFAULT: DiagGraphStruct = DiagGraphStruct {
     stamp: builtin_interfaces::msg::Time { sec: 0, nanosec: 0 },
     id: nros::heapless::String::new(),
@@ -456,61 +460,57 @@ static DIAG_STRUCT_DEFAULT: DiagGraphStruct = DiagGraphStruct {
 /// binary (e.g. `Instant::elapsed` on Linux, `k_uptime_get` on Zephyr).
 pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(), NodeError> {
     // --- Publishers ---
+    //
+    // Mandatory tuple (always declared) plus an optional `monitoring` tuple
+    // gated behind the `monitoring-topics` feature. The monitoring block is
+    // expensive: it pulls a 2.1 MB `static DiagGraphStatus` rodata blob and
+    // 14 extra publisher entities, which is too much for Cortex-M3 boards
+    // (4 MB flash) and is also implicated in Phase 13.K1's Zephyr
+    // declare-storm bug.
     let (
-        mrm_state_pub,
-        hazard_pub,
-        gear_pub,
-        control_pub,
-        turn_pub,
-        op_mode_pub,
-        mrm_estop_status_pub,
-        mrm_comfy_status_pub,
-        mrm_pullover_status_pub,
-        emergency_gear_pub,
-        emergency_hazard_pub,
-        emergency_turn_pub,
-        emergency_cmd_pub,
-        gate_mode_pub,
-        shift_decider_gear_pub,
-        is_stopped_pub,
-        gate_op_mode_pub,
-        system_op_mode_pub,
-        engage_api_pub,
-        engage_compat_pub,
-        autoware_state_pub,
-        emergency_api_pub,
-        cv_debug_marker_pub,
-        cv_output_markers_pub,
-        cv_validation_status_pub,
-        cv_virtual_wall_pub,
-        filter_activated_pub,
-        filter_flag_pub,
-        filter_marker_pub,
-        filter_marker_raw_pub,
-        op_mode_debug_pub,
-        published_time_pub,
-        is_paused_pub,
-        is_start_requested_pub,
-        current_gate_mode_pub,
-        is_autonomous_available_pub,
-        emergency_holding_pub,
-        diag_status_pub,
-        diag_struct_pub,
-        diag_unknowns_pub,
-        cmd_mode_availability_pub,
-        csm_control_pub,
-        csm_localization_pub,
-        csm_map_pub,
-        csm_perception_pub,
-        csm_planning_pub,
-        csm_sensing_pub,
-        csm_system_pub,
-        csm_vehicle_pub,
-        hazard_status_pub,
-        op_mode_availability_pub,
+        (
+            mrm_state_pub,
+            hazard_pub,
+            gear_pub,
+            control_pub,
+            turn_pub,
+            op_mode_pub,
+            mrm_estop_status_pub,
+            mrm_comfy_status_pub,
+            mrm_pullover_status_pub,
+            emergency_gear_pub,
+            emergency_hazard_pub,
+            emergency_turn_pub,
+            emergency_cmd_pub,
+            gate_mode_pub,
+            shift_decider_gear_pub,
+            is_stopped_pub,
+            gate_op_mode_pub,
+            system_op_mode_pub,
+            engage_api_pub,
+            engage_compat_pub,
+            autoware_state_pub,
+            emergency_api_pub,
+            cv_debug_marker_pub,
+            cv_output_markers_pub,
+            cv_validation_status_pub,
+            cv_virtual_wall_pub,
+            filter_activated_pub,
+            filter_flag_pub,
+            filter_marker_pub,
+            filter_marker_raw_pub,
+            op_mode_debug_pub,
+            published_time_pub,
+            is_paused_pub,
+            is_start_requested_pub,
+            current_gate_mode_pub,
+            is_autonomous_available_pub,
+            emergency_holding_pub,
+        ),
+        _monitoring_pubs,
     ) = {
         let mut node = executor.create_node("sentinel")?;
-        (
+        let mandatory = (
             node.create_publisher::<MrmState>("/system/fail_safe/mrm_state")?,
             node.create_publisher::<HazardLightsCommand>("/control/command/hazard_lights_cmd")?,
             node.create_publisher::<GearCommand>("/control/command/gear_cmd")?,
@@ -568,6 +568,10 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
             node.create_publisher::<GateMode>("/control/current_gate_mode")?,
             node.create_publisher::<ModeChangeAvailable>("/control/is_autonomous_available")?,
             node.create_publisher::<EmergencyHoldingState>("/system/emergency_holding")?,
+        );
+
+        #[cfg(feature = "monitoring-topics")]
+        let monitoring = (
             node.create_publisher::<DiagGraphStatus>("/api/system/diagnostics/status")?,
             node.create_publisher::<DiagGraphStruct>("/api/system/diagnostics/struct")?,
             node.create_publisher::<DiagnosticArray>("/diagnostics_graph/unknowns")?,
@@ -600,8 +604,30 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
             node.create_publisher::<OperationModeAvailability>(
                 "/system/operation_mode/availability",
             )?,
-        )
+        );
+        #[cfg(not(feature = "monitoring-topics"))]
+        let monitoring = ();
+
+        (mandatory, monitoring)
     };
+
+    #[cfg(feature = "monitoring-topics")]
+    let (
+        diag_status_pub,
+        diag_struct_pub,
+        diag_unknowns_pub,
+        cmd_mode_availability_pub,
+        csm_control_pub,
+        csm_localization_pub,
+        csm_map_pub,
+        csm_perception_pub,
+        csm_planning_pub,
+        csm_sensing_pub,
+        csm_system_pub,
+        csm_vehicle_pub,
+        hazard_status_pub,
+        op_mode_availability_pub,
+    ) = _monitoring_pubs;
 
     // --- Sensing / heartbeat / external control subscriptions ---
     executor.add_subscription::<VelocityReport, _>("/vehicle/status/velocity_status", |msg| {
@@ -1230,39 +1256,42 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
                 })
                 .ok();
 
-            diag_status_pub.publish(&DIAG_STATUS_DEFAULT).ok();
-            diag_struct_pub.publish(&DIAG_STRUCT_DEFAULT).ok();
-            diag_unknowns_pub.publish(&DiagnosticArray::default()).ok();
-            cmd_mode_availability_pub
-                .publish(&CommandModeAvailability::default())
-                .ok();
-            let csm_available = ModeChangeAvailable {
-                stamp: Default::default(),
-                available: true,
-            };
-            csm_control_pub.publish(&csm_available).ok();
-            csm_localization_pub.publish(&csm_available).ok();
-            csm_map_pub.publish(&csm_available).ok();
-            csm_perception_pub.publish(&csm_available).ok();
-            csm_planning_pub.publish(&csm_available).ok();
-            csm_sensing_pub.publish(&csm_available).ok();
-            csm_system_pub.publish(&csm_available).ok();
-            csm_vehicle_pub.publish(&csm_available).ok();
-            hazard_status_pub
-                .publish(&HazardStatusStamped::default())
-                .ok();
-            op_mode_availability_pub
-                .publish(&OperationModeAvailability {
+            #[cfg(feature = "monitoring-topics")]
+            {
+                diag_status_pub.publish(&DIAG_STATUS_DEFAULT).ok();
+                diag_struct_pub.publish(&DIAG_STRUCT_DEFAULT).ok();
+                diag_unknowns_pub.publish(&DiagnosticArray::default()).ok();
+                cmd_mode_availability_pub
+                    .publish(&CommandModeAvailability::default())
+                    .ok();
+                let csm_available = ModeChangeAvailable {
                     stamp: Default::default(),
-                    stop: true,
-                    autonomous: true,
-                    local: true,
-                    remote: true,
-                    emergency_stop: true,
-                    comfortable_stop: true,
-                    pull_over: true,
-                })
-                .ok();
+                    available: true,
+                };
+                csm_control_pub.publish(&csm_available).ok();
+                csm_localization_pub.publish(&csm_available).ok();
+                csm_map_pub.publish(&csm_available).ok();
+                csm_perception_pub.publish(&csm_available).ok();
+                csm_planning_pub.publish(&csm_available).ok();
+                csm_sensing_pub.publish(&csm_available).ok();
+                csm_system_pub.publish(&csm_available).ok();
+                csm_vehicle_pub.publish(&csm_available).ok();
+                hazard_status_pub
+                    .publish(&HazardStatusStamped::default())
+                    .ok();
+                op_mode_availability_pub
+                    .publish(&OperationModeAvailability {
+                        stamp: Default::default(),
+                        stop: true,
+                        autonomous: true,
+                        local: true,
+                        remote: true,
+                        emergency_stop: true,
+                        comfortable_stop: true,
+                        pull_over: true,
+                    })
+                    .ok();
+            }
         });
     })?;
     info!("30 Hz control loop ready");

@@ -248,9 +248,11 @@ Linux subset.
 
 ## Known Issues
 
-### 13.K1 — `z_declare_publisher` fails at the 28th publisher on Zephyr native_sim
+### 13.K1 — `z_declare_publisher` fails on Zephyr **and** FreeRTOS QEMU under the bringup-time declare burst
 
-**Status:** Open. Investigated 2026-04-29. Tracked as a separate nano-ros bug.
+**Status:** Open. Investigated 2026-04-29. Confirmed platform-agnostic
+(reproduces on both Zephyr native_sim and QEMU MPS2-AN385 + FreeRTOS).
+Tracked as a separate nano-ros / zenoh-pico bug.
 
 The `autoware_sentinel_zephyr` binary boots, connects to host zenohd over NSOS,
 declares the node liveliness, registers all 6 ROS 2 parameter services, declares
@@ -258,7 +260,12 @@ declares the node liveliness, registers all 6 ROS 2 parameter services, declares
 succeeds, the 28th call (`/control/vehicle_cmd_gate/is_filter_activated/flag`,
 type `BoolStamped`) hangs for ~24 seconds and `z_declare_publisher` returns `-1`.
 
-The failure point is **deterministic**: same publisher, same timestamp
+The `autoware_sentinel_freertos` QEMU binary, with the `monitoring-topics` feature
+off (so only the 37 mandatory publishers are declared) and parameter services
+disabled, also fails with `Transport(PublisherCreationFailed)` — confirming the
+fault is not Zephyr-specific and not tied to the parameter-service queryables.
+
+The failure point on Zephyr is **deterministic**: same publisher, same timestamp
 (`00:00:26.677`) across runs.
 
 **Ruled out:**
@@ -274,17 +281,25 @@ The failure point is **deterministic**: same publisher, same timestamp
 - Real-time slowdown (`CONFIG_NATIVE_SIM_SLOWDOWN_TO_REAL_TIME=n` — no change).
 
 **Likely cause:** zenoh-pico-internal limit triggered by the high-cardinality
-declaration burst (≈70 zenoh entities back-to-back). Either a `_z_send_declare`
-TX queue saturation (with `Z_CONGESTION_CONTROL_BLOCK` and `wait_before_close=5s`)
-or a write-filter / session-state allocation issue.
+declaration burst (≈70 zenoh entities back-to-back, or ≈37 publishers when the
+`monitoring-topics` feature is off). Either a `_z_send_declare` TX queue
+saturation (with `Z_CONGESTION_CONTROL_BLOCK` and `wait_before_close=5s`) or a
+write-filter / session-state allocation issue. The fact that FreeRTOS-with-only-37-publishers
+also fails suggests the threshold is closer to ~30 publishers, not 50+.
 
 **Workarounds for users today:**
 
-1. Drop the Phase 8.2 / Phase 12-monitoring publishers in core (gate behind a
-   future `monitoring-topics` cargo feature). Halves the declare burst.
-2. Insert a short `k_msleep(5)` between create_publisher calls to let the read
-   thread drain acks (would require core API changes; may not actually help if
-   the fault is queue-state rather than timing).
+1. ✓ **Landed** — `monitoring-topics` cargo feature in `autoware_sentinel_core`
+   (Phase 13.4). Linux enables it for full Phase 12 parity; safety-MCU binaries
+   (Zephyr / FreeRTOS / NuttX) leave it off. Removes 14 publishers + the 2.1 MB
+   `static DiagGraphStatus` rodata blob (so the FreeRTOS binary actually fits
+   the 4 MB Cortex-M3 flash budget). Insufficient on its own to dodge the
+   declare-storm bug (FreeRTOS with 37 publishers still fails).
+2. Insert a short `k_msleep(5)` / `vTaskDelay(5)` between `create_publisher`
+   calls to let the read thread drain acks (would require core API changes;
+   may not help if the fault is queue-state rather than timing).
+3. Stagger declarations across multiple ticks (declare a few publishers,
+   spin once, declare more — would require restructuring `wire_executor`).
 
 **Next steps:**
 

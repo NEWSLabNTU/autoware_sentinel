@@ -36,8 +36,10 @@ members = [
 #   tests                          — nextest integration tests, standalone
 
 [patch.crates-io]
-# nano-ros — all internal crates (nros-core, nros-node, zpico-sys, etc.) are resolved
-# automatically from the same git repo via cargo workspace dependency resolution.
+# nano-ros — pinned to the rev that includes the Phase-13 wall-clock-accurate
+# spin_once timer fix (34f1d473). Phase 13.K1 investigation continues against
+# a sibling clone (`~/repos/nano-ros-sentinel`); flip these to local paths
+# locally when reproducing.
 nros = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
 nros-core = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
 nros-serdes = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }

@@ -287,6 +287,32 @@ saturation (with `Z_CONGESTION_CONTROL_BLOCK` and `wait_before_close=5s`) or a
 write-filter / session-state allocation issue. The fact that FreeRTOS-with-only-37-publishers
 also fails suggests the threshold is closer to ~30 publishers, not 50+.
 
+**Investigation tooling (2026-04-29):** cloned `~/repos/nano-ros-sentinel`
+as a sibling of the upstream `~/repos/nano-ros` checkout (the latter is in
+active use by another agent), so the sentinel build can patch nros to a
+local path during 13.K1 debugging without disturbing the other agent.
+Re-pointing is a two-line edit:
+
+```toml
+# Cargo.toml
+nros = { path = "../nano-ros-sentinel/packages/core/nros" }
+nros-core = { path = "../nano-ros-sentinel/packages/core/nros-core" }
+nros-serdes = { path = "../nano-ros-sentinel/packages/core/nros-serdes" }
+```
+
+…plus matching `[patch.crates-io.nros*]` entries in
+`src/autoware_sentinel_zephyr/.cargo/config.toml` and
+`src/autoware_sentinel_freertos/.cargo/config.toml`, and the `freertos_env`
+paths in `justfile`. Revert before committing — the sibling clone is local-only.
+
+**Secondary regression on newer nano-ros HEAD (1b7466ce):** the
+`Phase 97.4.freertos: lwIP DDS bring-up` commit (`d9722b31`) inflated
+`nros-platform-freertos` and `lan9118-lwip` with IGMP/multicast init code,
+which combined with sentinel's larger bss footprint stalls the FreeRTOS
+network-init phase before reaching `wire_executor`. The talker example still
+works on the same HEAD. Sentinel reaches `Network ready.` on the older
+`34f1d473` rev. Track separately as a Phase 13 follow-up.
+
 **Workarounds for users today:**
 
 1. ✓ **Landed** — `monitoring-topics` cargo feature in `autoware_sentinel_core`

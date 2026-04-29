@@ -26,8 +26,8 @@ generate-bindings:
     source scripts/activate_autoware.sh
     echo "=== autoware_sentinel_linux ==="
     (cd "src/autoware_sentinel_linux" && cargo nano-ros generate-rust --force)
-    echo "=== autoware_sentinel (Zephyr) ==="
-    (cd "src/autoware_sentinel" && cargo nano-ros generate-rust --force)
+    echo "=== autoware_sentinel_zephyr ==="
+    (cd "src/autoware_sentinel_zephyr" && cargo nano-ros generate-rust --force)
 
 # Build all packages + Zephyr + Linux sentinel
 build: generate-bindings build-zephyr build-sentinel-linux build-rmw-zenoh
@@ -43,7 +43,7 @@ build-zephyr:
     set -eo pipefail
     source {{ env_script }}
     cd {{ workspace_dir }}
-    west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel -d build/sentinel
+    west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr -d build/sentinel
 
 # Build rmw_zenoh_cpp from source
 build-rmw-zenoh:

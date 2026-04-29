@@ -1,0 +1,43 @@
+# Autoware Sentinel — Zephyr Safety Island Application
+#
+# Thin platform shim around `autoware_sentinel_core`. Provides the Zephyr
+# entry point (`rust_main`), Zephyr logger, and `k_uptime_get`-backed clock.
+# All wiring lives in core. controller-node is OFF — main compute supplies
+# `/control/.../control_cmd`; sentinel triggers MRM on staleness.
+#
+# Build: west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr
+
+[package]
+# Name must be "rustapp" for zephyr-lang-rust integration.
+name = "rustapp"
+version = "0.1.0"
+edition = "2024"
+description = "Autoware Sentinel safety island — Zephyr binary"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[features]
+default = []
+
+[dependencies]
+zephyr = "0.1.0"
+log = { version = "0.4", default-features = false }
+
+# Shared core wiring. Zephyr is a safety MCU — no controller-node.
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-zephyr"] }
+
+# nros — for `ExecutorConfig`, `Executor`, `SpinOptions`, `NodeError`.
+nros = { version = "*", default-features = false, features = ["rmw-zenoh", "platform-zephyr", "ros-humble", "param-services"] }
+
+# Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
+# autoware_adapi_v1_msgs at opt-level=0 for thumbv7em-none-eabihf.
+[profile.dev.package.autoware_adapi_v1_msgs]
+opt-level = 1
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false

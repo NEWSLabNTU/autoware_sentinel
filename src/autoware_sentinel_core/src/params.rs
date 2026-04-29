@@ -5,32 +5,27 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
-//! Parameter declaration and reading for the sentinel binary (Phase 10.6).
+//! Parameter declaration and reading for the sentinel core.
 //!
-//! All algorithm parameters are declared as read-only ROS 2 parameters
-//! using the rclrs-compatible [`ParameterBuilder`] API.
-//! Parameter names use dotted namespaces (`<algorithm>.<param>`).
-//!
-//! After declaration, [`read_params()`] reads all values from the parameter
-//! server into the algorithm param structs used by `SafetyIsland`.
+//! Controller-node parameters are gated behind the `controller-node` feature.
 
 use autoware_control_validator::ValidatorParams;
-use autoware_mpc_lateral_controller::ControllerParams as MpcControllerParams;
-use autoware_pid_longitudinal_controller::ControllerParams as PidControllerParams;
-use autoware_pid_longitudinal_controller::pid::PidGains;
-use autoware_trajectory_follower_node::ControllerNodeParams;
 use autoware_vehicle_cmd_gate::GateParams;
 use autoware_vehicle_cmd_gate::filter::FilterParams;
 use autoware_vehicle_cmd_gate::gate::ArbiterParams;
-use autoware_vehicle_info_utils::VehicleInfo;
 use nros::prelude::*;
+
+#[cfg(feature = "controller-node")]
+use autoware_mpc_lateral_controller::ControllerParams as MpcControllerParams;
+#[cfg(feature = "controller-node")]
+use autoware_pid_longitudinal_controller::ControllerParams as PidControllerParams;
+#[cfg(feature = "controller-node")]
+use autoware_pid_longitudinal_controller::pid::PidGains;
+#[cfg(feature = "controller-node")]
+use autoware_trajectory_follower_node::ControllerNodeParams;
+#[cfg(feature = "controller-node")]
+use autoware_vehicle_info_utils::VehicleInfo;
 
 /// All algorithm parameters read from the parameter server.
 pub struct SentinelParams {
@@ -56,17 +51,15 @@ pub struct SentinelParams {
     pub control_validator: ValidatorParams,
     pub op_mode_mgr: autoware_operation_mode_transition_manager::Params,
 
-    // Controller
+    // Controller (gated)
+    #[cfg(feature = "controller-node")]
     pub controller_node: ControllerNodeParams,
+    #[cfg(feature = "controller-node")]
     pub vehicle_info: VehicleInfo,
 }
 
 /// Declare all sentinel parameters on the parameter server (read-only).
-///
-/// Uses the rclrs-compatible `ParameterBuilder` API. All parameters are
-/// declared read-only with Autoware-compatible defaults.
 pub fn declare_parameters(server: &mut ParameterServer) {
-    // Helper macro to reduce boilerplate for read-only parameter declaration.
     macro_rules! ro {
         ($server:expr, $name:expr, $val:expr, $desc:expr) => {
             ParameterBuilder::new($server, $name)
@@ -297,7 +290,7 @@ pub fn declare_parameters(server: &mut ParameterServer) {
         "Stable check duration (s)"
     );
 
-    // ── Vehicle info ────────────────────────────────────────────────────
+    // ── Vehicle info (also used by gate.filter.wheel_base) ──────────────
     ro!(
         server,
         "vehicle_info.wheel_base",
@@ -359,97 +352,98 @@ pub fn declare_parameters(server: &mut ParameterServer) {
         "Vehicle height (m)"
     );
 
-    // ── Controller node ─────────────────────────────────────────────────
-    ro!(
-        server,
-        "controller.ctrl_period",
-        0.033_f64,
-        "Control period (s)"
-    );
-    ro!(
-        server,
-        "controller.ego_nearest_dist_threshold",
-        3.0_f64,
-        "Nearest point distance threshold (m)"
-    );
-    ro!(
-        server,
-        "controller.ego_nearest_yaw_threshold",
-        1.57_f64,
-        "Nearest point yaw threshold (rad)"
-    );
+    // ── Controller-node-only parameters ─────────────────────────────────
+    #[cfg(feature = "controller-node")]
+    {
+        // Controller node
+        ro!(
+            server,
+            "controller.ctrl_period",
+            0.033_f64,
+            "Control period (s)"
+        );
+        ro!(
+            server,
+            "controller.ego_nearest_dist_threshold",
+            3.0_f64,
+            "Nearest point distance threshold (m)"
+        );
+        ro!(
+            server,
+            "controller.ego_nearest_yaw_threshold",
+            1.57_f64,
+            "Nearest point yaw threshold (rad)"
+        );
 
-    // ── PID longitudinal controller ─────────────────────────────────────
-    ro!(server, "pid.kp", 1.0_f64, "PID proportional gain");
-    ro!(server, "pid.ki", 0.1_f64, "PID integral gain");
-    ro!(server, "pid.kd", 0.0_f64, "PID derivative gain");
-    ro!(server, "pid.max_acc", 3.0_f64, "Max acceleration (m/s^2)");
-    ro!(server, "pid.min_acc", -5.0_f64, "Min acceleration (m/s^2)");
-    ro!(server, "pid.max_jerk", 2.0_f64, "Max jerk (m/s^3)");
-    ro!(server, "pid.min_jerk", -5.0_f64, "Min jerk (m/s^3)");
-    ro!(
-        server,
-        "pid.delay_compensation_time",
-        0.17_f64,
-        "Delay compensation time (s)"
-    );
-    ro!(
-        server,
-        "pid.stopped_acc",
-        -3.4_f64,
-        "Stopped state acceleration (m/s^2)"
-    );
-    ro!(
-        server,
-        "pid.emergency_acc",
-        -5.0_f64,
-        "Emergency state acceleration (m/s^2)"
-    );
+        // PID
+        ro!(server, "pid.kp", 1.0_f64, "PID proportional gain");
+        ro!(server, "pid.ki", 0.1_f64, "PID integral gain");
+        ro!(server, "pid.kd", 0.0_f64, "PID derivative gain");
+        ro!(server, "pid.max_acc", 3.0_f64, "Max acceleration (m/s^2)");
+        ro!(server, "pid.min_acc", -5.0_f64, "Min acceleration (m/s^2)");
+        ro!(server, "pid.max_jerk", 2.0_f64, "Max jerk (m/s^3)");
+        ro!(server, "pid.min_jerk", -5.0_f64, "Min jerk (m/s^3)");
+        ro!(
+            server,
+            "pid.delay_compensation_time",
+            0.17_f64,
+            "Delay compensation time (s)"
+        );
+        ro!(
+            server,
+            "pid.stopped_acc",
+            -3.4_f64,
+            "Stopped state acceleration (m/s^2)"
+        );
+        ro!(
+            server,
+            "pid.emergency_acc",
+            -5.0_f64,
+            "Emergency state acceleration (m/s^2)"
+        );
 
-    // ── MPC lateral controller ──────────────────────────────────────────
-    ro!(
-        server,
-        "mpc.prediction_horizon",
-        50_i64,
-        "MPC prediction horizon (steps)"
-    );
-    ro!(
-        server,
-        "mpc.prediction_dt",
-        0.1_f64,
-        "MPC prediction time step (s)"
-    );
-    ro!(
-        server,
-        "mpc.steer_tau",
-        0.27_f64,
-        "Steering time constant (s)"
-    );
-    ro!(
-        server,
-        "mpc.steering_lpf_gain",
-        0.8_f64,
-        "Steering output LPF gain"
-    );
-    ro!(
-        server,
-        "mpc.input_delay",
-        0.0_f64,
-        "Input delay compensation (s)"
-    );
-    ro!(
-        server,
-        "mpc.steer_rate_lim",
-        1.7321_f64,
-        "Steering rate limit (rad/s)"
-    );
+        // MPC
+        ro!(
+            server,
+            "mpc.prediction_horizon",
+            50_i64,
+            "MPC prediction horizon (steps)"
+        );
+        ro!(
+            server,
+            "mpc.prediction_dt",
+            0.1_f64,
+            "MPC prediction time step (s)"
+        );
+        ro!(
+            server,
+            "mpc.steer_tau",
+            0.27_f64,
+            "Steering time constant (s)"
+        );
+        ro!(
+            server,
+            "mpc.steering_lpf_gain",
+            0.8_f64,
+            "Steering output LPF gain"
+        );
+        ro!(
+            server,
+            "mpc.input_delay",
+            0.0_f64,
+            "Input delay compensation (s)"
+        );
+        ro!(
+            server,
+            "mpc.steer_rate_lim",
+            1.7321_f64,
+            "Steering rate limit (rad/s)"
+        );
+    }
 }
 
 /// Read all declared parameters into algorithm param structs.
-///
-/// Must be called after [`declare_parameters()`].
 pub fn read_params(server: &ParameterServer) -> SentinelParams {
-    // Convenience closures for typed access with panic on missing.
     let f = |name: &str| -> f64 {
         server
             .get_double(name)
@@ -466,49 +460,14 @@ pub fn read_params(server: &ParameterServer) -> SentinelParams {
             .unwrap_or_else(|| panic!("parameter {name} not found"))
     };
 
-    // Vehicle info
-    let vehicle_info = VehicleInfo::new(
-        f("vehicle_info.wheel_radius"),
-        f("vehicle_info.wheel_width"),
-        f("vehicle_info.wheel_base"),
-        f("vehicle_info.wheel_tread"),
-        f("vehicle_info.front_overhang"),
-        f("vehicle_info.rear_overhang"),
-        f("vehicle_info.left_overhang"),
-        f("vehicle_info.right_overhang"),
-        f("vehicle_info.vehicle_height"),
-        f("vehicle_info.max_steer_angle"),
-    );
-
-    // PID longitudinal params
-    let mut pid_params = PidControllerParams::default();
-    pid_params.pid_gains = PidGains {
-        kp: f("pid.kp"),
-        ki: f("pid.ki"),
-        kd: f("pid.kd"),
-    };
-    pid_params.max_acc = f("pid.max_acc");
-    pid_params.min_acc = f("pid.min_acc");
-    pid_params.max_jerk = f("pid.max_jerk");
-    pid_params.min_jerk = f("pid.min_jerk");
-    pid_params.delay_compensation_time = f("pid.delay_compensation_time");
-    pid_params.stopped_acc = f("pid.stopped_acc");
-    pid_params.emergency_acc = f("pid.emergency_acc");
-
-    // MPC lateral params
-    let mut mpc_params = MpcControllerParams::default();
-    mpc_params.ctrl_period = f("controller.ctrl_period");
-    mpc_params.steering_lpf_gain = f("mpc.steering_lpf_gain");
-    mpc_params.mpc_params.prediction_horizon = i("mpc.prediction_horizon") as usize;
-    mpc_params.mpc_params.prediction_dt = f("mpc.prediction_dt");
-    mpc_params.mpc_params.steer_tau = f("mpc.steer_tau");
-    mpc_params.mpc_params.input_delay = f("mpc.input_delay");
-    mpc_params.mpc_params.steer_rate_lim = f("mpc.steer_rate_lim");
+    let wheel_base_m = f("vehicle_info.wheel_base");
 
     // Gate params
-    let mut filter_params = FilterParams::default();
-    filter_params.vel_lim = f("vehicle_cmd_gate.vel_lim") as f32;
-    filter_params.wheel_base = vehicle_info.wheel_base_m as f32;
+    let filter_params = FilterParams {
+        vel_lim: f("vehicle_cmd_gate.vel_lim") as f32,
+        wheel_base: wheel_base_m as f32,
+        ..Default::default()
+    };
 
     let gate = GateParams {
         filter: filter_params,
@@ -534,7 +493,7 @@ pub fn read_params(server: &ParameterServer) -> SentinelParams {
         },
         jerk: autoware_control_validator::jerk::LateralJerkValidatorParams {
             lateral_jerk_threshold: f("control_validator.lateral_jerk_threshold"),
-            wheel_base: vehicle_info.wheel_base_m,
+            wheel_base: wheel_base_m,
             lpf_gain: f("control_validator.jerk_lpf_gain"),
         },
     };
@@ -550,6 +509,58 @@ pub fn read_params(server: &ParameterServer) -> SentinelParams {
         stable_check_duration: f("op_mode.stable_check_duration"),
     };
 
+    #[cfg(feature = "controller-node")]
+    let (controller_node, vehicle_info) = {
+        let vehicle_info = VehicleInfo::new(
+            f("vehicle_info.wheel_radius"),
+            f("vehicle_info.wheel_width"),
+            wheel_base_m,
+            f("vehicle_info.wheel_tread"),
+            f("vehicle_info.front_overhang"),
+            f("vehicle_info.rear_overhang"),
+            f("vehicle_info.left_overhang"),
+            f("vehicle_info.right_overhang"),
+            f("vehicle_info.vehicle_height"),
+            f("vehicle_info.max_steer_angle"),
+        );
+
+        let pid_params = PidControllerParams {
+            pid_gains: PidGains {
+                kp: f("pid.kp"),
+                ki: f("pid.ki"),
+                kd: f("pid.kd"),
+            },
+            max_acc: f("pid.max_acc"),
+            min_acc: f("pid.min_acc"),
+            max_jerk: f("pid.max_jerk"),
+            min_jerk: f("pid.min_jerk"),
+            delay_compensation_time: f("pid.delay_compensation_time"),
+            stopped_acc: f("pid.stopped_acc"),
+            emergency_acc: f("pid.emergency_acc"),
+            ..Default::default()
+        };
+
+        let mut mpc_params = MpcControllerParams {
+            ctrl_period: f("controller.ctrl_period"),
+            steering_lpf_gain: f("mpc.steering_lpf_gain"),
+            ..Default::default()
+        };
+        mpc_params.mpc_params.prediction_horizon = i("mpc.prediction_horizon") as usize;
+        mpc_params.mpc_params.prediction_dt = f("mpc.prediction_dt");
+        mpc_params.mpc_params.steer_tau = f("mpc.steer_tau");
+        mpc_params.mpc_params.input_delay = f("mpc.input_delay");
+        mpc_params.mpc_params.steer_rate_lim = f("mpc.steer_rate_lim");
+
+        let controller_node = ControllerNodeParams {
+            ctrl_period: f("controller.ctrl_period"),
+            lateral: mpc_params,
+            longitudinal: pid_params,
+            ego_nearest_dist_threshold: f("controller.ego_nearest_dist_threshold"),
+            ego_nearest_yaw_threshold: f("controller.ego_nearest_yaw_threshold"),
+        };
+        (controller_node, vehicle_info)
+    };
+
     SentinelParams {
         stop_filter_vx_threshold: f("stop_filter.vx_threshold"),
         stop_filter_wz_threshold: f("stop_filter.wz_threshold"),
@@ -561,7 +572,6 @@ pub fn read_params(server: &ParameterServer) -> SentinelParams {
         watchdog_timeout_ms: i("heartbeat.timeout_ms") as u64,
         mrm_handler: autoware_mrm_handler::Params {
             stopped_velocity_threshold: f("mrm_handler.stopped_velocity_threshold"),
-            ..autoware_mrm_handler::Params::default()
         },
         emergency_stop: autoware_mrm_emergency_stop_operator::Params {
             target_acceleration: f("mrm_emergency_stop.target_acceleration") as f32,
@@ -578,13 +588,9 @@ pub fn read_params(server: &ParameterServer) -> SentinelParams {
         control_validator,
         op_mode_mgr,
 
-        controller_node: ControllerNodeParams {
-            ctrl_period: f("controller.ctrl_period"),
-            lateral: mpc_params,
-            longitudinal: pid_params,
-            ego_nearest_dist_threshold: f("controller.ego_nearest_dist_threshold"),
-            ego_nearest_yaw_threshold: f("controller.ego_nearest_yaw_threshold"),
-        },
+        #[cfg(feature = "controller-node")]
+        controller_node,
+        #[cfg(feature = "controller-node")]
         vehicle_info,
     }
 }

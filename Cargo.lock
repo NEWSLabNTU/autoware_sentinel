@@ -272,7 +272,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "autoware_sentinel_linux"
+name = "autoware_sentinel_core"
 version = "0.1.0"
 dependencies = [
  "autoware_adapi_v1_msgs",
@@ -304,8 +304,8 @@ dependencies = [
  "autoware_vehicle_velocity_converter",
  "builtin_interfaces",
  "diagnostic_msgs",
- "env_logger",
  "geometry_msgs",
+ "libm",
  "log",
  "logging_demo",
  "nav_msgs",
@@ -316,6 +316,16 @@ dependencies = [
  "tier4_system_msgs",
  "tier4_vehicle_msgs",
  "visualization_msgs",
+]
+
+[[package]]
+name = "autoware_sentinel_linux"
+version = "0.1.0"
+dependencies = [
+ "autoware_sentinel_core",
+ "env_logger",
+ "log",
+ "nros",
 ]
 
 [[package]]
@@ -440,7 +450,27 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "rustc-hash",
+ "rustc-hash 1.1.0",
+ "shlex",
+ "syn",
+]
+
+[[package]]
+name = "bindgen"
+version = "0.72.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
+dependencies = [
+ "bitflags",
+ "cexpr",
+ "clang-sys",
+ "itertools",
+ "log",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash 2.1.2",
  "shlex",
  "syn",
 ]
@@ -666,6 +696,14 @@ name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+
+[[package]]
+name = "freertos-lwip-sys"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "bindgen 0.72.1",
+]
 
 [[package]]
 name = "geographic_msgs"
@@ -993,7 +1031,10 @@ version = "0.1.0"
 source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "nros-platform-api",
+ "nros-platform-freertos",
+ "nros-platform-nuttx",
  "nros-platform-posix",
+ "nros-platform-zephyr",
 ]
 
 [[package]]
@@ -1002,11 +1043,38 @@ version = "0.1.0"
 source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 
 [[package]]
+name = "nros-platform-freertos"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "freertos-lwip-sys",
+ "nros-platform-api",
+]
+
+[[package]]
+name = "nros-platform-nuttx"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "nros-platform-api",
+ "nros-platform-posix",
+ "nuttx-sys",
+]
+
+[[package]]
 name = "nros-platform-posix"
 version = "0.1.0"
 source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "libc",
+ "nros-platform-api",
+]
+
+[[package]]
+name = "nros-platform-zephyr"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
  "nros-platform-api",
 ]
 
@@ -1096,6 +1164,14 @@ version = "0.1.0"
 source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
  "heapless",
+]
+
+[[package]]
+name = "nuttx-sys"
+version = "0.1.0"
+source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
+dependencies = [
+ "bindgen 0.72.1",
 ]
 
 [[package]]
@@ -1216,7 +1292,7 @@ name = "px4-sys"
 version = "0.1.0"
 source = "git+https://github.com/jerry73204/nano-ros.git?rev=34f1d473#34f1d473713ca5526c40196b68917288fd669bf3"
 dependencies = [
- "bindgen",
+ "bindgen 0.70.1",
  "cc",
 ]
 
@@ -1314,6 +1390,12 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "rustc-hash"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94300abf3f1ae2e2b8ffb7b58043de3d399c73fa6f4b73826402a5c457614dbe"
 
 [[package]]
 name = "rustix"

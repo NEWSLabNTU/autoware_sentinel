@@ -9,7 +9,7 @@
 #
 # Build:
 #   cd ../autoware-sentinel-workspace
-#   west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel
+#   west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr
 
 manifest:
   version: "1.0"

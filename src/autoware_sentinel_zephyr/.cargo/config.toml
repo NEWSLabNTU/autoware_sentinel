@@ -1,0 +1,118 @@
+# Autoware Sentinel — Zephyr Cargo patch configuration
+#
+# Zephyr is excluded from the main workspace, so it needs its own [patch.crates-io]
+# entries. nros crates point at the local nano-ros checkout (matching Linux's
+# build via workspace patch). Generated message crates point at sentinel_linux's
+# generated/ — single source of truth for the msg superset.
+
+# --- nros crates (local path matches workspace git pin content) -------------
+
+[patch.crates-io.nros]
+path = "../../../nano-ros/packages/core/nros"
+
+[patch.crates-io.nros-core]
+path = "../../../nano-ros/packages/core/nros-core"
+
+[patch.crates-io.nros-serdes]
+path = "../../../nano-ros/packages/core/nros-serdes"
+
+[patch.crates-io.nros-node]
+path = "../../../nano-ros/packages/core/nros-node"
+
+[patch.crates-io.nros-rmw]
+path = "../../../nano-ros/packages/core/nros-rmw"
+
+[patch.crates-io.nros-params]
+path = "../../../nano-ros/packages/core/nros-params"
+
+[patch.crates-io.nros-macros]
+path = "../../../nano-ros/packages/core/nros-macros"
+
+[patch.crates-io.nros-rmw-zenoh]
+path = "../../../nano-ros/packages/zpico/nros-rmw-zenoh"
+
+[patch.crates-io.zpico-sys]
+path = "../../../nano-ros/packages/zpico/zpico-sys"
+
+# --- Generated message crates (shared with sentinel_linux) ------------------
+
+[patch.crates-io.autoware_adapi_v1_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_adapi_v1_msgs"
+
+[patch.crates-io.autoware_adapi_version_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_adapi_version_msgs"
+
+[patch.crates-io.autoware_common_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_common_msgs"
+
+[patch.crates-io.autoware_control_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_control_msgs"
+
+[patch.crates-io.autoware_control_validator]
+path = "../autoware_sentinel_linux/generated/autoware_control_validator"
+
+[patch.crates-io.autoware_internal_debug_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_internal_debug_msgs"
+
+[patch.crates-io.autoware_internal_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_internal_msgs"
+
+[patch.crates-io.autoware_operation_mode_transition_manager]
+path = "../autoware_sentinel_linux/generated/autoware_operation_mode_transition_manager"
+
+[patch.crates-io.autoware_planning_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_planning_msgs"
+
+[patch.crates-io.autoware_system_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_system_msgs"
+
+[patch.crates-io.autoware_vehicle_cmd_gate]
+path = "../autoware_sentinel_linux/generated/autoware_vehicle_cmd_gate"
+
+[patch.crates-io.autoware_vehicle_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_vehicle_msgs"
+
+[patch.crates-io.builtin_interfaces]
+path = "../autoware_sentinel_linux/generated/builtin_interfaces"
+
+[patch.crates-io.diagnostic_msgs]
+path = "../autoware_sentinel_linux/generated/diagnostic_msgs"
+
+[patch.crates-io.geographic_msgs]
+path = "../autoware_sentinel_linux/generated/geographic_msgs"
+
+[patch.crates-io.geometry_msgs]
+path = "../autoware_sentinel_linux/generated/geometry_msgs"
+
+[patch.crates-io.logging_demo]
+path = "../autoware_sentinel_linux/generated/logging_demo"
+
+[patch.crates-io.nav_msgs]
+path = "../autoware_sentinel_linux/generated/nav_msgs"
+
+[patch.crates-io.shape_msgs]
+path = "../autoware_sentinel_linux/generated/shape_msgs"
+
+[patch.crates-io.std_msgs]
+path = "../autoware_sentinel_linux/generated/std_msgs"
+
+[patch.crates-io.std_srvs]
+path = "../autoware_sentinel_linux/generated/std_srvs"
+
+[patch.crates-io.tier4_control_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_control_msgs"
+
+[patch.crates-io.tier4_external_api_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_external_api_msgs"
+
+[patch.crates-io.tier4_system_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_system_msgs"
+
+[patch.crates-io.tier4_vehicle_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_vehicle_msgs"
+
+[patch.crates-io.unique_identifier_msgs]
+path = "../autoware_sentinel_linux/generated/unique_identifier_msgs"
+
+[patch.crates-io.visualization_msgs]
+path = "../autoware_sentinel_linux/generated/visualization_msgs"

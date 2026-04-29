@@ -1,0 +1,97 @@
+# Autoware Sentinel — Shared Core
+#
+# Platform-agnostic safety island wiring. Owns the SafetyIsland struct and
+# wire_executor() entry point. Thin per-platform binaries (Linux, Zephyr,
+# FreeRTOS, NuttX) call into this crate.
+
+[package]
+name = "autoware_sentinel_core"
+version = "0.1.0"
+edition = "2024"
+description = "Autoware Sentinel safety island — shared wiring core"
+license = "Apache-2.0"
+publish = false
+
+[features]
+default = []
+
+# Phase 13: bundle the trajectory follower (MPC + PID + interpolation +
+# vehicle-info-utils). Default off — main compute provides control_cmd on
+# safety MCUs. Linux dev binary enables this for solo planning-simulator runs.
+controller-node = [
+    "dep:autoware_trajectory_follower_node",
+    "dep:autoware_trajectory_follower_base",
+    "dep:autoware_mpc_lateral_controller",
+    "dep:autoware_pid_longitudinal_controller",
+    "dep:autoware_vehicle_info_utils",
+    "dep:libm",
+]
+
+# Platform passthrough features. Each binary crate enables exactly one of
+# these so core's nros dep picks the right platform shim.
+std = ["nros/std"]
+platform-posix = ["std", "nros/platform-posix"]
+platform-zephyr = ["nros/platform-zephyr"]
+platform-freertos = ["nros/platform-freertos"]
+platform-nuttx = ["std", "nros/platform-nuttx"]
+platform-bare-metal = ["nros/platform-bare-metal"]
+
+[dependencies]
+log = { version = "0.4", default-features = false }
+
+# nros unified API — platform feature is selected by the binary crate.
+nros = { version = "*", default-features = false, features = ["rmw-zenoh", "ros-humble", "param-services"] }
+
+# Algorithm crates always compiled.
+autoware_stop_filter = { path = "../autoware_stop_filter" }
+autoware_vehicle_velocity_converter = { path = "../autoware_vehicle_velocity_converter" }
+autoware_shift_decider = { path = "../autoware_shift_decider" }
+autoware_mrm_emergency_stop_operator = { path = "../autoware_mrm_emergency_stop_operator" }
+autoware_mrm_comfortable_stop_operator = { path = "../autoware_mrm_comfortable_stop_operator" }
+autoware_heartbeat_watchdog = { path = "../autoware_heartbeat_watchdog" }
+autoware_mrm_handler = { path = "../autoware_mrm_handler" }
+autoware_vehicle_cmd_gate = { path = "../autoware_vehicle_cmd_gate" }
+autoware_twist2accel = { path = "../autoware_twist2accel" }
+autoware_control_validator = { path = "../autoware_control_validator" }
+autoware_operation_mode_transition_manager = { path = "../autoware_operation_mode_transition_manager" }
+
+# Trajectory follower (gated by `controller-node`).
+autoware_trajectory_follower_node = { path = "../autoware_trajectory_follower_node", optional = true }
+autoware_trajectory_follower_base = { path = "../autoware_trajectory_follower_base", optional = true }
+autoware_mpc_lateral_controller = { path = "../autoware_mpc_lateral_controller", optional = true }
+autoware_pid_longitudinal_controller = { path = "../autoware_pid_longitudinal_controller", optional = true }
+autoware_vehicle_info_utils = { path = "../autoware_vehicle_info_utils", optional = true }
+
+# Math primitives for quaternion → euler conversions (controller-node only).
+libm = { version = "0.2", optional = true }
+
+# Message crates (resolved via [patch.crates-io] in root Cargo.toml).
+autoware_adapi_v1_msgs = { version = "*", default-features = false }
+autoware_adapi_version_msgs = { version = "*", default-features = false }
+autoware_control_msgs = { version = "*", default-features = false }
+autoware_planning_msgs = { version = "*", default-features = false }
+autoware_system_msgs = { version = "*", default-features = false }
+autoware_vehicle_msgs = { version = "*", default-features = false }
+geometry_msgs = { version = "*", default-features = false }
+nav_msgs = { version = "*", default-features = false }
+tier4_control_msgs = { version = "*", default-features = false }
+tier4_external_api_msgs = { version = "*", default-features = false }
+tier4_system_msgs = { version = "*", default-features = false }
+tier4_vehicle_msgs = { version = "*", default-features = false }
+std_srvs = { version = "*", default-features = false }
+logging_demo = { version = "*", default-features = false }
+builtin_interfaces = { version = "*", default-features = false }
+diagnostic_msgs = { version = "*", default-features = false }
+visualization_msgs = { version = "*", default-features = false }
+
+# Debug message crates (Phase 8.2).
+autoware_internal_debug_msgs = { version = "*", default-features = false }
+autoware_internal_msgs = { version = "*", default-features = false }
+# Renamed deps — these crates share names with algorithm crates above.
+autoware_control_validator_msgs = { package = "autoware_control_validator", version = "0.48", default-features = false }
+autoware_vehicle_cmd_gate_msgs = { package = "autoware_vehicle_cmd_gate", version = "0.48", default-features = false }
+autoware_operation_mode_transition_manager_msgs = { package = "autoware_operation_mode_transition_manager", version = "0.48", default-features = false }
+
+# LLVM SIGSEGV workaround for ARM cross-compile.
+[profile.dev.package.autoware_adapi_v1_msgs]
+opt-level = 1

@@ -1,9 +1,7 @@
 # Autoware Sentinel — Linux Native Binary
 #
-# Std-enabled Linux adaptation of the Zephyr safety island application.
-# Reuses all 11 algorithm crates with Autoware-compatible topic names.
-# Build with: cargo build
-# Run with: RUST_LOG=info cargo run
+# Thin platform shim around `autoware_sentinel_core`. Provides the `main`
+# entry point, env_logger, and a monotonic clock. All wiring lives in core.
 
 [package]
 name = "autoware_sentinel_linux"
@@ -14,63 +12,19 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
-# Logging
 log = "0.4"
 env_logger = "0.11"
 
-# nros unified API (std + POSIX + Zenoh + ROS Humble CDR compat)
+# Shared core wiring. Linux dev binary enables the trajectory follower
+# (controller-node) for solo planning-simulator runs; safety MCUs do not.
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-posix", "controller-node"] }
+
+# nros — for `ExecutorConfig`, `Executor`, `SpinOptions`, `NodeError`.
 nros = { version = "*", default-features = false, features = ["std", "rmw-zenoh", "platform-posix", "ros-humble", "param-services"] }
-
-# Algorithm crates (Phase 1–4)
-autoware_stop_filter = { path = "../autoware_stop_filter" }
-autoware_vehicle_velocity_converter = { path = "../autoware_vehicle_velocity_converter" }
-autoware_shift_decider = { path = "../autoware_shift_decider" }
-autoware_mrm_emergency_stop_operator = { path = "../autoware_mrm_emergency_stop_operator" }
-autoware_mrm_comfortable_stop_operator = { path = "../autoware_mrm_comfortable_stop_operator" }
-autoware_heartbeat_watchdog = { path = "../autoware_heartbeat_watchdog" }
-autoware_mrm_handler = { path = "../autoware_mrm_handler" }
-autoware_vehicle_cmd_gate = { path = "../autoware_vehicle_cmd_gate" }
-autoware_twist2accel = { path = "../autoware_twist2accel" }
-autoware_control_validator = { path = "../autoware_control_validator" }
-autoware_operation_mode_transition_manager = { path = "../autoware_operation_mode_transition_manager" }
-
-# Controller node (Phase 10.5)
-autoware_trajectory_follower_node = { path = "../autoware_trajectory_follower_node" }
-autoware_trajectory_follower_base = { path = "../autoware_trajectory_follower_base" }
-autoware_mpc_lateral_controller = { path = "../autoware_mpc_lateral_controller" }
-autoware_pid_longitudinal_controller = { path = "../autoware_pid_longitudinal_controller" }
-autoware_vehicle_info_utils = { path = "../autoware_vehicle_info_utils" }
-
-# Message crates (resolved via [patch.crates-io] in root Cargo.toml)
-autoware_adapi_v1_msgs = { version = "*", default-features = false }
-autoware_adapi_version_msgs = { version = "*", default-features = false }
-autoware_control_msgs = { version = "*", default-features = false }
-autoware_planning_msgs = { version = "*", default-features = false }
-autoware_system_msgs = { version = "*", default-features = false }
-autoware_vehicle_msgs = { version = "*", default-features = false }
-geometry_msgs = { version = "*", default-features = false }
-nav_msgs = { version = "*", default-features = false }
-tier4_control_msgs = { version = "*", default-features = false }
-tier4_external_api_msgs = { version = "*", default-features = false }
-tier4_system_msgs = { version = "*", default-features = false }
-tier4_vehicle_msgs = { version = "*", default-features = false }
-std_srvs = { version = "*", default-features = false }
-logging_demo = { version = "*", default-features = false }
-builtin_interfaces = { version = "*", default-features = false }
-diagnostic_msgs = { version = "*", default-features = false }
-visualization_msgs = { version = "*", default-features = false }
-
-# Debug message crates (Phase 8.2)
-autoware_internal_debug_msgs = { version = "*", default-features = false }
-autoware_internal_msgs = { version = "*", default-features = false }
-# These 3 share names with algorithm crates — use rename to disambiguate
-autoware_control_validator_msgs = { package = "autoware_control_validator", version = "0.48", default-features = false }
-autoware_vehicle_cmd_gate_msgs = { package = "autoware_vehicle_cmd_gate", version = "0.48", default-features = false }
-autoware_operation_mode_transition_manager_msgs = { package = "autoware_operation_mode_transition_manager", version = "0.48", default-features = false }
 
 # Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
 # autoware_adapi_v1_msgs at opt-level=0 for thumbv7em-none-eabihf.
-# Not needed for native x86, but kept for consistency.
+# Not needed for native x86, but kept for consistency with cross-check builds.
 # See: https://github.com/llvm/llvm-project/issues/64277
 [profile.dev.package.autoware_adapi_v1_msgs]
 opt-level = 1

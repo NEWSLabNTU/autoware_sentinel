@@ -34,7 +34,8 @@ autoware-nano-ros/
 │   ├── autoware_control_validator/  # Phase 4 — command safety validation
 │   ├── autoware_operation_mode_transition_manager/ # Phase 4 — mode transitions
 │   ├── verification/                # Phase 5 — Verus formal proofs
-│   ├── autoware_sentinel/           # Phase 6 — Zephyr application
+│   ├── autoware_sentinel_core/      # Phase 13 — shared wiring (no_std)
+│   ├── autoware_sentinel_zephyr/    # Phase 6 — Zephyr application
 │   └── autoware_sentinel_linux/     # Phase 7.1 — Linux native binary
 ├── tests/                           # Phase 7.2–7.3 — Integration tests (nextest)
 │   ├── Cargo.toml                   # sentinel-tests crate
@@ -400,13 +401,13 @@ The safety island deploys as a single Zephyr application. Setup:
 ./scripts/zephyr/setup.sh                         # one-time workspace init
 source ../autoware-sentinel-workspace/env.sh       # set ZEPHYR_BASE, etc.
 cd ../autoware-sentinel-workspace
-west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel
+west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr
 ```
 
 Key files:
 - `west.yml` — West manifest (Zephyr v3.7.0, zephyr-lang-rust)
 - `scripts/zephyr/setup.sh` — Downloads SDK, creates workspace, symlinks nano-ros
-- `src/autoware_sentinel/` — Zephyr application crate (Phase 6.2+)
+- `src/autoware_sentinel_zephyr/` — Zephyr application crate (Phase 6.2+)
 
 nano-ros is registered as a Zephyr module via `ZEPHYR_EXTRA_MODULES` in `env.sh`.
 See `docs/guides/zephyr-setup.md` for full instructions.

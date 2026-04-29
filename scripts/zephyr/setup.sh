@@ -28,7 +28,7 @@
 #   ./scripts/zephyr/setup.sh
 #   source ../autoware-sentinel-workspace/env.sh
 #   cd ../autoware-sentinel-workspace
-#   west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel
+#   west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr
 
 set -e
 
@@ -310,7 +310,7 @@ echo "  ZEPHYR_EXTRA_MODULES: \$ZEPHYR_EXTRA_MODULES"
 echo ""
 echo "Build:"
 echo "  cd \$WORKSPACE"
-echo "  west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel"
+echo "  west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr"
 ENVEOF
     chmod +x "$WORKSPACE_DIR/env.sh"
 }
@@ -339,7 +339,7 @@ if [ -d "$WORKSPACE_DIR/.west" ]; then
         echo "Usage:"
         echo "  source $WORKSPACE_DIR/env.sh"
         echo "  cd $WORKSPACE_DIR"
-        echo "  west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel"
+        echo "  west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr"
         exit 0
     fi
 fi
@@ -397,7 +397,7 @@ echo "     source $WORKSPACE_DIR/env.sh"
 echo ""
 echo "  2. Build the safety island:"
 echo "     cd $WORKSPACE_DIR"
-echo "     west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel"
+echo "     west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr"
 echo ""
 echo "  3. Run:"
 echo "     ./build/zephyr/zephyr.exe"

@@ -287,6 +287,23 @@ saturation (with `Z_CONGESTION_CONTROL_BLOCK` and `wait_before_close=5s`) or a
 write-filter / session-state allocation issue. The fact that FreeRTOS-with-only-37-publishers
 also fails suggests the threshold is closer to ~30 publishers, not 50+.
 
+**Update (2026-04-30) — bug not just `N publishers`.** Wrote a minimal-repro
+example crate at `nano-ros-sentinel/examples/qemu-arm-freertos/rust/zenoh/declare-storm/`
+that declares 50 publishers in a tight loop (kept alive via a `heapless::Vec`,
+sentinel-style long topic names, `Int32` payload). It runs all 50 declarations
+to completion on QEMU MPS2-AN385 + FreeRTOS — slot indices increment 0→49,
+no failure. The native equivalent (`examples/native/rust/zenoh/declare-storm/`)
+also runs N=80 fine on Linux with `ZPICO_MAX_PUBLISHERS=80`. Therefore:
+
+- 13.K1 is **not** a generic "create_publisher up to N" cardinality bug.
+- The bug needs more state than just N alive publishers — likely the
+  combination of many large generated message types, many add_service
+  queryables, or a memory-pressure interaction specific to the sentinel
+  binary's bss layout. Next narrowing step: gradually add to the repro
+  the things sentinel has but declare-storm does not (5 add_subscription
+  + 17 add_service before the publisher loop, dummy huge `static` rodata,
+  diverse message types).
+
 **Investigation tooling (2026-04-29):** cloned `~/repos/nano-ros-sentinel`
 as a sibling of the upstream `~/repos/nano-ros` checkout (the latter is in
 active use by another agent), so the sentinel build can patch nros to a

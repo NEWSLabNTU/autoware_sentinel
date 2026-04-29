@@ -246,6 +246,44 @@ Linux subset.
 - **rmw-xrce / rmw-dds backends**: keeping `rmw-zenoh` only across all four platforms
   for now — switching backends is orthogonal to platform porting.
 
+## Phase 13.K1 work items (post-investigation)
+
+- [ ] **13.K1.5 Fix sentinel network-init regression.** sentinel_freertos
+      hangs after the `IP: 10.0.2.20` printk, before `Network ready.`, on
+      every nano-ros revision tested (`34f1d473` → `3d566711`). Talker
+      example reaches `Network ready.` on the same revisions with the same
+      board/lwIP config — so the hang is sentinel-specific. Suspects:
+      sentinel's larger `.text` (60 KiB more) or `.bss` (19 KiB more);
+      Rust `extern crate alloc` paths consuming FreeRTOS heap before
+      `tcpip_init`; or an interaction with `nros-platform/global-allocator`
+      that ucHeap can't satisfy alongside lwIP's own pvPortMalloc calls.
+      Until this is fixed, the binary cannot reach `wire_executor` for
+      bisection. Mitigations to try: bump `app_stack_bytes`, drop
+      `global-allocator` (may regress allocs), shrink sentinel via the
+      component features below, add printk between init_network steps.
+
+- [ ] **13.K1.6 Add component cargo features in `autoware_sentinel_core`.**
+      Implement the feature taxonomy from the table above (`comp-mrm`,
+      `comp-cmd-gate-extra`, `comp-validator`, `comp-op-mode-mgr`,
+      `comp-engagement`, `comp-stubs`). Mechanical: split publisher tuple,
+      gate destructure + publish calls; gate `add_subscription` and
+      `add_service` calls; gate the `SafetyIsland` field declarations and
+      callback methods. Default Linux = all on; embedded default = all off
+      (~6 entities — well under 13.K1's threshold).
+
+- [ ] **13.K1.7 Bisect with feature gates.** Build sentinel_freertos with
+      each `comp-*` ON in turn, observe whether 13.K1 reproduces. Use
+      `tshark -i lo -Y "zenoh"` to capture Declare frames and their acks
+      (no sudo when user is in the `wireshark` group). Pinpoint smallest
+      combination that triggers the failure, then drill into that
+      component's specific add_service / create_publisher path.
+
+- [ ] **13.K1.8 Patch nano-ros.** Once root cause known, fix in
+      `~/repos/nano-ros-sentinel`, run the minimal repros to verify,
+      coordinate with the upstream nano-ros maintainer, and revert the
+      sibling-clone path overrides in this repo back to the workspace
+      git pin.
+
 ## Known Issues
 
 ### 13.K1 — `z_declare_publisher` fails on Zephyr **and** FreeRTOS QEMU under the bringup-time declare burst

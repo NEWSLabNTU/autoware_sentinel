@@ -1,2 +1,0 @@
-cargo:rerun-if-changed=build.rs
-cargo:rerun-if-changed=/home/aeon/repos/nano-ros/packages/zpico/zpico-sys/c/size_probe.c

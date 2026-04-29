@@ -16,10 +16,17 @@
 
 #![no_std]
 
+use core::time::Duration;
+
 use log::info;
 use nros::prelude::*;
 
-/// Zephyr uptime in milliseconds (k_uptime_get).
+/// Default zenoh locator. native_sim uses NSOS (host-offloaded sockets) so
+/// it reaches the host's loopback directly. Production boards override at
+/// build time.
+const DEFAULT_LOCATOR: &str = "tcp/127.0.0.1:7447";
+
+/// Zephyr uptime in milliseconds (`k_uptime_get`).
 fn now_ms() -> u64 {
     zephyr::sys::uptime_get() as u64
 }
@@ -39,7 +46,7 @@ extern "C" fn rust_main() {
 }
 
 fn run() -> Result<(), NodeError> {
-    let config = ExecutorConfig::from_env().node_name("sentinel");
+    let config = ExecutorConfig::new(DEFAULT_LOCATOR).node_name("sentinel");
     let mut executor = Executor::open(&config)?;
 
     executor.register_parameter_services()?;
@@ -51,6 +58,5 @@ fn run() -> Result<(), NodeError> {
     autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
 
     info!("Executor ready — spinning...");
-    executor.spin_blocking(SpinOptions::default())?;
-    Ok(())
+    executor.spin(Duration::from_millis(10));
 }

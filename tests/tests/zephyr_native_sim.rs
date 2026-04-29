@@ -13,12 +13,15 @@
 //!
 //! ## Network topology
 //!
+//! NSOS (Native Simulator Offloaded Sockets): zenoh-pico's TCP socket calls
+//! hit the host's BSD socket API directly, so no TAP/bridge is needed.
+//!
 //! ```text
-//! ┌──────────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
-//! │ Zephyr Sentinel      │     │     Bridge        │     │ Host                 │
-//! │ (native_sim)         │────▶│ zeth-br           │◀────│ zenohd + ROS 2       │
-//! │ 192.0.2.1 / zeth0   │     │ 192.0.2.2         │     │ 192.0.2.2:7447       │
-//! └──────────────────────┘     └──────────────────┘     └──────────────────────┘
+//! ┌──────────────────────┐     ┌──────────────────────┐
+//! │ Zephyr Sentinel      │ host BSD sockets │ Host    │
+//! │ (native_sim, NSOS)   │─────────────────▶│ zenohd  │
+//! └──────────────────────┘     │ 127.0.0.1:7447       │
+//!                              └──────────────────────┘
 //! ```
 //!
 //! Tests skip gracefully if prerequisites are not met.
@@ -33,21 +36,13 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
-/// Zenohd locator on bridge interface (accessible from Zephyr via TAP).
-const BRIDGE_LOCATOR: &str = "tcp/192.0.2.2:7447";
+/// Zenohd locator on host loopback. With NSOS the Zephyr binary reaches the
+/// host's BSD sockets directly, so 127.0.0.1 is reachable.
+const BRIDGE_LOCATOR: &str = "tcp/127.0.0.1:7447";
 
 // =============================================================================
 // Prerequisite checks
 // =============================================================================
-
-/// Check if TAP network bridge is set up.
-fn is_tap_available() -> bool {
-    Command::new("ip")
-        .args(["link", "show", "zeth-br"])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
 
 /// Check if the Zephyr sentinel binary exists.
 fn zephyr_binary_path() -> PathBuf {
@@ -67,10 +62,6 @@ fn require_zephyr_prerequisites() -> bool {
         eprintln!("Skipping: zenohd not available (build with `just build-zenohd`)");
         return false;
     }
-    if !is_tap_available() {
-        eprintln!("Skipping: TAP network not set up (run `just setup-tap-network`)");
-        return false;
-    }
     if !is_zephyr_binary_available() {
         eprintln!("Skipping: Zephyr sentinel not built (run `just build-zephyr`)");
         return false;
@@ -78,11 +69,11 @@ fn require_zephyr_prerequisites() -> bool {
     true
 }
 
-/// Start zenohd listening on the bridge interface (0.0.0.0:7447).
+/// Start zenohd listening on host loopback (127.0.0.1:7447).
 fn start_zenohd_bridge() -> ManagedProcess {
     let zenohd_path = sentinel_tests::process::zenohd_binary_path();
     let mut cmd = Command::new(zenohd_path);
-    cmd.args(["--listen", "tcp/0.0.0.0:7447"]);
+    cmd.args(["--listen", "tcp/127.0.0.1:7447"]);
     let mut proc =
         ManagedProcess::spawn_command(cmd, "zenohd-bridge").expect("Failed to start zenohd");
 
@@ -121,9 +112,9 @@ fn start_zephyr_sentinel() -> ManagedProcess {
 
 #[test]
 fn test_tap_network_available() {
-    let available = is_tap_available();
-    eprintln!("TAP network available: {}", available);
-    // Don't assert — just report (test skips gracefully if not set up)
+    // NSOS replaces TAP — keep the test name for backwards-compatible test
+    // selection but report that no host network setup is required.
+    eprintln!("Using NSOS (host-offloaded sockets); no TAP/bridge needed");
 }
 
 #[test]
@@ -159,7 +150,7 @@ fn test_zephyr_sentinel_starts() {
 
 /// Verify ROS 2 receives Control messages from Zephyr sentinel via TAP.
 ///
-/// The Zephyr sentinel uses topic `/output/vehicle/control_cmd`.
+/// The Zephyr sentinel uses topic `/control/command/control_cmd`.
 #[rstest]
 fn test_zephyr_to_ros2_control() {
     if !require_zephyr_prerequisites() || !require_ros2_autoware() {
@@ -170,9 +161,9 @@ fn test_zephyr_to_ros2_control() {
     std::thread::sleep(Duration::from_secs(1));
 
     // Start ROS 2 echo on Zephyr's output topic
-    eprintln!("Starting ros2 topic echo /output/vehicle/control_cmd ...");
+    eprintln!("Starting ros2 topic echo /control/command/control_cmd ...");
     let mut ros2_echo = Ros2Process::topic_echo(
-        "/output/vehicle/control_cmd",
+        "/control/command/control_cmd",
         "autoware_control_msgs/msg/Control",
         BRIDGE_LOCATOR,
     )
@@ -238,7 +229,7 @@ fn test_ros2_to_zephyr_velocity() {
     // Echo sentinel's output to verify it's still publishing
     eprintln!("Starting ros2 topic echo for sentinel output...");
     let mut ros2_echo = Ros2Process::topic_echo(
-        "/output/vehicle/control_cmd",
+        "/control/command/control_cmd",
         "autoware_control_msgs/msg/Control",
         BRIDGE_LOCATOR,
     )
@@ -282,7 +273,7 @@ fn test_zephyr_bidirectional_round_trip() {
 
     // 2. Echo Zephyr output
     let mut ros2_echo = Ros2Process::topic_echo(
-        "/output/vehicle/control_cmd",
+        "/control/command/control_cmd",
         "autoware_control_msgs/msg/Control",
         BRIDGE_LOCATOR,
     )
@@ -303,7 +294,7 @@ fn test_zephyr_bidirectional_round_trip() {
 
     // 4. Publish heartbeat
     let _ros2_hb = Ros2Process::topic_pub(
-        "/heartbeat",
+        "/api/system/heartbeat",
         "autoware_adapi_v1_msgs/msg/Heartbeat",
         "{}",
         10,

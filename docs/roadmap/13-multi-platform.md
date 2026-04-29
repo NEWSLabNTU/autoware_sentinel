@@ -246,6 +246,56 @@ Linux subset.
 - **rmw-xrce / rmw-dds backends**: keeping `rmw-zenoh` only across all four platforms
   for now — switching backends is orthogonal to platform porting.
 
+## Known Issues
+
+### 13.K1 — `z_declare_publisher` fails at the 28th publisher on Zephyr native_sim
+
+**Status:** Open. Investigated 2026-04-29. Tracked as a separate nano-ros bug.
+
+The `autoware_sentinel_zephyr` binary boots, connects to host zenohd over NSOS,
+declares the node liveliness, registers all 6 ROS 2 parameter services, declares
+43 read-only parameters, then enters the publisher loop. After the 27th publisher
+succeeds, the 28th call (`/control/vehicle_cmd_gate/is_filter_activated/flag`,
+type `BoolStamped`) hangs for ~24 seconds and `z_declare_publisher` returns `-1`.
+
+The failure point is **deterministic**: same publisher, same timestamp
+(`00:00:26.677`) across runs.
+
+**Ruled out:**
+
+- `ZPICO_MAX_PUBLISHERS` (compiled to 56, confirmed in `shim_constants.rs`).
+- `ZPICO_MAX_LIVELINESS` (96, well above the ~58 declared at fail point).
+- `ZPICO_MAX_QUERYABLES` (32, only 6 in use).
+- Heap exhaustion (`CONFIG_HEAP_MEM_POOL_SIZE` / `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE`
+  bumped to 16 MiB each — no change).
+- TX batch size (`CONFIG_NROS_BATCH_UNICAST_SIZE=65535` — no change; note that
+  zenoh-pico's `Z_BATCH_UNICAST_SIZE` cmake var is **not** plumbed through nano-ros
+  and stays at 2048, but 2048 bytes is plenty for a single declare message).
+- Real-time slowdown (`CONFIG_NATIVE_SIM_SLOWDOWN_TO_REAL_TIME=n` — no change).
+
+**Likely cause:** zenoh-pico-internal limit triggered by the high-cardinality
+declaration burst (≈70 zenoh entities back-to-back). Either a `_z_send_declare`
+TX queue saturation (with `Z_CONGESTION_CONTROL_BLOCK` and `wait_before_close=5s`)
+or a write-filter / session-state allocation issue.
+
+**Workarounds for users today:**
+
+1. Drop the Phase 8.2 / Phase 12-monitoring publishers in core (gate behind a
+   future `monitoring-topics` cargo feature). Halves the declare burst.
+2. Insert a short `k_msleep(5)` between create_publisher calls to let the read
+   thread drain acks (would require core API changes; may not actually help if
+   the fault is queue-state rather than timing).
+
+**Next steps:**
+
+- Reduce to a minimal nano-ros example that declares 30+ publishers in a tight
+  loop on Zephyr native_sim and reproduces upstream.
+- File against nano-ros / zenoh-pico for triage.
+- Once fixed, re-enable Zephyr E2E tests in CI.
+
+The Linux sentinel is unaffected (full nros + zenoh path; 14/14 transport_smoke
+tests pass with all 51 publishers).
+
 ## References
 
 - Phase 6 Zephyr application: `docs/roadmap/6-zephyr-application.md`

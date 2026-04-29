@@ -299,10 +299,36 @@ also runs N=80 fine on Linux with `ZPICO_MAX_PUBLISHERS=80`. Therefore:
 - The bug needs more state than just N alive publishers — likely the
   combination of many large generated message types, many add_service
   queryables, or a memory-pressure interaction specific to the sentinel
-  binary's bss layout. Next narrowing step: gradually add to the repro
-  the things sentinel has but declare-storm does not (5 add_subscription
-  + 17 add_service before the publisher loop, dummy huge `static` rodata,
-  diverse message types).
+  binary's bss layout.
+
+**Bisection plan (next session) — component feature gates.** Group the
+sentinel's publishers / subscriptions / services into Cargo features that
+mirror Autoware components, so each can be toggled independently. Run
+sentinel with subsets enabled and find the smallest combination that
+reproduces 13.K1. Suggested feature taxonomy:
+
+| Feature                | Publishers                                                                | Services                                                                          | Sub          |
+|------------------------|---------------------------------------------------------------------------|-----------------------------------------------------------------------------------|--------------|
+| `comp-mrm`             | `mrm_estop/comfy/pullover_status`, `emergency_*`, `emergency_holding`     | `operate_mrm` ×3                                                                  | —            |
+| `comp-cmd-gate-extra`  | `emergency_cmd`, `gate_mode`, `shift_decider_gear`, `is_stopped`, `is_paused`, `is_start_requested`, `current_gate_mode`, filter debug ×4 | `external_emergency_stop`, `clear_external_emergency_stop`, `set_stop`, `config_logger` | `gear_status`|
+| `comp-validator`       | `cv_debug_marker`, `cv_output_markers`, `cv_validation_status`, `cv_virtual_wall` | —                                                                                 | —            |
+| `comp-op-mode-mgr`     | `op_mode_debug`, `is_autonomous_available`, `published_time`              | `change_to_stop/local/remote`, `enable/disable_autoware_control`, `control_mode_request` | —            |
+| `comp-engagement`      | `engage_api`, `engage_compat`, `autoware_state`, `emergency_api`          | `engage`, `set_emergency`                                                         | `autoware_state` |
+| `comp-stubs`           | —                                                                         | 6 gap-closure stubs (`/api/interface/version`, `shutdown`, etc)                   | —            |
+| `monitoring-topics` ✓  | 14 monitoring pubs                                                        | —                                                                                 | —            |
+| `controller-node` ✓    | —                                                                         | —                                                                                 | trajectory + odometry + steering + acceleration |
+
+Always-on core (no gate): MrmState, hazard_lights_cmd, gear_cmd, control_cmd,
+turn_indicators_cmd, op_mode_state pubs (6); velocity + heartbeat + control_cmd
+subs (3); change_to_autonomous service. With everything gated off, sentinel
+declares ~6 entities total — well clear of any cardinality threshold.
+
+Use `tshark -i lo` (no sudo if user is in the `wireshark` group) to capture
+zenoh-pico ↔ zenohd traffic and see which Declare frame fails to ack.
+
+Toggling each `comp-*` ON in turn pinpoints the trigger. Implementation
+mirrors the existing `monitoring-topics` gate (split tuple into per-feature
+sub-tuples; #[cfg]-gate the destructure and the publish/handle calls).
 
 **Investigation tooling (2026-04-29):** cloned `~/repos/nano-ros-sentinel`
 as a sibling of the upstream `~/repos/nano-ros` checkout (the latter is in

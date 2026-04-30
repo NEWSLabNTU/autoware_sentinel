@@ -220,17 +220,45 @@ Linux subset.
 
 ### 13.5 — `autoware_sentinel_nuttx` (QEMU ARM)
 
-- [ ] 13.5.1 Create `src/autoware_sentinel_nuttx/` from
-      `~/repos/nano-ros/examples/qemu-arm-nuttx/rust/zenoh/talker/` template.
-- [ ] 13.5.2 Depend on `nros-board-nuttx-qemu-arm` + `nros = { features =
-      ["std", "rmw-zenoh", "platform-nuttx", "link-tcp", "ros-humble"] }`
-      + `autoware_sentinel_core` (no `controller-node`).
-- [ ] 13.5.3 Vendor NuttX + nuttx-apps as submodules under `external/nuttx{,-apps}/`,
-      or symlink to the nano-ros checkouts.
-- [ ] 13.5.4 Provide NuttX defconfig matching Sentinel's network requirements
-      (TCP + ICMP + zenoh-pico-suitable buffers).
-- [ ] 13.5.5 `just build-sentinel-nuttx` + `just run-sentinel-nuttx` recipes.
-- [ ] 13.5.6 Add fixture + run a subset of transport_smoke tests.
+- [x] 13.5.1 Created `src/autoware_sentinel_nuttx/` from the
+      `qemu-arm-nuttx/rust/zenoh/talker` template. `main()` calls
+      `init_island` + `wire_executor` + `executor.spin(...)`. `build.rs`
+      preprocesses `dramboot.ld` from `$NUTTX_DIR` and emits the
+      flat-build link args (Rust binary IS the kernel image).
+      `rust-toolchain.toml` pins `nightly-2026-04-11` to match
+      nano-ros's libc patch layout.
+- [x] 13.5.2 Wired deps:
+      `nros-board-nuttx-qemu-arm` + `nros = { features = ["std",
+      "rmw-zenoh", "platform-nuttx", "link-tcp", "ros-humble",
+      "param-services"] }` from the nano-ros GitHub commit `9c4aa312`,
+      plus `autoware_sentinel_core` with `platform-nuttx`. comp-* feature
+      gating is supported via `core` features for later bisection.
+- [x] 13.5.3 Reused nano-ros's `third-party/nuttx/{nuttx,nuttx-apps}`
+      from the sibling clone instead of vendoring duplicate submodules
+      in this repo (the kernel build is already tracked there). Override
+      via `NUTTX_DIR` / `NUTTX_APPS_DIR` env vars when running the
+      `just build-sentinel-nuttx` recipe.
+- [x] 13.5.4 Defconfig is the upstream
+      `packages/boards/nros-board-nuttx-qemu-arm/nuttx-config/defconfig`
+      from nano-ros — already configured for TCP + ICMP + virtio-net +
+      POSIX threads. No autoware-side override needed; `build-nuttx.sh`
+      drives the build identically to the upstream NuttX examples.
+- [x] 13.5.5 Added `just build-nuttx-kernel`, `just build-sentinel-nuttx`,
+      and `just run-sentinel-nuttx` recipes. The run recipe invokes
+      `qemu-system-arm -M virt -cpu cortex-a7` with `-netdev user
+      -device virtio-net-device` (SLIRP), so no TAP/sudo is needed.
+      Zenohd must listen on `127.0.0.1:7452` (10.0.2.2 inside the guest)
+      to avoid clashing with the FreeRTOS sentinel on 7451.
+- [ ] 13.5.6 Test fixture + transport_smoke subset. **Blocked on a
+      NuttX-side zpico hang inside `Executor::open`:** the binary boots
+      cleanly through `nros NuttX platform starting`, prints the
+      `Locator:` line, opens an ESTAB TCP session to zenohd, then never
+      returns from `Executor::open`. Symptoms match the original 13.K1
+      pattern but on NuttX — likely a zpico/zenohd handshake mismatch
+      or a NuttX-specific timing bug in zenoh-pico's session
+      negotiation. Track separately as 13.K2 and revisit alongside the
+      upstream zpico work; the build infrastructure (13.5.1 – 13.5.5) is
+      ready for tests to drop in once the runtime path is unblocked.
 
 **Acceptance:** same as 13.4 but for NuttX.
 

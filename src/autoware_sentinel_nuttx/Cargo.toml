@@ -1,0 +1,56 @@
+# Autoware Sentinel — NuttX Safety Island Application
+#
+# Thin platform shim around `autoware_sentinel_core`. Targets
+# QEMU `arm/virt -cpu cortex-a7` with NuttX flat build + virtio-net.
+# Reaches the host's zenohd via QEMU SLIRP (10.0.2.0/24); zenohd listens
+# on 7452 to coexist with the FreeRTOS sentinel on 7451.
+#
+# Build:
+#   just build-sentinel-nuttx          # builds NuttX kernel + this crate
+#   just run-sentinel-nuttx            # boots in QEMU
+#
+# This crate is intentionally excluded from the main workspace because it
+# cross-compiles for `armv7a-nuttx-eabihf` and depends on a NuttX build
+# tree (linker script + libs) discovered at build time via `NUTTX_DIR`.
+
+[package]
+name = "autoware_sentinel_nuttx"
+version = "0.1.0"
+edition = "2024"
+description = "Autoware Sentinel safety island — NuttX QEMU ARM virt binary"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "autoware_sentinel_nuttx"
+test = false
+bench = false
+
+[features]
+default = []
+
+[dependencies]
+log = { version = "0.4", default-features = false }
+
+# NuttX QEMU board crate (provides run() + Config + println!).
+nros-board-nuttx-qemu-arm = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "9c4aa312" }
+
+# Shared core wiring. comp-all enables full Phase 12 topology; the NuttX
+# build runs in std mode (NuttX provides POSIX) so the heavy publishers
+# fit just like the Linux build.
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-nuttx"] }
+
+# nros — match Zephyr/Linux feature set with platform-nuttx.
+nros = { version = "*", default-features = false, features = ["std", "rmw-zenoh", "platform-nuttx", "link-tcp", "ros-humble", "param-services"] }
+
+# Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
+# autoware_adapi_v1_msgs at opt-level=0 for thumbv7-class targets. NuttX
+# ARMv7-A doesn't share the same scavenger crash, but keep the override
+# for parity with sentinel_freertos in case someone bisects via dev builds.
+[profile.dev.package.autoware_adapi_v1_msgs]
+opt-level = 1
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false

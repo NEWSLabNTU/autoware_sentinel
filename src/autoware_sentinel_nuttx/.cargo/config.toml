@@ -1,0 +1,156 @@
+# Autoware Sentinel — NuttX Cargo configuration
+#
+# This crate is excluded from the main workspace (cross-target build), so it
+# needs its own [patch.crates-io] entries. nros crates are pinned to the
+# upstream commit that includes Phase 13.K1's xTaskCreate cast fix; flip
+# them to the local sibling clone (`../../../nano-ros-sentinel/...`) when
+# investigating against unpushed firmware patches.
+
+[build]
+target = "armv7a-nuttx-eabihf"
+
+[unstable]
+# NuttX is Tier 3; build std + panic_abort from source. Requires nightly
+# (rust-toolchain.toml in this directory pins it).
+build-std = ["std", "panic_abort"]
+build-std-features = ["compiler-builtins-mem"]
+
+[target.armv7a-nuttx-eabihf]
+linker = "arm-none-eabi-gcc"
+rustflags = [
+    "-C", "link-arg=-mcpu=cortex-a7",
+    "-C", "link-arg=-mfloat-abi=hard",
+    "-C", "link-arg=-mfpu=neon-vfpv4",
+]
+
+[env]
+CC_armv7a_nuttx_eabihf = "arm-none-eabi-gcc"
+CFLAGS_armv7a_nuttx_eabihf = "-mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon-vfpv4"
+
+# --- nros crates (resolved by [patch.crates-io] from the GitHub commit) -----
+
+[patch.crates-io.nros]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.nros-core]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.nros-serdes]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.nros-node]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.nros-rmw]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.nros-params]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.nros-macros]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.nros-rmw-zenoh]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+[patch.crates-io.zpico-sys]
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
+
+# Patched libc with NuttX's _SC_HOST_NAME_MAX (used by build-std).
+# Cargo's git source resolves the root crate only, so the patch must
+# come from a path. Points at the sibling clone; install nano-ros-sentinel
+# (or set NUTTX_LIBC_PATH and adjust this entry) before building.
+[patch.crates-io.libc]
+path = "../../../nano-ros-sentinel/third-party/nuttx/libc"
+
+# --- Generated message crates (shared with sentinel_linux) ------------------
+
+[patch.crates-io.autoware_adapi_v1_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_adapi_v1_msgs"
+
+[patch.crates-io.autoware_adapi_version_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_adapi_version_msgs"
+
+[patch.crates-io.autoware_common_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_common_msgs"
+
+[patch.crates-io.autoware_control_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_control_msgs"
+
+[patch.crates-io.autoware_control_validator]
+path = "../autoware_sentinel_linux/generated/autoware_control_validator"
+
+[patch.crates-io.autoware_internal_debug_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_internal_debug_msgs"
+
+[patch.crates-io.autoware_internal_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_internal_msgs"
+
+[patch.crates-io.autoware_operation_mode_transition_manager]
+path = "../autoware_sentinel_linux/generated/autoware_operation_mode_transition_manager"
+
+[patch.crates-io.autoware_planning_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_planning_msgs"
+
+[patch.crates-io.autoware_system_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_system_msgs"
+
+[patch.crates-io.autoware_vehicle_cmd_gate]
+path = "../autoware_sentinel_linux/generated/autoware_vehicle_cmd_gate"
+
+[patch.crates-io.autoware_vehicle_msgs]
+path = "../autoware_sentinel_linux/generated/autoware_vehicle_msgs"
+
+[patch.crates-io.builtin_interfaces]
+path = "../autoware_sentinel_linux/generated/builtin_interfaces"
+
+[patch.crates-io.diagnostic_msgs]
+path = "../autoware_sentinel_linux/generated/diagnostic_msgs"
+
+[patch.crates-io.geographic_msgs]
+path = "../autoware_sentinel_linux/generated/geographic_msgs"
+
+[patch.crates-io.geometry_msgs]
+path = "../autoware_sentinel_linux/generated/geometry_msgs"
+
+[patch.crates-io.logging_demo]
+path = "../autoware_sentinel_linux/generated/logging_demo"
+
+[patch.crates-io.nav_msgs]
+path = "../autoware_sentinel_linux/generated/nav_msgs"
+
+[patch.crates-io.shape_msgs]
+path = "../autoware_sentinel_linux/generated/shape_msgs"
+
+[patch.crates-io.std_msgs]
+path = "../autoware_sentinel_linux/generated/std_msgs"
+
+[patch.crates-io.std_srvs]
+path = "../autoware_sentinel_linux/generated/std_srvs"
+
+[patch.crates-io.tier4_control_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_control_msgs"
+
+[patch.crates-io.tier4_external_api_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_external_api_msgs"
+
+[patch.crates-io.tier4_system_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_system_msgs"
+
+[patch.crates-io.tier4_vehicle_msgs]
+path = "../autoware_sentinel_linux/generated/tier4_vehicle_msgs"
+
+[patch.crates-io.unique_identifier_msgs]
+path = "../autoware_sentinel_linux/generated/unique_identifier_msgs"
+
+[patch.crates-io.visualization_msgs]
+path = "../autoware_sentinel_linux/generated/visualization_msgs"

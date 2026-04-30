@@ -4,6 +4,7 @@ exclude = [
     "tests",
     "src/autoware_sentinel_zephyr",
     "src/autoware_sentinel_freertos",
+    "src/autoware_sentinel_nuttx",
     "src/verification",
 ]
 members = [
@@ -32,6 +33,8 @@ members = [
 # Excluded from workspace:
 #   src/autoware_sentinel_zephyr   — Zephyr target, built via west
 #   src/autoware_sentinel_freertos — FreeRTOS QEMU target, cross-compiled to thumbv7m-none-eabi
+#   src/autoware_sentinel_nuttx    — NuttX QEMU target, cross-compiled to armv7a-nuttx-eabihf
+#                                    (uses nightly + build-std for std crate)
 #   src/verification               — Verus proofs, standalone
 #   tests                          — nextest integration tests, standalone
 

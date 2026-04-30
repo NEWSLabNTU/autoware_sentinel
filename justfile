@@ -64,6 +64,61 @@ run-sentinel-freertos: build-sentinel-freertos
     cd src/autoware_sentinel_freertos
     {{ freertos_env }} cargo run --release
 
+# ════════════════════════════════════════════════════════════════════
+# NuttX QEMU ARM virt — Phase 13.5
+# ════════════════════════════════════════════════════════════════════
+#
+# Two-phase build:
+#   1. NuttX kernel built via the nano-ros board crate's build-nuttx.sh
+#      script (depends on arm-none-eabi-gcc + kconfig tools + a NuttX
+#      source tree at $NUTTX_DIR). The kernel exports a staging dir +
+#      preprocessed linker script that the sentinel binary consumes.
+#   2. autoware_sentinel_nuttx cross-compiled to armv7a-nuttx-eabihf
+#      with `-Z build-std`. Pinned nightly toolchain in the crate's
+#      rust-toolchain.toml. The Rust binary IS the kernel image (NuttX
+#      flat-build) so no additional linking step is required.
+
+# Defaults reuse the nano-ros sibling clone, matching freertos_env. Override
+# NUTTX_DIR / NUTTX_APPS_DIR before running `just` if you keep a separate
+# NuttX checkout.
+nuttx_dir := env_var_or_default("NUTTX_DIR", justfile_directory() / "../nano-ros-sentinel/third-party/nuttx/nuttx")
+nuttx_apps_dir := env_var_or_default("NUTTX_APPS_DIR", justfile_directory() / "../nano-ros-sentinel/third-party/nuttx/nuttx-apps")
+nuttx_build_script := justfile_directory() / "../nano-ros-sentinel/packages/boards/nros-board-nuttx-qemu-arm/scripts/build-nuttx.sh"
+
+# Build the NuttX kernel using the nros board crate's defconfig (idempotent).
+build-nuttx-kernel:
+    #!/usr/bin/env bash
+    set -eo pipefail
+    if [ ! -d "{{ nuttx_dir }}/include" ]; then
+        echo "ERROR: NuttX not found at {{ nuttx_dir }}"
+        echo "Set NUTTX_DIR or check out third-party/nuttx in nano-ros-sentinel."
+        exit 1
+    fi
+    NUTTX_DIR="{{ nuttx_dir }}" NUTTX_APPS_DIR="{{ nuttx_apps_dir }}" \
+        bash "{{ nuttx_build_script }}"
+
+# Build NuttX QEMU sentinel (release; armv7a-nuttx-eabihf, build-std).
+build-sentinel-nuttx: build-nuttx-kernel
+    #!/usr/bin/env bash
+    set -eo pipefail
+    cd src/autoware_sentinel_nuttx
+    NUTTX_DIR="{{ nuttx_dir }}" cargo build --release
+
+# Run NuttX QEMU sentinel via QEMU SLIRP (zenohd must listen on
+# 127.0.0.1:7452 — see config.toml).
+run-sentinel-nuttx: build-sentinel-nuttx
+    #!/usr/bin/env bash
+    set -eo pipefail
+    BIN="src/autoware_sentinel_nuttx/target/armv7a-nuttx-eabihf/release/autoware_sentinel_nuttx"
+    if [ ! -f "$BIN" ]; then
+        echo "ERROR: sentinel ELF not found at $BIN"
+        exit 1
+    fi
+    qemu-system-arm -M virt -cpu cortex-a7 -nographic \
+        -kernel "$BIN" \
+        -netdev user,id=net0 \
+        -device virtio-net-device,netdev=net0
+
 # Build Zephyr application (native_sim)
 build-zephyr:
     #!/usr/bin/env bash

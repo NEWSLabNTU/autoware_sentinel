@@ -71,6 +71,17 @@ filter = "binary(freertos_qemu)"
 test-group = "freertos-qemu"
 slow-timeout = { period = "120s", terminate-after = 2 }
 
+# NuttX QEMU tests: heavyweight (cross-compile via build-std + QEMU virt
+# boot + zpico handshake, zenohd locked to compile-time port 7452), run
+# sequentially.
+[test-groups.nuttx-qemu]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = "binary(nuttx_qemu)"
+test-group = "nuttx-qemu"
+slow-timeout = { period = "180s", terminate-after = 2 }
+
 [profile.ci]
 slow-timeout = { period = "30s", terminate-after = 2 }
 fail-fast = true

@@ -51,3 +51,7 @@ path = "tests/auto_drive_comparison.rs"
 [[test]]
 name = "freertos_qemu"
 path = "tests/freertos_qemu.rs"
+
+[[test]]
+name = "nuttx_qemu"
+path = "tests/nuttx_qemu.rs"

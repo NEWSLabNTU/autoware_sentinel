@@ -38,7 +38,7 @@ nros-board-nuttx-qemu-arm = { git = "https://github.com/NEWSLabNTU/nano-ros.git"
 # Shared core wiring. comp-all enables full Phase 12 topology; the NuttX
 # build runs in std mode (NuttX provides POSIX) so the heavy publishers
 # fit just like the Linux build.
-autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-nuttx"] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-nuttx", "comp-all"] }
 
 # nros — match Zephyr/Linux feature set with platform-nuttx.
 nros = { version = "*", default-features = false, features = ["std", "rmw-zenoh", "platform-nuttx", "link-tcp", "ros-humble", "param-services"] }

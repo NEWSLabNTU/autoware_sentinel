@@ -249,16 +249,35 @@ Linux subset.
       -device virtio-net-device` (SLIRP), so no TAP/sudo is needed.
       Zenohd must listen on `127.0.0.1:7452` (10.0.2.2 inside the guest)
       to avoid clashing with the FreeRTOS sentinel on 7451.
-- [ ] 13.5.6 Test fixture + transport_smoke subset. **Blocked on a
-      NuttX-side zpico hang inside `Executor::open`:** the binary boots
-      cleanly through `nros NuttX platform starting`, prints the
-      `Locator:` line, opens an ESTAB TCP session to zenohd, then never
-      returns from `Executor::open`. Symptoms match the original 13.K1
-      pattern but on NuttX — likely a zpico/zenohd handshake mismatch
-      or a NuttX-specific timing bug in zenoh-pico's session
-      negotiation. Track separately as 13.K2 and revisit alongside the
-      upstream zpico work; the build infrastructure (13.5.1 – 13.5.5) is
-      ready for tests to drop in once the runtime path is unblocked.
+- [x] 13.5.6 Test fixture + transport test. Investigation of the
+      original NuttX hang traced it back to the **same root cause as
+      13.K1.7 on FreeRTOS** — `nros::Executor`'s inline arena gets copied
+      ~3× through the NRVO-defeated `Result<Executor, _>` return path.
+      `.env`'s `NROS_EXECUTOR_MAX_CBS=96` (ARENA ≈ 346 KB) inflates the
+      stack frame past NuttX's startup task budget, hanging on the very
+      first move-out of the returned Executor (specifically between
+      `set_node_identity done` and the next Rust println). Adding a
+      `nuttx_env` override in the justfile (`MAX_CBS=32`,
+      `ZPICO_MAX_PUBLISHERS=40`, etc.) reduces the frame to ~350 KB,
+      which fits the NuttX init task's 512 KB stack with margin.
+
+      Verified E2E with `comp-all` (28 callbacks, 37 publishers, 22
+      services, 5 subs, 1 timer): the binary boots, opens a zpico
+      session against zenohd at `127.0.0.1:7452`, declares every
+      publisher, registers every subscription/service, and reaches
+      `Executor ready — spinning…`. Tests in
+      `tests/tests/nuttx_qemu.rs` run under the `nuttx-qemu` nextest
+      test-group:
+      - `test_nuttx_kernel_present` — non-failing prereq probe.
+      - `test_nuttx_sentinel_executor_ready` — full E2E (build → QEMU
+        boot → zpico → executor armed). Single boot per process due to
+        the deterministic ZID seed, mirroring the FreeRTOS pattern.
+
+      Side fix: `tests/src/fixtures/sentinel_nuttx.rs` strips
+      `RUSTUP_TOOLCHAIN` before invoking the inner `cargo build` so
+      `cargo nextest` (which runs on stable from the workspace root)
+      doesn't leak its toolchain into the NuttX crate's nightly +
+      build-std build via env inheritance.
 
 **Acceptance:** same as 13.4 but for NuttX.
 

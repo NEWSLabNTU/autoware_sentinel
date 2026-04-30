@@ -85,6 +85,15 @@ nuttx_dir := env_var_or_default("NUTTX_DIR", justfile_directory() / "../nano-ros
 nuttx_apps_dir := env_var_or_default("NUTTX_APPS_DIR", justfile_directory() / "../nano-ros-sentinel/third-party/nuttx/nuttx-apps")
 nuttx_build_script := justfile_directory() / "../nano-ros-sentinel/packages/boards/nros-board-nuttx-qemu-arm/scripts/build-nuttx.sh"
 
+# Override `.env`'s NROS_EXECUTOR_MAX_CBS=96 for NuttX. Same root cause as
+# the FreeRTOS-side fix: nros::Executor's inline arena ([MaybeUninit<u8>;
+# ARENA_SIZE]) gets copied through the NRVO-defeated Result return path,
+# inflating the closure stack frame to ~3× ARENA_SIZE. NuttX's main task
+# (CONFIG_INIT_STACKSIZE=524288) tolerates more than the FreeRTOS task
+# but still overflows when ARENA_SIZE ≈ 346 KB. 32 callbacks gives ARENA
+# ≈ 116 KB, frame ≈ 350 KB, fits comfortably and covers comp-all (28 cbs).
+nuttx_env := "NROS_EXECUTOR_MAX_CBS=32 NROS_MAX_PARAMETERS=8 NROS_PARAM_SERVICE_BUFFER_SIZE=1024 ZPICO_MAX_PUBLISHERS=40 ZPICO_MAX_SUBSCRIBERS=8 ZPICO_MAX_QUERYABLES=32 ZPICO_MAX_LIVELINESS=80"
+
 # Build the NuttX kernel using the nros board crate's defconfig (idempotent).
 build-nuttx-kernel:
     #!/usr/bin/env bash
@@ -102,7 +111,7 @@ build-sentinel-nuttx: build-nuttx-kernel
     #!/usr/bin/env bash
     set -eo pipefail
     cd src/autoware_sentinel_nuttx
-    NUTTX_DIR="{{ nuttx_dir }}" cargo build --release
+    NUTTX_DIR="{{ nuttx_dir }}" {{ nuttx_env }} cargo build --release
 
 # Run NuttX QEMU sentinel via QEMU SLIRP (zenohd must listen on
 # 127.0.0.1:7452 — see config.toml).

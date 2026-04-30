@@ -149,3 +149,39 @@ fn shared_freertos_router_port() -> u16 {
 pub fn zenohd_freertos() -> u16 {
     shared_freertos_router_port()
 }
+
+/// Shared zenohd for NuttX tests, mirroring the FreeRTOS pattern. The
+/// NuttX sentinel bakes `tcp/10.0.2.2:7452` into firmware, so all
+/// instances target the same host port and serialise via the
+/// `nuttx-qemu` nextest test-group.
+struct SharedNuttxRouter(ZenohRouter);
+unsafe impl Send for SharedNuttxRouter {}
+unsafe impl Sync for SharedNuttxRouter {}
+
+static NUTTX_ROUTER: once_cell::sync::OnceCell<SharedNuttxRouter> =
+    once_cell::sync::OnceCell::new();
+
+fn shared_nuttx_router_port() -> u16 {
+    NUTTX_ROUTER
+        .get_or_init(|| {
+            let port = crate::fixtures::NUTTX_ZENOHD_PORT;
+            let router = ZenohRouter::start(port)
+                .unwrap_or_else(|e| panic!("Failed to start NuttX zenohd: {e:?}"));
+            let start = std::time::Instant::now();
+            while start.elapsed() < Duration::from_secs(5) {
+                if TcpStream::connect(format!("127.0.0.1:{port}")).is_ok() {
+                    return SharedNuttxRouter(router);
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            panic!("NuttX zenohd never accepted on port {port}");
+        })
+        .0
+        .port()
+}
+
+/// rstest fixture exposing the shared NuttX-port zenohd.
+#[rstest::fixture]
+pub fn zenohd_nuttx() -> u16 {
+    shared_nuttx_router_port()
+}

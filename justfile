@@ -37,8 +37,18 @@ build: generate-bindings build-zephyr build-sentinel-linux build-rmw-zenoh
 build-sentinel-linux:
     cargo build -p autoware_sentinel_linux
 
-# FreeRTOS QEMU prereq env (matches nano-ros/just/freertos.just)
-freertos_env := "FREERTOS_DIR=" + justfile_directory() / "../nano-ros/third-party/freertos/kernel" + " LWIP_DIR=" + justfile_directory() / "../nano-ros/third-party/freertos/lwip" + " FREERTOS_PORT=GCC/ARM_CM3 FREERTOS_CONFIG_DIR=" + justfile_directory() / "../nano-ros/packages/boards/nros-board-mps2-an385-freertos/config"
+# FreeRTOS QEMU prereq env (matches nano-ros/just/freertos.just).
+#
+# Phase 13.K1.7: shrink nros executor capacity for the FreeRTOS build. The
+# defaults in `.env` (NROS_EXECUTOR_MAX_CBS=96 → ARENA_SIZE ≈ 346 KB) inline a
+# ~340 KB arena directly in `Executor`, which the compiler then duplicates
+# (NRVO defeated by the `Result<Executor, _>` return) into a ~1 MB stack
+# frame on `app_task_entry`. The Cortex-M3 task stack overflows below SRAM
+# base, the SP wraps to wild addresses, and the very first push out of
+# `app_task_entry` faults with v7M INVSTATE UsageFault. Override here so
+# FreeRTOS gets an arena sized for the minimal sentinel topology (≈26 cbs +
+# headroom). Linux keeps `.env` defaults for full Phase 12 capacity.
+freertos_env := "FREERTOS_DIR=" + justfile_directory() / "../nano-ros-sentinel/third-party/freertos/kernel" + " LWIP_DIR=" + justfile_directory() / "../nano-ros-sentinel/third-party/freertos/lwip" + " FREERTOS_PORT=GCC/ARM_CM3 FREERTOS_CONFIG_DIR=" + justfile_directory() / "../nano-ros-sentinel/packages/boards/nros-board-mps2-an385-freertos/config" + " NROS_EXECUTOR_MAX_CBS=32 NROS_MAX_PARAMETERS=8 NROS_PARAM_SERVICE_BUFFER_SIZE=1024 ZPICO_MAX_PUBLISHERS=40 ZPICO_MAX_SUBSCRIBERS=8 ZPICO_MAX_QUERYABLES=32 ZPICO_MAX_LIVELINESS=80"
 
 # Build FreeRTOS QEMU MPS2-AN385 sentinel (release; thumbv7m-none-eabi)
 build-sentinel-freertos:

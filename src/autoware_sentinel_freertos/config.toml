@@ -18,7 +18,7 @@ domain_id = 0
 # Match the talker example baseline.
 [scheduling]
 app_priority = 12
-app_stack_bytes = 131072
+app_stack_bytes = 524288
 zenoh_read_priority = 16
 zenoh_read_stack_bytes = 8192
 zenoh_lease_priority = 16

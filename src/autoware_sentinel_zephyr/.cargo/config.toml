@@ -8,31 +8,31 @@
 # --- nros crates (local path matches workspace git pin content) -------------
 
 [patch.crates-io.nros]
-path = "../../../nano-ros/packages/core/nros"
+path = "../../../nano-ros-sentinel/packages/core/nros"
 
 [patch.crates-io.nros-core]
-path = "../../../nano-ros/packages/core/nros-core"
+path = "../../../nano-ros-sentinel/packages/core/nros-core"
 
 [patch.crates-io.nros-serdes]
-path = "../../../nano-ros/packages/core/nros-serdes"
+path = "../../../nano-ros-sentinel/packages/core/nros-serdes"
 
 [patch.crates-io.nros-node]
-path = "../../../nano-ros/packages/core/nros-node"
+path = "../../../nano-ros-sentinel/packages/core/nros-node"
 
 [patch.crates-io.nros-rmw]
-path = "../../../nano-ros/packages/core/nros-rmw"
+path = "../../../nano-ros-sentinel/packages/core/nros-rmw"
 
 [patch.crates-io.nros-params]
-path = "../../../nano-ros/packages/core/nros-params"
+path = "../../../nano-ros-sentinel/packages/core/nros-params"
 
 [patch.crates-io.nros-macros]
-path = "../../../nano-ros/packages/core/nros-macros"
+path = "../../../nano-ros-sentinel/packages/core/nros-macros"
 
 [patch.crates-io.nros-rmw-zenoh]
-path = "../../../nano-ros/packages/zpico/nros-rmw-zenoh"
+path = "../../../nano-ros-sentinel/packages/zpico/nros-rmw-zenoh"
 
 [patch.crates-io.zpico-sys]
-path = "../../../nano-ros/packages/zpico/zpico-sys"
+path = "../../../nano-ros-sentinel/packages/zpico/zpico-sys"
 
 # --- Generated message crates (shared with sentinel_linux) ------------------
 

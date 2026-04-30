@@ -40,9 +40,9 @@ members = [
 # spin_once timer fix (34f1d473). Phase 13.K1 investigation continues against
 # a sibling clone (`~/repos/nano-ros-sentinel`); flip these to local paths
 # locally when reproducing.
-nros = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
-nros-core = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
-nros-serdes = { git = "https://github.com/jerry73204/nano-ros.git", rev = "34f1d473" }
+nros = { path = "../nano-ros-sentinel/packages/core/nros" }
+nros-core = { path = "../nano-ros-sentinel/packages/core/nros-core" }
+nros-serdes = { path = "../nano-ros-sentinel/packages/core/nros-serdes" }
 
 # Generated message packages (from sentinel_linux — the superset of all packages)
 autoware_adapi_v1_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }

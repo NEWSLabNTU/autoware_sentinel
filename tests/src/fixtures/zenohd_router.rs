@@ -104,3 +104,48 @@ impl Drop for ZenohRouter {
 pub fn zenohd_unique() -> ZenohRouter {
     ZenohRouter::start_unique().expect("Failed to start zenohd")
 }
+
+/// Long-lived zenohd shared by every FreeRTOS test in the process.
+///
+/// FreeRTOS tests bake `tcp/10.0.2.2:7451` into the firmware, so all
+/// sentinel instances target the same locator. Restarting zenohd
+/// between tests proved fragile: SLIRP-side connection state from the
+/// previous QEMU instance blocks the next sentinel's TCP handshake on
+/// the freshly-rebound port. Sharing one router avoids the rebind
+/// entirely. The `freertos-qemu` nextest test-group still serialises
+/// the QEMU runs themselves so per-test session bookkeeping doesn't
+/// interleave.
+struct SharedFreertosRouter(ZenohRouter);
+unsafe impl Send for SharedFreertosRouter {}
+unsafe impl Sync for SharedFreertosRouter {}
+
+static FREERTOS_ROUTER: once_cell::sync::OnceCell<SharedFreertosRouter> =
+    once_cell::sync::OnceCell::new();
+
+fn shared_freertos_router_port() -> u16 {
+    FREERTOS_ROUTER
+        .get_or_init(|| {
+            let port = crate::fixtures::FREERTOS_ZENOHD_PORT;
+            let router = ZenohRouter::start(port)
+                .unwrap_or_else(|e| panic!("Failed to start FreeRTOS zenohd: {e:?}"));
+            // Confirm the listener actually accepts before any test runs.
+            let start = std::time::Instant::now();
+            while start.elapsed() < Duration::from_secs(5) {
+                if TcpStream::connect(format!("127.0.0.1:{port}")).is_ok() {
+                    return SharedFreertosRouter(router);
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            panic!("FreeRTOS zenohd never accepted on port {port}");
+        })
+        .0
+        .port()
+}
+
+/// rstest fixture exposing the shared FreeRTOS-port zenohd. Returns the
+/// listening port; the underlying `ZenohRouter` is owned by a process-wide
+/// `OnceCell` and lives until test-process exit.
+#[rstest::fixture]
+pub fn zenohd_freertos() -> u16 {
+    shared_freertos_router_port()
+}

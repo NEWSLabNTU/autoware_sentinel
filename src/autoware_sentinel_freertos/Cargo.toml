@@ -21,21 +21,32 @@ test = false
 bench = false
 
 [features]
+# Default: core-only baseline (6 pubs / 3 subs / 1 service / 1 timer). The
+# 13.K1.7 bisection enables comp-* features one at a time to find the
+# combination that triggers the declare-storm hang.
 default = []
+comp-mrm = ["autoware_sentinel_core/comp-mrm"]
+comp-cmd-gate-extra = ["autoware_sentinel_core/comp-cmd-gate-extra"]
+comp-validator = ["autoware_sentinel_core/comp-validator"]
+comp-op-mode-mgr = ["autoware_sentinel_core/comp-op-mode-mgr"]
+comp-engagement = ["autoware_sentinel_core/comp-engagement"]
+comp-stubs = ["autoware_sentinel_core/comp-stubs"]
+comp-all = ["autoware_sentinel_core/comp-all"]
 
 [dependencies]
 log = { version = "0.4", default-features = false }
 panic-semihosting = { version = "0.6", features = ["exit"] }
 
-# Provide the GlobalAlloc impl that core's `extern crate alloc` requires.
-# Backed by FreeRTOS's pvPortMalloc/free via nros-platform-freertos.
-nros-platform = { path = "../../../nano-ros/packages/core/nros-platform", default-features = false, features = ["platform-freertos", "global-allocator"] }
+# Provide the GlobalAlloc impl. Sentinel pulls alloc-using paths in nros-core
+# (String/Vec used internally) so we need a registered allocator. Routes
+# Rust allocs through pvPortMalloc/free via nros-platform-freertos.
+nros-platform = { path = "../../../nano-ros-sentinel/packages/core/nros-platform", default-features = false, features = ["platform-freertos", "global-allocator"] }
 
 # FreeRTOS QEMU MPS2-AN385 board crate (provides run() + Config + println!).
-nros-board-mps2-an385-freertos = { path = "../../../nano-ros/packages/boards/nros-board-mps2-an385-freertos" }
+nros-board-mps2-an385-freertos = { path = "../../../nano-ros-sentinel/packages/boards/nros-board-mps2-an385-freertos" }
 
 # Shared core wiring. Safety MCU build — no controller-node.
-autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos"] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos", "comp-all"] }
 
 # nros — for `ExecutorConfig`, `Executor`, `NodeError`. Match Zephyr feature set
 # (rmw-zenoh + ros-humble + param-services), no std.

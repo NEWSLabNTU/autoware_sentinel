@@ -44,12 +44,7 @@ extern "C" fn _start() -> ! {
             .node_name("sentinel");
         let mut executor = Executor::open(&exec_config)?;
 
-        // FreeRTOS profile: skip parameter services (heavy code + static
-        // tables, blocks 4 MB flash budget). Use compile-time defaults
-        // assembled in the same shape as ROS 2 parameter reads would yield.
         let sentinel_params = autoware_sentinel_core::params::default_params();
-        println!("Using compile-time default parameters");
-
         autoware_sentinel_core::init_island(sentinel_params);
         autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
 

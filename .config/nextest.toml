@@ -61,6 +61,16 @@ filter = "binary(auto_drive_comparison)"
 test-group = "auto-drive-comparison"
 slow-timeout = { period = "300s", terminate-after = 2 }
 
+# FreeRTOS QEMU tests: heavyweight (cross-compile + QEMU MPS2-AN385 boot,
+# zenohd locked to compile-time port 7451), run sequentially.
+[test-groups.freertos-qemu]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = "binary(freertos_qemu)"
+test-group = "freertos-qemu"
+slow-timeout = { period = "120s", terminate-after = 2 }
+
 [profile.ci]
 slow-timeout = { period = "30s", terminate-after = 2 }
 fail-fast = true

@@ -66,47 +66,86 @@ use autoware_trajectory_follower_base::{InputData, TrajectoryPoint};
 #[cfg(feature = "controller-node")]
 use autoware_trajectory_follower_node::ControllerNode;
 
-// Message types
+// Message types — always-on imports (used by core publishers, the MRM/cmd-gate
+// pipeline, or SafetyIsland fields that exist independently of feature gates).
 use autoware_adapi_v1_msgs::msg::{Heartbeat, MrmState, OperationModeState};
 use autoware_adapi_v1_msgs::srv::{ChangeOperationMode, ChangeOperationModeResponse};
 use autoware_control_msgs::msg::Control;
 use autoware_system_msgs::msg::AutowareState;
 use autoware_vehicle_msgs::msg::{
-    Engage, GearCommand, GearReport, HazardLightsCommand, TurnIndicatorsCommand, VelocityReport,
+    GearCommand, GearReport, HazardLightsCommand, TurnIndicatorsCommand, VelocityReport,
 };
-use autoware_vehicle_msgs::srv::{ControlModeCommand, ControlModeCommandResponse};
 use geometry_msgs::msg::{Accel, Twist};
-use std_srvs::srv::{Trigger, TriggerResponse};
-use tier4_control_msgs::msg::{GateMode, IsPaused, IsStartRequested, IsStopped};
+use tier4_system_msgs::msg::OperationModeAvailability;
+
+// Feature-gated message types.
+#[cfg(feature = "comp-mrm")]
+use tier4_system_msgs::msg::{EmergencyHoldingState, MrmBehaviorStatus};
+#[cfg(feature = "comp-mrm")]
+use tier4_system_msgs::srv::OperateMrm;
+#[cfg(feature = "comp-engagement")]
+use autoware_vehicle_msgs::msg::Engage;
+#[cfg(feature = "comp-engagement")]
 use tier4_external_api_msgs::msg::Emergency;
+#[cfg(feature = "comp-engagement")]
 use tier4_external_api_msgs::srv::{
     Engage as EngageSrv, EngageResponse, SetEmergency, SetEmergencyResponse,
 };
-use tier4_system_msgs::msg::{
-    EmergencyHoldingState, ModeChangeAvailable, MrmBehaviorStatus, OperationModeAvailability,
-};
-use tier4_vehicle_msgs::msg::VehicleEmergencyStamped;
-
-// Debug/diagnostic message types (Phase 8.2)
-use autoware_control_validator_msgs::msg::ControlValidatorStatus;
-use autoware_internal_debug_msgs::msg::BoolStamped;
-use autoware_internal_msgs::msg::PublishedTime;
-use autoware_operation_mode_transition_manager_msgs::msg::OperationModeTransitionManagerDebug;
-use autoware_vehicle_cmd_gate_msgs::msg::IsFilterActivated;
-use visualization_msgs::msg::MarkerArray;
-
-// Phase 12 gap closure
-use autoware_adapi_v1_msgs::msg::{DiagGraphStatus, DiagGraphStruct};
-use autoware_adapi_v1_msgs::srv::{ResetDiagGraph, ResetDiagGraphResponse};
-use autoware_adapi_version_msgs::srv::{InterfaceVersion, InterfaceVersionResponse};
-use autoware_system_msgs::msg::HazardStatusStamped;
-use autoware_system_msgs::srv::ChangeAutowareControl;
-use diagnostic_msgs::msg::DiagnosticArray;
-use logging_demo::srv::ConfigLogger;
-use std_srvs::srv::SetBool;
+#[cfg(feature = "comp-cmd-gate-extra")]
+use tier4_control_msgs::msg::{GateMode, IsPaused, IsStartRequested, IsStopped};
+#[cfg(feature = "comp-cmd-gate-extra")]
 use tier4_control_msgs::srv::SetStop;
+#[cfg(feature = "comp-cmd-gate-extra")]
+use tier4_vehicle_msgs::msg::VehicleEmergencyStamped;
+#[cfg(feature = "comp-cmd-gate-extra")]
+use autoware_internal_debug_msgs::msg::BoolStamped;
+#[cfg(feature = "comp-cmd-gate-extra")]
+use autoware_vehicle_cmd_gate_msgs::msg::IsFilterActivated;
+#[cfg(feature = "comp-cmd-gate-extra")]
+use logging_demo::srv::ConfigLogger;
+#[cfg(any(
+    feature = "comp-cmd-gate-extra",
+    feature = "comp-validator",
+    feature = "monitoring-topics"
+))]
+use visualization_msgs::msg::MarkerArray;
+#[cfg(any(
+    feature = "comp-cmd-gate-extra",
+    feature = "comp-stubs"
+))]
+use std_srvs::srv::{Trigger, TriggerResponse};
+#[cfg(feature = "comp-validator")]
+use autoware_control_validator_msgs::msg::ControlValidatorStatus;
+#[cfg(feature = "comp-op-mode-mgr")]
+use autoware_internal_msgs::msg::PublishedTime;
+#[cfg(feature = "comp-op-mode-mgr")]
+use autoware_operation_mode_transition_manager_msgs::msg::OperationModeTransitionManagerDebug;
+#[cfg(feature = "comp-op-mode-mgr")]
+use autoware_vehicle_msgs::srv::{ControlModeCommand, ControlModeCommandResponse};
+#[cfg(any(feature = "comp-op-mode-mgr", feature = "monitoring-topics"))]
+use tier4_system_msgs::msg::ModeChangeAvailable;
+
+// Phase 12 gap-closure imports.
+#[cfg(feature = "comp-stubs")]
+use autoware_adapi_v1_msgs::srv::{ResetDiagGraph, ResetDiagGraphResponse};
+#[cfg(feature = "comp-stubs")]
+use autoware_adapi_version_msgs::srv::{InterfaceVersion, InterfaceVersionResponse};
+#[cfg(feature = "comp-stubs")]
+use autoware_system_msgs::srv::ChangeAutowareControl;
+#[cfg(feature = "comp-stubs")]
+use std_srvs::srv::SetBool;
+#[cfg(feature = "comp-stubs")]
+use tier4_system_msgs::srv::ResetDiagGraph as ResetDiagGraphTier4;
+
+// Monitoring-topic imports.
+#[cfg(feature = "monitoring-topics")]
+use autoware_adapi_v1_msgs::msg::{DiagGraphStatus, DiagGraphStruct};
+#[cfg(feature = "monitoring-topics")]
+use autoware_system_msgs::msg::HazardStatusStamped;
+#[cfg(feature = "monitoring-topics")]
+use diagnostic_msgs::msg::DiagnosticArray;
+#[cfg(feature = "monitoring-topics")]
 use tier4_system_msgs::msg::CommandModeAvailability;
-use tier4_system_msgs::srv::{OperateMrm, ResetDiagGraph as ResetDiagGraphTier4};
 
 // Controller-node-only message types
 #[cfg(feature = "controller-node")]
@@ -146,13 +185,17 @@ const OP_MODE_STOP: u8 = 1;
 const OP_MODE_AUTONOMOUS: u8 = 2;
 
 /// MrmBehaviorStatus constants.
+#[cfg(feature = "comp-mrm")]
 const MRM_BEHAVIOR_AVAILABLE: u8 = 1;
+#[cfg(feature = "comp-mrm")]
 const MRM_BEHAVIOR_OPERATING: u8 = 2;
 
 /// GateMode constant: AUTO.
+#[cfg(feature = "comp-cmd-gate-extra")]
 const GATE_MODE_AUTO: u8 = 0;
 
 /// tier4_external_api_msgs ResponseStatus: SUCCESS.
+#[cfg(feature = "comp-engagement")]
 const TIER4_RESPONSE_SUCCESS: u32 = 1;
 
 // ============================================================================
@@ -461,62 +504,34 @@ static DIAG_STRUCT_DEFAULT: DiagGraphStruct = DiagGraphStruct {
 pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(), NodeError> {
     // --- Publishers ---
     //
-    // Mandatory tuple (always declared) plus an optional `monitoring` tuple
-    // gated behind the `monitoring-topics` feature. The monitoring block is
-    // expensive: it pulls a 2.1 MB `static DiagGraphStatus` rodata blob and
-    // 14 extra publisher entities, which is too much for Cortex-M3 boards
-    // (4 MB flash) and is also implicated in Phase 13.K1's Zephyr
-    // declare-storm bug.
+    // Phase 13.K1: publishers grouped by Autoware component. Each comp-* feature
+    // toggles one group so the declare-storm bug can be bisected. The always-on
+    // "core" group covers the mandatory driving topology (mrm_state, hazard,
+    // gear, control, turn indicators, op_mode_state). The monitoring-topics
+    // feature additionally enables 14 diagnostic publishers (Linux only — too
+    // big for the 4 MB Cortex-M3 flash budget).
     let (
-        (
-            mrm_state_pub,
-            hazard_pub,
-            gear_pub,
-            control_pub,
-            turn_pub,
-            op_mode_pub,
-            mrm_estop_status_pub,
-            mrm_comfy_status_pub,
-            mrm_pullover_status_pub,
-            emergency_gear_pub,
-            emergency_hazard_pub,
-            emergency_turn_pub,
-            emergency_cmd_pub,
-            gate_mode_pub,
-            shift_decider_gear_pub,
-            is_stopped_pub,
-            gate_op_mode_pub,
-            system_op_mode_pub,
-            engage_api_pub,
-            engage_compat_pub,
-            autoware_state_pub,
-            emergency_api_pub,
-            cv_debug_marker_pub,
-            cv_output_markers_pub,
-            cv_validation_status_pub,
-            cv_virtual_wall_pub,
-            filter_activated_pub,
-            filter_flag_pub,
-            filter_marker_pub,
-            filter_marker_raw_pub,
-            op_mode_debug_pub,
-            published_time_pub,
-            is_paused_pub,
-            is_start_requested_pub,
-            current_gate_mode_pub,
-            is_autonomous_available_pub,
-            emergency_holding_pub,
-        ),
+        core_pubs,
+        _comp_mrm_pubs,
+        _comp_cmd_gate_extra_pubs,
+        _comp_validator_pubs,
+        _comp_op_mode_mgr_pubs,
+        _comp_engagement_pubs,
         _monitoring_pubs,
     ) = {
         let mut node = executor.create_node("sentinel")?;
-        let mandatory = (
+
+        let core = (
             node.create_publisher::<MrmState>("/system/fail_safe/mrm_state")?,
             node.create_publisher::<HazardLightsCommand>("/control/command/hazard_lights_cmd")?,
             node.create_publisher::<GearCommand>("/control/command/gear_cmd")?,
             node.create_publisher::<Control>("/control/command/control_cmd")?,
             node.create_publisher::<TurnIndicatorsCommand>("/control/command/turn_indicators_cmd")?,
             node.create_publisher::<OperationModeState>("/api/operation_mode/state")?,
+        );
+
+        #[cfg(feature = "comp-mrm")]
+        let comp_mrm = (
             node.create_publisher::<MrmBehaviorStatus>("/system/mrm/emergency_stop/status")?,
             node.create_publisher::<MrmBehaviorStatus>("/system/mrm/comfortable_stop/status")?,
             node.create_publisher::<MrmBehaviorStatus>("/system/mrm/pull_over_manager/status")?,
@@ -525,6 +540,13 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
             node.create_publisher::<TurnIndicatorsCommand>(
                 "/system/emergency/turn_indicators_cmd",
             )?,
+            node.create_publisher::<EmergencyHoldingState>("/system/emergency_holding")?,
+        );
+        #[cfg(not(feature = "comp-mrm"))]
+        let comp_mrm = ();
+
+        #[cfg(feature = "comp-cmd-gate-extra")]
+        let comp_cmd_gate_extra = (
             node.create_publisher::<VehicleEmergencyStamped>("/control/command/emergency_cmd")?,
             node.create_publisher::<GateMode>("/control/gate_mode_cmd")?,
             node.create_publisher::<GearCommand>("/control/shift_decider/gear_cmd")?,
@@ -533,16 +555,11 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
                 "/control/vehicle_cmd_gate/operation_mode",
             )?,
             node.create_publisher::<OperationModeState>("/system/operation_mode/state")?,
-            node.create_publisher::<Engage>("/api/autoware/get/engage")?,
-            node.create_publisher::<Engage>("/autoware/engage")?,
-            node.create_publisher::<AutowareState>("/autoware/state")?,
-            node.create_publisher::<Emergency>("/api/autoware/get/emergency")?,
-            node.create_publisher::<MarkerArray>("/control/control_validator/debug/marker")?,
-            node.create_publisher::<MarkerArray>("/control/control_validator/output/markers")?,
-            node.create_publisher::<ControlValidatorStatus>(
-                "/control/control_validator/validation_status",
+            node.create_publisher::<IsPaused>("/control/vehicle_cmd_gate/is_paused")?,
+            node.create_publisher::<IsStartRequested>(
+                "/control/vehicle_cmd_gate/is_start_requested",
             )?,
-            node.create_publisher::<MarkerArray>("/control/control_validator/virtual_wall")?,
+            node.create_publisher::<GateMode>("/control/current_gate_mode")?,
             node.create_publisher::<IsFilterActivated>(
                 "/control/vehicle_cmd_gate/is_filter_activated",
             )?,
@@ -555,20 +572,44 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
             node.create_publisher::<MarkerArray>(
                 "/control/vehicle_cmd_gate/is_filter_activated/marker_raw",
             )?,
+        );
+        #[cfg(not(feature = "comp-cmd-gate-extra"))]
+        let comp_cmd_gate_extra = ();
+
+        #[cfg(feature = "comp-validator")]
+        let comp_validator = (
+            node.create_publisher::<MarkerArray>("/control/control_validator/debug/marker")?,
+            node.create_publisher::<MarkerArray>("/control/control_validator/output/markers")?,
+            node.create_publisher::<ControlValidatorStatus>(
+                "/control/control_validator/validation_status",
+            )?,
+            node.create_publisher::<MarkerArray>("/control/control_validator/virtual_wall")?,
+        );
+        #[cfg(not(feature = "comp-validator"))]
+        let comp_validator = ();
+
+        #[cfg(feature = "comp-op-mode-mgr")]
+        let comp_op_mode_mgr = (
             node.create_publisher::<OperationModeTransitionManagerDebug>(
                 "/control/autoware_operation_mode_transition_manager/debug_info",
             )?,
+            node.create_publisher::<ModeChangeAvailable>("/control/is_autonomous_available")?,
             node.create_publisher::<PublishedTime>(
                 "/control/command/control_cmd/debug/published_time",
             )?,
-            node.create_publisher::<IsPaused>("/control/vehicle_cmd_gate/is_paused")?,
-            node.create_publisher::<IsStartRequested>(
-                "/control/vehicle_cmd_gate/is_start_requested",
-            )?,
-            node.create_publisher::<GateMode>("/control/current_gate_mode")?,
-            node.create_publisher::<ModeChangeAvailable>("/control/is_autonomous_available")?,
-            node.create_publisher::<EmergencyHoldingState>("/system/emergency_holding")?,
         );
+        #[cfg(not(feature = "comp-op-mode-mgr"))]
+        let comp_op_mode_mgr = ();
+
+        #[cfg(feature = "comp-engagement")]
+        let comp_engagement = (
+            node.create_publisher::<Engage>("/api/autoware/get/engage")?,
+            node.create_publisher::<Engage>("/autoware/engage")?,
+            node.create_publisher::<AutowareState>("/autoware/state")?,
+            node.create_publisher::<Emergency>("/api/autoware/get/emergency")?,
+        );
+        #[cfg(not(feature = "comp-engagement"))]
+        let comp_engagement = ();
 
         #[cfg(feature = "monitoring-topics")]
         let monitoring = (
@@ -608,8 +649,62 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
         #[cfg(not(feature = "monitoring-topics"))]
         let monitoring = ();
 
-        (mandatory, monitoring)
+        (
+            core,
+            comp_mrm,
+            comp_cmd_gate_extra,
+            comp_validator,
+            comp_op_mode_mgr,
+            comp_engagement,
+            monitoring,
+        )
     };
+
+    let (mrm_state_pub, hazard_pub, gear_pub, control_pub, turn_pub, op_mode_pub) = core_pubs;
+
+    #[cfg(feature = "comp-mrm")]
+    let (
+        mrm_estop_status_pub,
+        mrm_comfy_status_pub,
+        mrm_pullover_status_pub,
+        emergency_gear_pub,
+        emergency_hazard_pub,
+        emergency_turn_pub,
+        emergency_holding_pub,
+    ) = _comp_mrm_pubs;
+
+    #[cfg(feature = "comp-cmd-gate-extra")]
+    let (
+        emergency_cmd_pub,
+        gate_mode_pub,
+        shift_decider_gear_pub,
+        is_stopped_pub,
+        gate_op_mode_pub,
+        system_op_mode_pub,
+        is_paused_pub,
+        is_start_requested_pub,
+        current_gate_mode_pub,
+        filter_activated_pub,
+        filter_flag_pub,
+        filter_marker_pub,
+        filter_marker_raw_pub,
+    ) = _comp_cmd_gate_extra_pubs;
+
+    #[cfg(feature = "comp-validator")]
+    let (
+        cv_debug_marker_pub,
+        cv_output_markers_pub,
+        cv_validation_status_pub,
+        cv_virtual_wall_pub,
+    ) = _comp_validator_pubs;
+
+    #[cfg(feature = "comp-op-mode-mgr")]
+    let (op_mode_debug_pub, is_autonomous_available_pub, published_time_pub) =
+        _comp_op_mode_mgr_pubs;
+
+    #[cfg(feature = "comp-engagement")]
+    let (engage_api_pub, engage_compat_pub, autoware_state_pub, emergency_api_pub) =
+        _comp_engagement_pubs;
 
     #[cfg(feature = "monitoring-topics")]
     let (
@@ -652,13 +747,23 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
             })
         },
     )?;
-    executor.add_subscription::<AutowareState, _>("/autoware/state", |msg| {
-        with_island(|island| island.autoware_state = msg.clone());
-    })?;
-    executor.add_subscription::<GearReport, _>("/vehicle/status/gear_status", |msg| {
-        with_island(|island| island.gear_report = msg.clone())
-    })?;
-    info!("Subscribed: control_cmd, autoware_state, gear_status");
+    info!("Subscribed: control_cmd");
+
+    #[cfg(feature = "comp-engagement")]
+    {
+        executor.add_subscription::<AutowareState, _>("/autoware/state", |msg| {
+            with_island(|island| island.autoware_state = msg.clone());
+        })?;
+        info!("Subscribed: /autoware/state");
+    }
+
+    #[cfg(feature = "comp-cmd-gate-extra")]
+    {
+        executor.add_subscription::<GearReport, _>("/vehicle/status/gear_status", |msg| {
+            with_island(|island| island.gear_report = msg.clone())
+        })?;
+        info!("Subscribed: /vehicle/status/gear_status");
+    }
 
     // --- Trajectory follower input subscriptions (gated) ---
     #[cfg(feature = "controller-node")]
@@ -700,205 +805,224 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
     )?;
     info!("Service: /api/operation_mode/change_to_autonomous");
 
-    executor.add_service::<EngageSrv, _>("/api/autoware/set/engage", |request| {
-        with_island(|island| {
-            island.autonomous_engaged = request.engage;
-            info!(
-                "set/engage: {}",
-                if request.engage {
-                    "ENGAGED"
-                } else {
-                    "DISENGAGED"
-                }
-            );
-        });
-        EngageResponse {
-            status: tier4_external_api_msgs::msg::ResponseStatus {
-                code: TIER4_RESPONSE_SUCCESS,
-                message: Default::default(),
-            },
-        }
-    })?;
-    info!("Service: /api/autoware/set/engage");
-
-    executor.add_service::<SetEmergency, _>("/api/autoware/set/emergency", |request| {
-        with_island(|island| {
-            island.external_emergency_stop = request.emergency;
-            info!(
-                "set/emergency: {}",
-                if request.emergency {
-                    "EMERGENCY SET"
-                } else {
-                    "EMERGENCY CLEARED"
-                }
-            );
-        });
-        SetEmergencyResponse {
-            status: tier4_external_api_msgs::msg::ResponseStatus {
-                code: TIER4_RESPONSE_SUCCESS,
-                message: Default::default(),
-            },
-        }
-    })?;
-    info!("Service: /api/autoware/set/emergency");
-
-    executor.add_service::<Trigger, _>(
-        "/control/vehicle_cmd_gate/external_emergency_stop",
-        |_request| {
+    #[cfg(feature = "comp-engagement")]
+    {
+        executor.add_service::<EngageSrv, _>("/api/autoware/set/engage", |request| {
             with_island(|island| {
-                island.external_emergency_stop = true;
-                info!("external_emergency_stop: TRIGGERED");
+                island.autonomous_engaged = request.engage;
+                info!(
+                    "set/engage: {}",
+                    if request.engage {
+                        "ENGAGED"
+                    } else {
+                        "DISENGAGED"
+                    }
+                );
             });
-            TriggerResponse {
-                success: true,
-                message: Default::default(),
+            EngageResponse {
+                status: tier4_external_api_msgs::msg::ResponseStatus {
+                    code: TIER4_RESPONSE_SUCCESS,
+                    message: Default::default(),
+                },
             }
-        },
-    )?;
-    info!("Service: /control/vehicle_cmd_gate/external_emergency_stop");
+        })?;
+        info!("Service: /api/autoware/set/engage");
 
-    executor.add_service::<Trigger, _>(
-        "/control/vehicle_cmd_gate/clear_external_emergency_stop",
-        |_request| {
+        executor.add_service::<SetEmergency, _>("/api/autoware/set/emergency", |request| {
             with_island(|island| {
-                island.external_emergency_stop = false;
-                info!("external_emergency_stop: CLEARED");
+                island.external_emergency_stop = request.emergency;
+                info!(
+                    "set/emergency: {}",
+                    if request.emergency {
+                        "EMERGENCY SET"
+                    } else {
+                        "EMERGENCY CLEARED"
+                    }
+                );
             });
-            TriggerResponse {
-                success: true,
-                message: Default::default(),
+            SetEmergencyResponse {
+                status: tier4_external_api_msgs::msg::ResponseStatus {
+                    code: TIER4_RESPONSE_SUCCESS,
+                    message: Default::default(),
+                },
             }
-        },
-    )?;
-    info!("Service: /control/vehicle_cmd_gate/clear_external_emergency_stop");
+        })?;
+        info!("Service: /api/autoware/set/emergency");
+    }
 
-    executor.add_service::<ControlModeCommand, _>("/control/control_mode_request", |_request| {
-        ControlModeCommandResponse { success: true }
-    })?;
-    info!("Service: /control/control_mode_request");
+    #[cfg(feature = "comp-cmd-gate-extra")]
+    {
+        executor.add_service::<Trigger, _>(
+            "/control/vehicle_cmd_gate/external_emergency_stop",
+            |_request| {
+                with_island(|island| {
+                    island.external_emergency_stop = true;
+                    info!("external_emergency_stop: TRIGGERED");
+                });
+                TriggerResponse {
+                    success: true,
+                    message: Default::default(),
+                }
+            },
+        )?;
+        executor.add_service::<Trigger, _>(
+            "/control/vehicle_cmd_gate/clear_external_emergency_stop",
+            |_request| {
+                with_island(|island| {
+                    island.external_emergency_stop = false;
+                    info!("external_emergency_stop: CLEARED");
+                });
+                TriggerResponse {
+                    success: true,
+                    message: Default::default(),
+                }
+            },
+        )?;
+        executor.add_service::<ConfigLogger, _>(
+            "/control/vehicle_cmd_gate/config_logger",
+            |_request| logging_demo::srv::ConfigLoggerResponse { success: true },
+        )?;
+        executor.add_service::<SetStop, _>("/control/vehicle_cmd_gate/set_stop", |_request| {
+            tier4_control_msgs::srv::SetStopResponse {
+                status: Default::default(),
+            }
+        })?;
+        info!(
+            "Services: vehicle_cmd_gate (external_emergency_stop, clear_external_emergency_stop, config_logger, set_stop)"
+        );
+    }
 
-    // 12.4 — operation_mode ADAPI services
-    executor.add_service::<ChangeOperationMode, _>(
-        "/api/operation_mode/change_to_stop",
-        |_request| {
-            with_island(|island| {
-                island.autonomous_engaged = false;
-                info!("ChangeOperationMode: → STOP");
-            });
-            ChangeOperationModeResponse {
+    #[cfg(feature = "comp-op-mode-mgr")]
+    {
+        executor.add_service::<ControlModeCommand, _>(
+            "/control/control_mode_request",
+            |_request| ControlModeCommandResponse { success: true },
+        )?;
+        executor.add_service::<ChangeOperationMode, _>(
+            "/api/operation_mode/change_to_stop",
+            |_request| {
+                with_island(|island| {
+                    island.autonomous_engaged = false;
+                    info!("ChangeOperationMode: → STOP");
+                });
+                ChangeOperationModeResponse {
+                    status: autoware_adapi_v1_msgs::msg::ResponseStatus {
+                        success: true,
+                        code: 0,
+                        message: Default::default(),
+                    },
+                }
+            },
+        )?;
+        executor.add_service::<ChangeOperationMode, _>(
+            "/api/operation_mode/change_to_local",
+            |_request| ChangeOperationModeResponse {
+                status: autoware_adapi_v1_msgs::msg::ResponseStatus {
+                    success: false,
+                    code: 1,
+                    message: Default::default(),
+                },
+            },
+        )?;
+        executor.add_service::<ChangeOperationMode, _>(
+            "/api/operation_mode/change_to_remote",
+            |_request| ChangeOperationModeResponse {
+                status: autoware_adapi_v1_msgs::msg::ResponseStatus {
+                    success: false,
+                    code: 1,
+                    message: Default::default(),
+                },
+            },
+        )?;
+        executor.add_service::<ChangeOperationMode, _>(
+            "/api/operation_mode/enable_autoware_control",
+            |_request| ChangeOperationModeResponse {
+                status: autoware_adapi_v1_msgs::msg::ResponseStatus {
+                    success: true,
+                    code: 0,
+                    message: Default::default(),
+                },
+            },
+        )?;
+        executor.add_service::<ChangeOperationMode, _>(
+            "/api/operation_mode/disable_autoware_control",
+            |_request| ChangeOperationModeResponse {
+                status: autoware_adapi_v1_msgs::msg::ResponseStatus {
+                    success: false,
+                    code: 1,
+                    message: Default::default(),
+                },
+            },
+        )?;
+        info!(
+            "Services: /control/control_mode_request, /api/operation_mode/{{stop,local,remote,enable,disable}}"
+        );
+    }
+
+    #[cfg(feature = "comp-mrm")]
+    {
+        executor.add_service::<OperateMrm, _>(
+            "/system/mrm/comfortable_stop/operate",
+            |_request| tier4_system_msgs::srv::OperateMrmResponse {
+                response: Default::default(),
+            },
+        )?;
+        executor.add_service::<OperateMrm, _>(
+            "/system/mrm/emergency_stop/operate",
+            |_request| tier4_system_msgs::srv::OperateMrmResponse {
+                response: Default::default(),
+            },
+        )?;
+        executor.add_service::<OperateMrm, _>(
+            "/system/mrm/pull_over_manager/operate",
+            |_request| tier4_system_msgs::srv::OperateMrmResponse {
+                response: Default::default(),
+            },
+        )?;
+        info!("Services: /system/mrm/{{emergency,comfortable,pull_over}}/operate");
+    }
+
+    #[cfg(feature = "comp-stubs")]
+    {
+        executor.add_service::<InterfaceVersion, _>("/api/interface/version", |_request| {
+            InterfaceVersionResponse {
+                major: 1,
+                minor: 5,
+                patch: 0,
+            }
+        })?;
+        executor.add_service::<ResetDiagGraph, _>("/api/system/diagnostics/reset", |_request| {
+            ResetDiagGraphResponse {
                 status: autoware_adapi_v1_msgs::msg::ResponseStatus {
                     success: true,
                     code: 0,
                     message: Default::default(),
                 },
             }
-        },
-    )?;
-    executor.add_service::<ChangeOperationMode, _>(
-        "/api/operation_mode/change_to_local",
-        |_request| ChangeOperationModeResponse {
-            status: autoware_adapi_v1_msgs::msg::ResponseStatus {
-                success: false,
-                code: 1,
-                message: Default::default(),
-            },
-        },
-    )?;
-    executor.add_service::<ChangeOperationMode, _>(
-        "/api/operation_mode/change_to_remote",
-        |_request| ChangeOperationModeResponse {
-            status: autoware_adapi_v1_msgs::msg::ResponseStatus {
-                success: false,
-                code: 1,
-                message: Default::default(),
-            },
-        },
-    )?;
-    executor.add_service::<ChangeOperationMode, _>(
-        "/api/operation_mode/enable_autoware_control",
-        |_request| ChangeOperationModeResponse {
-            status: autoware_adapi_v1_msgs::msg::ResponseStatus {
-                success: true,
-                code: 0,
-                message: Default::default(),
-            },
-        },
-    )?;
-    executor.add_service::<ChangeOperationMode, _>(
-        "/api/operation_mode/disable_autoware_control",
-        |_request| ChangeOperationModeResponse {
-            status: autoware_adapi_v1_msgs::msg::ResponseStatus {
-                success: false,
-                code: 1,
-                message: Default::default(),
-            },
-        },
-    )?;
-    info!("Services: /api/operation_mode/change_to_stop,local,remote,enable,disable");
-
-    // Phase 12 gap-closure stub services
-    executor.add_service::<InterfaceVersion, _>("/api/interface/version", |_request| {
-        InterfaceVersionResponse {
-            major: 1,
-            minor: 5,
-            patch: 0,
-        }
-    })?;
-    executor.add_service::<ResetDiagGraph, _>("/api/system/diagnostics/reset", |_request| {
-        ResetDiagGraphResponse {
-            status: autoware_adapi_v1_msgs::msg::ResponseStatus {
-                success: true,
-                code: 0,
-                message: Default::default(),
-            },
-        }
-    })?;
-    executor.add_service::<Trigger, _>("/autoware/shutdown", |_request| TriggerResponse {
-        success: true,
-        message: Default::default(),
-    })?;
-    executor
-        .add_service::<ConfigLogger, _>("/control/vehicle_cmd_gate/config_logger", |_request| {
-            logging_demo::srv::ConfigLoggerResponse { success: true }
         })?;
-    executor.add_service::<SetStop, _>("/control/vehicle_cmd_gate/set_stop", |_request| {
-        tier4_control_msgs::srv::SetStopResponse {
-            status: Default::default(),
-        }
-    })?;
-    executor.add_service::<ResetDiagGraphTier4, _>("/diagnostics_graph/reset", |_request| {
-        tier4_system_msgs::srv::ResetDiagGraphResponse {
-            status: Default::default(),
-        }
-    })?;
-    executor.add_service::<SetBool, _>("/system/aggregator/set_initializing", |_request| {
-        std_srvs::srv::SetBoolResponse {
+        executor.add_service::<Trigger, _>("/autoware/shutdown", |_request| TriggerResponse {
             success: true,
             message: Default::default(),
-        }
-    })?;
-    executor.add_service::<OperateMrm, _>("/system/mrm/comfortable_stop/operate", |_request| {
-        tier4_system_msgs::srv::OperateMrmResponse {
-            response: Default::default(),
-        }
-    })?;
-    executor.add_service::<OperateMrm, _>("/system/mrm/emergency_stop/operate", |_request| {
-        tier4_system_msgs::srv::OperateMrmResponse {
-            response: Default::default(),
-        }
-    })?;
-    executor.add_service::<OperateMrm, _>("/system/mrm/pull_over_manager/operate", |_request| {
-        tier4_system_msgs::srv::OperateMrmResponse {
-            response: Default::default(),
-        }
-    })?;
-    executor.add_service::<ChangeAutowareControl, _>(
-        "/system/operation_mode/change_autoware_control",
-        |_request| autoware_system_msgs::srv::ChangeAutowareControlResponse {
-            status: Default::default(),
-        },
-    )?;
-    info!("Services: Phase 12 gap closure (11 functional services)");
+        })?;
+        executor.add_service::<ResetDiagGraphTier4, _>("/diagnostics_graph/reset", |_request| {
+            tier4_system_msgs::srv::ResetDiagGraphResponse {
+                status: Default::default(),
+            }
+        })?;
+        executor.add_service::<SetBool, _>("/system/aggregator/set_initializing", |_request| {
+            std_srvs::srv::SetBoolResponse {
+                success: true,
+                message: Default::default(),
+            }
+        })?;
+        executor.add_service::<ChangeAutowareControl, _>(
+            "/system/operation_mode/change_autoware_control",
+            |_request| autoware_system_msgs::srv::ChangeAutowareControlResponse {
+                status: Default::default(),
+            },
+        )?;
+        info!("Services: Phase 12 gap-closure stubs (6 services)");
+    }
 
     // --- 30 Hz main control timer ---
     let now_ms_timer = now_ms;
@@ -1043,218 +1167,230 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
             };
             op_mode_pub.publish(&op_mode_state).ok();
 
-            mrm_estop_status_pub
-                .publish(&MrmBehaviorStatus {
-                    stamp: Default::default(),
-                    state: if island.emergency_stop.is_operating() {
-                        MRM_BEHAVIOR_OPERATING
-                    } else {
-                        MRM_BEHAVIOR_AVAILABLE
-                    },
-                })
-                .ok();
-            mrm_comfy_status_pub
-                .publish(&MrmBehaviorStatus {
-                    stamp: Default::default(),
-                    state: if island.comfortable_stop.is_operating() {
-                        MRM_BEHAVIOR_OPERATING
-                    } else {
-                        MRM_BEHAVIOR_AVAILABLE
-                    },
-                })
-                .ok();
-            mrm_pullover_status_pub
-                .publish(&MrmBehaviorStatus {
-                    stamp: Default::default(),
-                    state: MRM_BEHAVIOR_AVAILABLE,
-                })
-                .ok();
-
-            emergency_gear_pub.publish(&mrm_output.gear).ok();
-            emergency_hazard_pub.publish(&mrm_output.hazard_lights).ok();
-            emergency_turn_pub
-                .publish(&TurnIndicatorsCommand::default())
-                .ok();
-
+            #[allow(unused_variables)]
             let is_emergency =
                 island.mrm_handler.state() == MRM_STATE_OPERATING || island.external_emergency_stop;
-            emergency_cmd_pub
-                .publish(&VehicleEmergencyStamped {
-                    stamp: Default::default(),
-                    emergency: is_emergency,
-                })
-                .ok();
-            gate_mode_pub
-                .publish(&GateMode {
-                    data: GATE_MODE_AUTO,
-                })
-                .ok();
-            shift_decider_gear_pub
-                .publish(&GearCommand {
-                    command: auto_gear,
-                    ..Default::default()
-                })
-                .ok();
-            is_stopped_pub
-                .publish(&IsStopped {
-                    stamp: Default::default(),
-                    data: island.is_stopped,
-                    requested_sources: Default::default(),
-                })
-                .ok();
-            gate_op_mode_pub.publish(&op_mode_state).ok();
-            system_op_mode_pub.publish(&op_mode_state).ok();
 
-            engage_api_pub
-                .publish(&Engage {
-                    stamp: Default::default(),
-                    engage: true,
-                })
-                .ok();
-            engage_compat_pub
-                .publish(&Engage {
-                    stamp: Default::default(),
-                    engage: true,
-                })
-                .ok();
+            #[cfg(feature = "comp-mrm")]
+            {
+                mrm_estop_status_pub
+                    .publish(&MrmBehaviorStatus {
+                        stamp: Default::default(),
+                        state: if island.emergency_stop.is_operating() {
+                            MRM_BEHAVIOR_OPERATING
+                        } else {
+                            MRM_BEHAVIOR_AVAILABLE
+                        },
+                    })
+                    .ok();
+                mrm_comfy_status_pub
+                    .publish(&MrmBehaviorStatus {
+                        stamp: Default::default(),
+                        state: if island.comfortable_stop.is_operating() {
+                            MRM_BEHAVIOR_OPERATING
+                        } else {
+                            MRM_BEHAVIOR_AVAILABLE
+                        },
+                    })
+                    .ok();
+                mrm_pullover_status_pub
+                    .publish(&MrmBehaviorStatus {
+                        stamp: Default::default(),
+                        state: MRM_BEHAVIOR_AVAILABLE,
+                    })
+                    .ok();
+                emergency_gear_pub.publish(&mrm_output.gear).ok();
+                emergency_hazard_pub.publish(&mrm_output.hazard_lights).ok();
+                emergency_turn_pub
+                    .publish(&TurnIndicatorsCommand::default())
+                    .ok();
+                emergency_holding_pub
+                    .publish(&EmergencyHoldingState {
+                        stamp: Default::default(),
+                        is_holding: false,
+                    })
+                    .ok();
+            }
 
-            autoware_state_pub
-                .publish(&AutowareState {
-                    stamp: Default::default(),
-                    state: AUTOWARE_STATE_DRIVING,
-                })
-                .ok();
+            #[cfg(feature = "comp-cmd-gate-extra")]
+            {
+                emergency_cmd_pub
+                    .publish(&VehicleEmergencyStamped {
+                        stamp: Default::default(),
+                        emergency: is_emergency,
+                    })
+                    .ok();
+                gate_mode_pub
+                    .publish(&GateMode {
+                        data: GATE_MODE_AUTO,
+                    })
+                    .ok();
+                shift_decider_gear_pub
+                    .publish(&GearCommand {
+                        command: auto_gear,
+                        ..Default::default()
+                    })
+                    .ok();
+                is_stopped_pub
+                    .publish(&IsStopped {
+                        stamp: Default::default(),
+                        data: island.is_stopped,
+                        requested_sources: Default::default(),
+                    })
+                    .ok();
+                gate_op_mode_pub.publish(&op_mode_state).ok();
+                system_op_mode_pub.publish(&op_mode_state).ok();
+                is_paused_pub
+                    .publish(&IsPaused {
+                        stamp: Default::default(),
+                        data: false,
+                    })
+                    .ok();
+                is_start_requested_pub
+                    .publish(&IsStartRequested {
+                        stamp: Default::default(),
+                        data: false,
+                    })
+                    .ok();
+                current_gate_mode_pub
+                    .publish(&GateMode {
+                        data: GATE_MODE_AUTO,
+                    })
+                    .ok();
+                filter_activated_pub
+                    .publish(&IsFilterActivated {
+                        stamp: Default::default(),
+                        is_activated: false,
+                        is_activated_on_steering: false,
+                        is_activated_on_steering_rate: false,
+                        is_activated_on_speed: false,
+                        is_activated_on_acceleration: false,
+                        is_activated_on_jerk: false,
+                    })
+                    .ok();
+                filter_flag_pub
+                    .publish(&BoolStamped {
+                        stamp: Default::default(),
+                        data: false,
+                    })
+                    .ok();
+                let empty_markers_gate = MarkerArray {
+                    markers: Default::default(),
+                };
+                filter_marker_pub.publish(&empty_markers_gate).ok();
+                filter_marker_raw_pub.publish(&empty_markers_gate).ok();
+            }
 
-            emergency_api_pub
-                .publish(&Emergency {
-                    stamp: Default::default(),
-                    emergency: is_emergency,
-                })
-                .ok();
+            #[cfg(feature = "comp-engagement")]
+            {
+                engage_api_pub
+                    .publish(&Engage {
+                        stamp: Default::default(),
+                        engage: true,
+                    })
+                    .ok();
+                engage_compat_pub
+                    .publish(&Engage {
+                        stamp: Default::default(),
+                        engage: true,
+                    })
+                    .ok();
+                autoware_state_pub
+                    .publish(&AutowareState {
+                        stamp: Default::default(),
+                        state: AUTOWARE_STATE_DRIVING,
+                    })
+                    .ok();
+                emergency_api_pub
+                    .publish(&Emergency {
+                        stamp: Default::default(),
+                        emergency: is_emergency,
+                    })
+                    .ok();
+            }
 
-            let empty_markers = MarkerArray {
-                markers: Default::default(),
-            };
-            cv_debug_marker_pub.publish(&empty_markers).ok();
-            cv_output_markers_pub.publish(&empty_markers).ok();
-            cv_virtual_wall_pub.publish(&empty_markers).ok();
+            #[cfg(feature = "comp-validator")]
+            {
+                let empty_markers = MarkerArray {
+                    markers: Default::default(),
+                };
+                cv_debug_marker_pub.publish(&empty_markers).ok();
+                cv_output_markers_pub.publish(&empty_markers).ok();
+                cv_virtual_wall_pub.publish(&empty_markers).ok();
+                let cv_status = island.control_validator.status();
+                cv_validation_status_pub
+                    .publish(&ControlValidatorStatus {
+                        stamp: Default::default(),
+                        is_valid_max_distance_deviation: true,
+                        is_valid_acc: cv_status.is_valid_acc,
+                        is_rolling_back: cv_status.is_rolling_back,
+                        is_over_velocity: cv_status.is_over_velocity,
+                        is_valid_lateral_jerk: cv_status.is_valid_lateral_jerk,
+                        has_overrun_stop_point: false,
+                        will_overrun_stop_point: false,
+                        is_valid_latency: true,
+                        is_valid_yaw: true,
+                        is_warn_yaw: false,
+                        max_distance_deviation: 0.0,
+                        steering_rate: cv_status.steering_rate,
+                        lateral_jerk: cv_status.lateral_jerk,
+                        desired_acc: cv_status.desired_acc,
+                        measured_acc: cv_status.measured_acc,
+                        target_vel: cv_status.target_vel,
+                        vehicle_vel: cv_status.vehicle_vel,
+                        dist_to_stop: 0.0,
+                        pred_dist_to_stop: 0.0,
+                        nearest_trajectory_vel: 0.0,
+                        latency: 0.0,
+                        yaw_deviation: 0.0,
+                        invalid_count: cv_status.invalid_count as i64,
+                    })
+                    .ok();
+            }
 
-            let cv_status = island.control_validator.status();
-            cv_validation_status_pub
-                .publish(&ControlValidatorStatus {
-                    stamp: Default::default(),
-                    is_valid_max_distance_deviation: true,
-                    is_valid_acc: cv_status.is_valid_acc,
-                    is_rolling_back: cv_status.is_rolling_back,
-                    is_over_velocity: cv_status.is_over_velocity,
-                    is_valid_lateral_jerk: cv_status.is_valid_lateral_jerk,
-                    has_overrun_stop_point: false,
-                    will_overrun_stop_point: false,
-                    is_valid_latency: true,
-                    is_valid_yaw: true,
-                    is_warn_yaw: false,
-                    max_distance_deviation: 0.0,
-                    steering_rate: cv_status.steering_rate,
-                    lateral_jerk: cv_status.lateral_jerk,
-                    desired_acc: cv_status.desired_acc,
-                    measured_acc: cv_status.measured_acc,
-                    target_vel: cv_status.target_vel,
-                    vehicle_vel: cv_status.vehicle_vel,
-                    dist_to_stop: 0.0,
-                    pred_dist_to_stop: 0.0,
-                    nearest_trajectory_vel: 0.0,
-                    latency: 0.0,
-                    yaw_deviation: 0.0,
-                    invalid_count: cv_status.invalid_count as i64,
-                })
-                .ok();
-
-            filter_activated_pub
-                .publish(&IsFilterActivated {
-                    stamp: Default::default(),
-                    is_activated: false,
-                    is_activated_on_steering: false,
-                    is_activated_on_steering_rate: false,
-                    is_activated_on_speed: false,
-                    is_activated_on_acceleration: false,
-                    is_activated_on_jerk: false,
-                })
-                .ok();
-            filter_flag_pub
-                .publish(&BoolStamped {
-                    stamp: Default::default(),
-                    data: false,
-                })
-                .ok();
-            filter_marker_pub.publish(&empty_markers).ok();
-            filter_marker_raw_pub.publish(&empty_markers).ok();
-
-            op_mode_debug_pub
-                .publish(&OperationModeTransitionManagerDebug {
-                    stamp: Default::default(),
-                    status: Default::default(),
-                    in_autoware_control: true,
-                    in_transition: false,
-                    is_all_ok: true,
-                    engage_allowed_for_stopped_vehicle: true,
-                    trajectory_available_ok: true,
-                    lateral_deviation_ok: true,
-                    yaw_deviation_ok: true,
-                    speed_upper_deviation_ok: true,
-                    speed_lower_deviation_ok: true,
-                    stop_ok: true,
-                    large_acceleration_ok: true,
-                    large_lateral_acceleration_ok: true,
-                    large_lateral_acceleration_diff_ok: true,
-                    current_speed: island.current_velocity,
-                    target_control_speed: 0.0,
-                    target_planning_speed: 0.0,
-                    target_control_acceleration: 0.0,
-                    lateral_acceleration: 0.0,
-                    lateral_acceleration_deviation: 0.0,
-                    lateral_deviation: 0.0,
-                    yaw_deviation: 0.0,
-                    speed_deviation: 0.0,
-                })
-                .ok();
-            published_time_pub
-                .publish(&PublishedTime {
-                    header: Default::default(),
-                    published_stamp: Default::default(),
-                })
-                .ok();
-
-            is_paused_pub
-                .publish(&IsPaused {
-                    stamp: Default::default(),
-                    data: false,
-                })
-                .ok();
-            is_start_requested_pub
-                .publish(&IsStartRequested {
-                    stamp: Default::default(),
-                    data: false,
-                })
-                .ok();
-            current_gate_mode_pub
-                .publish(&GateMode {
-                    data: GATE_MODE_AUTO,
-                })
-                .ok();
-
-            is_autonomous_available_pub
-                .publish(&ModeChangeAvailable {
-                    stamp: Default::default(),
-                    available: island.autonomous_engaged,
-                })
-                .ok();
-
-            emergency_holding_pub
-                .publish(&EmergencyHoldingState {
-                    stamp: Default::default(),
-                    is_holding: false,
-                })
-                .ok();
+            #[cfg(feature = "comp-op-mode-mgr")]
+            {
+                op_mode_debug_pub
+                    .publish(&OperationModeTransitionManagerDebug {
+                        stamp: Default::default(),
+                        status: Default::default(),
+                        in_autoware_control: true,
+                        in_transition: false,
+                        is_all_ok: true,
+                        engage_allowed_for_stopped_vehicle: true,
+                        trajectory_available_ok: true,
+                        lateral_deviation_ok: true,
+                        yaw_deviation_ok: true,
+                        speed_upper_deviation_ok: true,
+                        speed_lower_deviation_ok: true,
+                        stop_ok: true,
+                        large_acceleration_ok: true,
+                        large_lateral_acceleration_ok: true,
+                        large_lateral_acceleration_diff_ok: true,
+                        current_speed: island.current_velocity,
+                        target_control_speed: 0.0,
+                        target_planning_speed: 0.0,
+                        target_control_acceleration: 0.0,
+                        lateral_acceleration: 0.0,
+                        lateral_acceleration_deviation: 0.0,
+                        lateral_deviation: 0.0,
+                        yaw_deviation: 0.0,
+                        speed_deviation: 0.0,
+                    })
+                    .ok();
+                published_time_pub
+                    .publish(&PublishedTime {
+                        header: Default::default(),
+                        published_stamp: Default::default(),
+                    })
+                    .ok();
+                is_autonomous_available_pub
+                    .publish(&ModeChangeAvailable {
+                        stamp: Default::default(),
+                        available: island.autonomous_engaged,
+                    })
+                    .ok();
+            }
 
             #[cfg(feature = "monitoring-topics")]
             {

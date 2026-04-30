@@ -22,6 +22,30 @@ default = []
 # enables it for full Phase 12 parity.
 monitoring-topics = []
 
+# Phase 13.K1 component feature gates. Each toggles a group of publishers,
+# subscribers, and services that belong to one Autoware component, so the
+# declare-storm bug can be bisected by enabling/disabling components one
+# at a time. Always-on "core" group: mrm_state / hazard / gear / control /
+# turn / op_mode publishers, velocity_status + heartbeat + control_cmd
+# subs, change_to_autonomous service. Default: all off (minimal baseline).
+comp-mrm = []
+comp-cmd-gate-extra = []
+comp-validator = []
+comp-op-mode-mgr = []
+comp-engagement = []
+comp-stubs = []
+
+# All Phase 12 components on. Linux dev binary enables this to keep parity
+# with the pre-refactor topology.
+comp-all = [
+    "comp-mrm",
+    "comp-cmd-gate-extra",
+    "comp-validator",
+    "comp-op-mode-mgr",
+    "comp-engagement",
+    "comp-stubs",
+]
+
 # Phase 13: bundle the trajectory follower (MPC + PID + interpolation +
 # vehicle-info-utils). Default off — main compute provides control_cmd on
 # safety MCUs. Linux dev binary enables this for solo planning-simulator runs.

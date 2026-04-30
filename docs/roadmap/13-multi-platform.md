@@ -147,17 +147,17 @@ all platforms. ROS 2 `ros2 param list/get/set` works on every target.
 
 ### 13.1 — Extract `autoware_sentinel_core`
 
-- [ ] 13.1.1 Create `src/autoware_sentinel_core/` crate (`#![no_std]`, `alloc` feature).
-- [ ] 13.1.2 Move `SafetyIsland` struct + `static ISLAND` + `with_island` from
+- [x] 13.1.1 Create `src/autoware_sentinel_core/` crate (`#![no_std]`, `alloc` feature).
+- [x] 13.1.2 Move `SafetyIsland` struct + `static ISLAND` + `with_island` from
       `autoware_sentinel_linux/src/main.rs` into `core/src/safety_island.rs`.
-- [ ] 13.1.3 Move publisher/subscription/service registration into
+- [x] 13.1.3 Move publisher/subscription/service registration into
       `core::wire_executor(&mut Executor)`.
-- [ ] 13.1.4 Add `controller-node` feature; gate the relevant struct fields,
+- [x] 13.1.4 Add `controller-node` feature; gate the relevant struct fields,
       subscriptions, and `run_controller()` body behind `#[cfg(feature = "controller-node")]`.
-- [ ] 13.1.5 Generate the superset `package.xml` and `generated/` for core
+- [x] 13.1.5 Generate the superset `package.xml` and `generated/` for core
       (or have core re-export msg types and let each platform crate generate its own
       subset).
-- [ ] 13.1.6 Unit-test compile on `thumbv7em-none-eabihf` with and without
+- [x] 13.1.6 Unit-test compile on `thumbv7em-none-eabihf` with and without
       `controller-node`.
 
 **Acceptance:** `cargo check --target thumbv7em-none-eabihf -p autoware_sentinel_core
@@ -166,22 +166,22 @@ controller-node` also passes.
 
 ### 13.2 — Migrate `autoware_sentinel_linux`
 
-- [ ] 13.2.1 Replace `main.rs` body with `init_island` + `wire_executor` + `spin_blocking`.
-- [ ] 13.2.2 Enable `controller-node` feature on core dep.
-- [ ] 13.2.3 Verify `just test-transport` — all 14 tests still pass.
-- [ ] 13.2.4 Verify `just test-planning` — at least the same passing subset as before
+- [x] 13.2.1 Replace `main.rs` body with `init_island` + `wire_executor` + `spin_blocking`.
+- [x] 13.2.2 Enable `controller-node` feature on core dep.
+- [x] 13.2.3 Verify `just test-transport` — all 14 tests still pass.
+- [x] 13.2.4 Verify `just test-planning` — at least the same passing subset as before
       the refactor.
 
 **Acceptance:** transport_smoke 14/14, no behavioral change vs. pre-refactor.
 
 ### 13.3 — Rename + migrate `autoware_sentinel` → `autoware_sentinel_zephyr`
 
-- [ ] 13.3.1 `git mv src/autoware_sentinel src/autoware_sentinel_zephyr`.
-- [ ] 13.3.2 Update `west.yml`, `scripts/zephyr/setup.sh`, `docs/guides/zephyr-setup.md`,
+- [x] 13.3.1 `git mv src/autoware_sentinel src/autoware_sentinel_zephyr`.
+- [x] 13.3.2 Update `west.yml`, `scripts/zephyr/setup.sh`, `docs/guides/zephyr-setup.md`,
       `justfile` (`build-zephyr`, `run-sentinel-zephyr`), and the workspace path comment
       in root `Cargo.toml`.
-- [ ] 13.3.3 Replace `lib.rs` body with `wire_executor` call (controller-node off).
-- [ ] 13.3.4 `just build-zephyr` succeeds against `native_sim/native/64`.
+- [x] 13.3.3 Replace `lib.rs` body with `wire_executor` call (controller-node off).
+- [x] 13.3.4 `just build-zephyr` succeeds against `native_sim/native/64`.
 
 **Acceptance:** Zephyr native_sim build green; binary boots and `Executor ready`
 prints. Transport tests against zenohd + Zephyr binary (if/when available) match the
@@ -189,17 +189,30 @@ Linux subset.
 
 ### 13.4 — `autoware_sentinel_freertos` (QEMU MPS2-AN385)
 
-- [ ] 13.4.1 Create `src/autoware_sentinel_freertos/` from
+- [x] 13.4.1 Create `src/autoware_sentinel_freertos/` from
       `~/repos/nano-ros/examples/qemu-arm-freertos/rust/zenoh/talker/` template.
-- [ ] 13.4.2 Depend on `nros-board-mps2-an385-freertos` + `nros = { features =
+- [x] 13.4.2 Depend on `nros-board-mps2-an385-freertos` + `nros = { features =
       ["rmw-zenoh", "platform-freertos", "link-tcp", "link-udp-unicast", "ros-humble"] }`
       + `autoware_sentinel_core` (no `controller-node`).
-- [ ] 13.4.3 Add `config.toml` with QEMU TAP-bridged zenoh locator.
-- [ ] 13.4.4 Add `justfile` recipes: `build-sentinel-freertos`, `run-sentinel-freertos`
+- [x] 13.4.3 Add `config.toml` with QEMU TAP-bridged zenoh locator.
+- [x] 13.4.4 Add `justfile` recipes: `build-sentinel-freertos`, `run-sentinel-freertos`
       (QEMU launch + TAP setup).
-- [ ] 13.4.5 Add `tests/src/fixtures/sentinel_freertos.rs` — boot QEMU, wait for
-      executor-ready string on semihosting, expose locator.
-- [ ] 13.4.6 Run a subset of transport_smoke tests against the FreeRTOS binary.
+- [x] 13.4.5 Added `tests/src/fixtures/sentinel_freertos.rs` — builds the
+      FreeRTOS ELF (cached via `OnceCell`), launches `qemu-system-arm
+      -machine mps2-an385`, and waits for the `Executor ready` line on
+      the semihosting console. Companion `zenohd_freertos` fixture pins
+      the listener to port 7451 to match the firmware's compile-time
+      locator and shares one zenohd across the test process (`OnceCell`)
+      so reused-port flake disappears.
+- [x] 13.4.6 Added `tests/tests/freertos_qemu.rs` running under the
+      `freertos-qemu` nextest test-group: `test_qemu_arm_available`,
+      `test_arm_gcc_available`, `test_freertos_sentinel_declares_publishers`
+      (asserts ≥6 zpico declares — comp-all gives 37). Single-boot design:
+      `start_sentinel_freertos` hashes IP+MAC into the zenoh ZID seed, so
+      a second boot in the same process collides on session ID. The boot
+      test was folded into declares_publishers, and a separate `ss(8)`
+      ESTAB probe was dropped because the declare confirmations already
+      prove the QEMU↔zenohd handshake succeeded.
 
 **Acceptance:** QEMU FreeRTOS binary boots, registers all publishers/services,
 `ros2 service list` shows the expected services, at least `test_sentinel_starts` +
@@ -248,11 +261,16 @@ Linux subset.
 
 ## Phase 13.K1 work items (post-investigation)
 
-- [ ] **13.K1.5 Fix sentinel network-init regression.** sentinel_freertos
-      hangs **before `app_task_entry` runs** on every nano-ros revision
-      tested (`34f1d473` → `3d566711`). Talker reaches `Network ready.` on
-      the same revisions with the same board/lwIP config — so the hang is
-      sentinel-binary-specific.
+- [x] **13.K1.5 Fix sentinel network-init regression.** Resolved as part
+      of 13.K1.7 / 13.K1.8 — root cause was the same Cortex-M3 task stack
+      overflow (1 MB closure frame from inline arena × NRVO miss) that
+      produced the apparent "no app_task_entry" / "no `Network ready.`"
+      symptom. Talker survived because its smaller closure fits in 64 KB
+      stack; sentinel did not. With the cast fix in 13.K1.8 + bumped task
+      stack + tuned `MAX_CBS`, sentinel now boots through `app_task_entry`,
+      prints `Network ready.`, declares all publishers, and reaches
+      `executor.spin(...)` with `comp-all`. Below: original 13.K1.5
+      investigation notes preserved for context.
 
       **Investigation 2026-04-30:**
 
@@ -305,27 +323,104 @@ Linux subset.
       5. Use `tshark -i lo` once we get past this so the bigger bisection
          can proceed.
 
-- [ ] **13.K1.6 Add component cargo features in `autoware_sentinel_core`.**
-      Implement the feature taxonomy from the table above (`comp-mrm`,
+- [x] **13.K1.6 Add component cargo features in `autoware_sentinel_core`.**
+      Implemented the six component features (`comp-mrm`,
       `comp-cmd-gate-extra`, `comp-validator`, `comp-op-mode-mgr`,
-      `comp-engagement`, `comp-stubs`). Mechanical: split publisher tuple,
-      gate destructure + publish calls; gate `add_subscription` and
-      `add_service` calls; gate the `SafetyIsland` field declarations and
-      callback methods. Default Linux = all on; embedded default = all off
-      (~6 entities — well under 13.K1's threshold).
+      `comp-engagement`, `comp-stubs`) plus a `comp-all` umbrella feature.
+      Publisher creation, destructure, subscription registration, service
+      registration, and the per-publisher `publish` calls in the 30 Hz
+      timer body are all `#[cfg]`-gated. Imports and constants that
+      become dead under partial feature combinations are likewise gated.
+      `autoware_sentinel_linux` enables `comp-all` + `monitoring-topics`
+      to keep the pre-refactor topology; `autoware_sentinel_freertos`
+      and `autoware_sentinel_zephyr` carry no `comp-*` features by
+      default (core-only baseline: 6 publishers, 3 subs, 1 service).
+      Verified: every one-feature-on combination cargo-checks clean for
+      `platform-posix`; full `comp-all + monitoring-topics` builds for
+      `platform-posix`; `platform-freertos` minimal builds for
+      `thumbv7m-none-eabi`.
 
-- [ ] **13.K1.7 Bisect with feature gates.** Build sentinel_freertos with
-      each `comp-*` ON in turn, observe whether 13.K1 reproduces. Use
-      `tshark -i lo -Y "zenoh"` to capture Declare frames and their acks
-      (no sudo when user is in the `wireshark` group). Pinpoint smallest
-      combination that triggers the failure, then drill into that
-      component's specific add_service / create_publisher path.
+- [x] **13.K1.7 Bisect with feature gates.** Bisection result: **the
+      original 13.K1 hang on FreeRTOS was misdiagnosed as a "declare
+      storm" — the actual failure is a Cortex-M3 task stack overflow.**
 
-- [ ] **13.K1.8 Patch nano-ros.** Once root cause known, fix in
-      `~/repos/nano-ros-sentinel`, run the minimal repros to verify,
-      coordinate with the upstream nano-ros maintainer, and revert the
-      sibling-clone path overrides in this repo back to the workspace
-      git pin.
+      Root cause: `Executor` carries the callback arena inline
+      (`arena: [MaybeUninit<u8>; ARENA_SIZE]`). At `.env` defaults
+      (`NROS_EXECUTOR_MAX_CBS=96`) ARENA_SIZE = 346 KB. The
+      `Result<Executor, _>` return path defeats NRVO in `Executor::open`
+      so LLVM emits ~3 stack copies, producing a ~1 MB frame on
+      `app_task_entry`'s mono-instantiation. The 128 KB / 64 KB FreeRTOS
+      task stack overflows below SRAM base, the SP wraps to wild
+      addresses (e.g. `0x1ef236xx`), and the very first push faults
+      with `v7M INVSTATE UsageFault` — no z_declare_publisher / Declare
+      frame ever fires. Confirmed via `qemu-system-arm -d
+      guest_errors,int` and `arm-none-eabi-objdump` of `app_task_entry`
+      (`sub.w sp, sp, #1048576`).
+
+      Per-feature bisection on FreeRTOS QEMU (with shrunk caps:
+      `NROS_EXECUTOR_MAX_CBS=22`, `NROS_SUBSCRIPTION_BUFFER_SIZE=1024`,
+      `ZPICO_MAX_PUBLISHERS=40`, app stack 255 KB):
+
+      | Build (single comp-* ON)   | Result                                  |
+      |---------------------------|-----------------------------------------|
+      | core only                 | declares 6 pubs, "Executor ready"       |
+      | + comp-mrm                | declares 13 pubs, "Executor ready"      |
+      | + comp-cmd-gate-extra     | declares 19 pubs, "Executor ready"      |
+      | + comp-validator          | declares 10 pubs, "Executor ready"      |
+      | + comp-op-mode-mgr        | declares 9 pubs, "Executor ready"       |
+      | + comp-engagement         | declares 10 pubs, "Executor ready"      |
+      | + comp-stubs              | declares 6 pubs, "Executor ready"       |
+      | comp-all (37 pubs)        | declares all 37 pubs, then `BufferTooSmall` on first `add_subscription` (arena exhaustion: 28 cbs needed, only 22 fit before stack overflow trips again) |
+
+      Every individual `comp-*` boots, declares its publishers cleanly,
+      and reaches `executor.spin(...)` — **no declare-storm hang in any
+      configuration**. The Cortex-M3 ceiling on FreeRTOS is ~26 entities
+      (`MAX_CBS=22` minus internal slots) before the arena/stack
+      tradeoff hits the `xTaskCreate` `(uint16_t)stack_words` truncation
+      cap at 256 KB. `comp-all` (28 cbs) requires lifting that cap or
+      moving the arena off the stack.
+
+      Side fixes applied (in this repo, no upstream patch yet):
+      - `justfile` `freertos_env` overrides `.env`'s 96-cb / 8 KB
+        defaults with `MAX_CBS=22`, `PARAM_SERVICE_BUFFER_SIZE=1024`,
+        and `ZPICO_*` values matching the FreeRTOS topology.
+      - `src/autoware_sentinel_freertos/config.toml` raised
+        `app_stack_bytes` to 261 120 (just below the `xTaskCreate`
+        uint16_t cap = 65 535 words = 262 140 bytes).
+      - `src/autoware_sentinel_freertos/Cargo.toml` exposes each
+        `comp-*` feature for direct `cargo build --features=...` runs
+        during bisection.
+
+- [x] **13.K1.8 Patch nano-ros (upstream cast fix).** Dropped the
+      `(uint16_t)` cast in `nros_freertos_create_task`
+      (`nano-ros-sentinel/packages/boards/nros-board-mps2-an385-freertos/build.rs:522`).
+      `configSTACK_DEPTH_TYPE` already defaults to `StackType_t = uint32_t`
+      on Cortex-M3 (per `portmacro.h`), so xTaskCreate accepts the full
+      32-bit depth — the cast was a pure bug. With the cast gone, app
+      tasks can request stacks > 256 KB without silent truncation.
+
+      E2E verified on FreeRTOS QEMU MPS2-AN385 with `comp-all` enabled
+      (`autoware_sentinel_core` features = `platform-freertos, comp-all`):
+      - `app_stack_bytes = 524288` (512 KB), `NROS_EXECUTOR_MAX_CBS=32`,
+        `ZPICO_MAX_PUBLISHERS=40`.
+      - All 37 publishers declared cleanly via zpico Declare frames.
+      - `Executor ready — spinning...` reached, executor sustained the
+        30 Hz timer for the full test window.
+      - `ss -tn` shows ESTAB session sentinel↔zenohd on tcp 127.0.0.1:7451
+        (host-side endpoint of QEMU SLIRP NAT for 10.0.2.2:7451).
+      - 30 s run, no UsageFault / HardFault / FreeRTOS assert.
+
+      Optional follow-up (not required for `comp-all`): box the executor
+      arena (`arena: [MaybeUninit<u8>; ARENA_SIZE]` →
+      `Box<[MaybeUninit<u8>; ARENA_SIZE]>`) to remove the NRVO-defeated
+      ~3× stack copy of the inline arena. Currently mitigated by
+      bumping the FreeRTOS task stack and shrinking `MAX_CBS`.
+
+      Next housekeeping: once the cast fix lands on the upstream nano-ros
+      branch, revert `freertos_env` overrides in this repo's justfile
+      back toward `.env` defaults and re-pin the workspace nano-ros
+      revision to the patched commit (sibling-clone path overrides
+      stay until then).
 
 ## Known Issues
 

@@ -47,3 +47,7 @@ path = "tests/zephyr_native_sim.rs"
 [[test]]
 name = "auto_drive_comparison"
 path = "tests/auto_drive_comparison.rs"
+
+[[test]]
+name = "freertos_qemu"
+path = "tests/freertos_qemu.rs"

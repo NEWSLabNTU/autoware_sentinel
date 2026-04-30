@@ -19,39 +19,39 @@ rustflags = [
 
 [patch.crates-io.nros]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.nros-core]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.nros-serdes]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.nros-node]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.nros-rmw]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.nros-params]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.nros-macros]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.nros-rmw-zenoh]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 [patch.crates-io.zpico-sys]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "9c4aa312"
+rev = "020af3d5"
 
 # --- Generated message crates (shared with sentinel_linux) ------------------
 

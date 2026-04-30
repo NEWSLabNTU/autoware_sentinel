@@ -36,13 +36,13 @@ members = [
 #   tests                          — nextest integration tests, standalone
 
 [patch.crates-io]
-# nano-ros — pinned to the rev that includes the Phase-13 wall-clock-accurate
-# spin_once timer fix (34f1d473). Phase 13.K1 investigation continues against
-# a sibling clone (`~/repos/nano-ros-sentinel`); flip these to local paths
-# locally when reproducing.
-nros = { path = "../nano-ros-sentinel/packages/core/nros" }
-nros-core = { path = "../nano-ros-sentinel/packages/core/nros-core" }
-nros-serdes = { path = "../nano-ros-sentinel/packages/core/nros-serdes" }
+# nano-ros — pinned to the rev that includes Phase 13.K1's
+# `xTaskCreate` uint16_t cast fix (9c4aa312). Local development against
+# the sibling clone (`~/repos/nano-ros-sentinel`) can override these
+# patches via per-crate `.cargo/config.toml` path entries.
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "9c4aa312" }
+nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "9c4aa312" }
+nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "9c4aa312" }
 
 # Generated message packages (from sentinel_linux — the superset of all packages)
 autoware_adapi_v1_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }

@@ -108,13 +108,18 @@ fn test_arm_gcc_available() {
 // non-deterministic source, only one full FreeRTOS boot per process is
 // reliable.
 
-/// FreeRTOS sentinel boots and declares the expected publishers.
+/// FreeRTOS sentinel boots all the way through `wire_executor` to the
+/// `Executor ready — spinning…` line, proving the full pipeline works:
+/// lwIP up → zpico session opened → all publishers/services declared on
+/// zenohd → executor armed for the 30 Hz timer.
 ///
-/// Reads the QEMU semihosting output for declare-publisher confirmations
-/// emitted by the zpico C shim. With `comp-all` the sentinel declares 37
-/// publishers; the core-only baseline declares 6.
+/// `wire_executor` only reaches its tail print after every
+/// `create_publisher` / `add_subscription` / `add_service` / `add_timer`
+/// call has succeeded against the active session, so this single
+/// assertion is end-to-end coverage equivalent to counting declare
+/// confirmations on the firmware side.
 #[rstest]
-fn test_freertos_sentinel_declares_publishers(
+fn test_freertos_sentinel_executor_ready(
     zenohd_freertos: u16,
     sentinel_freertos_binary: PathBuf,
 ) {
@@ -125,12 +130,10 @@ fn test_freertos_sentinel_declares_publishers(
     let (_sentinel, output) = start_sentinel_freertos(&sentinel_freertos_binary)
         .expect("FreeRTOS sentinel failed to boot");
 
-    let declared = count_pattern(&output, "declared #");
-    eprintln!("zpico declares observed in boot output: {declared}");
+    let ready = count_pattern(&output, "Executor ready");
     assert!(
-        declared >= 6,
-        "expected ≥6 publisher declares (core baseline), got {declared}\n\
-         output:\n{output}"
+        ready >= 1,
+        "FreeRTOS sentinel never reached `Executor ready`\noutput:\n{output}"
     );
 }
 

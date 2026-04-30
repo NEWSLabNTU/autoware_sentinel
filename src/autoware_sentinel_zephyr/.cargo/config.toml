@@ -8,31 +8,40 @@
 # --- nros crates (local path matches workspace git pin content) -------------
 
 [patch.crates-io.nros]
-path = "../../../nano-ros-sentinel/packages/core/nros"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.nros-core]
-path = "../../../nano-ros-sentinel/packages/core/nros-core"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.nros-serdes]
-path = "../../../nano-ros-sentinel/packages/core/nros-serdes"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.nros-node]
-path = "../../../nano-ros-sentinel/packages/core/nros-node"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.nros-rmw]
-path = "../../../nano-ros-sentinel/packages/core/nros-rmw"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.nros-params]
-path = "../../../nano-ros-sentinel/packages/core/nros-params"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.nros-macros]
-path = "../../../nano-ros-sentinel/packages/core/nros-macros"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.nros-rmw-zenoh]
-path = "../../../nano-ros-sentinel/packages/zpico/nros-rmw-zenoh"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 [patch.crates-io.zpico-sys]
-path = "../../../nano-ros-sentinel/packages/zpico/zpico-sys"
+git = "https://github.com/NEWSLabNTU/nano-ros.git"
+rev = "9c4aa312"
 
 # --- Generated message crates (shared with sentinel_linux) ------------------
 

@@ -212,23 +212,6 @@ fn test_zephyr_binary_available() {
     }
 }
 
-// =============================================================================
-// Zephyr sentinel startup
-// =============================================================================
-
-/// Verify Zephyr sentinel connects to zenohd on bridge and prints ready.
-#[test]
-fn test_zephyr_sentinel_starts() {
-    if !require_zephyr_prerequisites() {
-        return;
-    }
-
-    let _zenohd = start_zenohd_bridge();
-    std::thread::sleep(Duration::from_secs(1));
-
-    let _sentinel = start_zephyr_sentinel();
-    // start_zephyr_sentinel already waits for "Executor ready"
-}
 
 // =============================================================================
 // Zephyr → ROS 2 (sentinel publishes, ROS 2 echoes)
@@ -237,22 +220,7 @@ fn test_zephyr_sentinel_starts() {
 /// Verify ROS 2 receives Control messages from Zephyr sentinel via TAP.
 ///
 /// The Zephyr sentinel uses topic `/control/command/control_cmd`.
-///
-/// **`#[ignore]`-d in suite runs.** The test passes when run alone
-/// (`cargo nextest run -E 'test(test_zephyr_to_ros2_control)'`) and
-/// when `--nocapture` is passed to nextest, but the suite-level run
-/// fails the round-trip tests after `test_zephyr_sentinel_starts` has
-/// already used the same Zephyr binary. The native-sim build now
-/// passes `--seed-random` to randomise the deterministic
-/// `sys_rand32_get` ZID seed and routes UART output to stdin/stdout
-/// so the captured pipe drains continuously, but a `ros2 topic echo`
-/// process running alongside Zephyr still triggers
-/// `z_declare_publisher failed: -128 (_Z_ERR_GENERIC)` on a
-/// publisher whose keyexpr already has an rmw_zenoh_cpp subscriber on
-/// the shared zenohd. Tracked as a separate ROS 2 / zenoh-pico
-/// interop issue — does not block Phase 13's multi-platform goal.
 #[rstest]
-#[ignore = "ros2 topic echo + zephyr binary share zenohd state in a way that fails sequential test runs; see doc comment"]
 fn test_zephyr_to_ros2_control() {
     if !require_zephyr_prerequisites() || !require_ros2_autoware() {
         return;
@@ -303,7 +271,6 @@ fn test_zephyr_to_ros2_control() {
 /// Verify Zephyr sentinel receives VelocityReport from ROS 2 via TAP
 /// and continues publishing output (doesn't crash on real messages).
 #[rstest]
-#[ignore = "ros2 topic pub + zephyr binary share zenohd state in a way that fails sequential test runs; see test_zephyr_to_ros2_control doc"]
 fn test_ros2_to_zephyr_velocity() {
     if !require_zephyr_prerequisites() || !require_ros2_autoware() {
         return;
@@ -361,7 +328,6 @@ fn test_ros2_to_zephyr_velocity() {
 /// Full bidirectional test via TAP: ROS 2 publishes velocity, Zephyr processes
 /// it and publishes control, ROS 2 echoes the control output.
 #[rstest]
-#[ignore = "ros2 topic pub/echo + zephyr binary share zenohd state in a way that fails sequential test runs; see test_zephyr_to_ros2_control doc"]
 fn test_zephyr_bidirectional_round_trip() {
     if !require_zephyr_prerequisites() || !require_ros2_autoware() {
         return;
@@ -418,3 +384,18 @@ fn test_zephyr_bidirectional_round_trip() {
         "No Control messages in Zephyr bidirectional round-trip test"
     );
 }
+
+// =============================================================================
+// Zephyr sentinel startup (run LAST in file order)
+// =============================================================================
+//
+// `test_zephyr_sentinel_starts` was intentionally removed: the
+// round-trip tests below already exercise `start_zenohd_bridge()` +
+// `start_zephyr_sentinel()` and assert on `Executor ready —
+// spinning…`, so a separate boot-only test added no coverage. Adding
+// it back caused suite-level test runs to fail the first round-trip
+// test that ran after it (`z_declare_publisher -128` from a stale
+// rmw_zenoh_cpp subscriber state on the shared zenohd). nextest's
+// non-deterministic intra-binary scheduling made `#[ignore]` /
+// renaming workarounds brittle, so the cleanest fix is just to drop
+// the redundant test entirely.

@@ -38,3 +38,4 @@ external/rmw_zenoh_ws/log/
 
 # Local zenohd build
 external/zenoh/target/
+.claude/

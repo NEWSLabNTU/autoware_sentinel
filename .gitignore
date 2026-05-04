@@ -39,3 +39,9 @@ external/rmw_zenoh_ws/log/
 # Local zenohd build
 external/zenoh/target/
 .claude/
+
+# Phase 11.5 — SPE firmware build artifacts
+scripts/spe/downloads/
+external/spe-fsp/
+src/sentinel_spe_firmware/target/
+src/sentinel_spe_firmware/Cargo.lock

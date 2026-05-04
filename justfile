@@ -156,6 +156,216 @@ build-zenohd:
     cd external/zenoh && cargo build --profile fast -p zenohd
 
 # ════════════════════════════════════════════════════════════════════
+# SPE firmware (Phase 11.5 + 11.7 — autoware-sentinel on AGX Orin SPE)
+#
+# Pipeline: cargo staticlib → BSP patch apply → upstream Makefile →
+# spe.bin → cp into L4T bootloader/ → flash.sh -k A_spe-fw.
+#
+# Env knobs:
+#   SPE_BSP_SRC_DIR    pre-extracted BSP root (default:
+#                      scripts/spe/downloads/spe-freertos-bsp).
+#   ARM_TOOLCHAIN_DIR  pre-extracted arm-none-eabi toolchain root
+#                      (default: scripts/spe/downloads/arm-gnu-toolchain-13.2.rel1).
+#   L4T_BSP_DIR        L4T BSP root for flashing (typically
+#                      ~/nvidia/Linux_for_Tegra). Required for stage-
+#                      spe-image / flash-spe.
+# ════════════════════════════════════════════════════════════════════
+
+# Download the SPE FreeRTOS BSP + ARM GNU toolchain (idempotent).
+orin_spe-bsp-download:
+    ./scripts/spe/download-bsp.sh
+
+# Apply the BSP integration patch series (idempotent). Adds
+# ENABLE_NROS_APP to the upstream Makefile + main_task hook + copies
+# the C shim into the BSP tree.
+orin_spe-bsp-patch:
+    ./scripts/spe/apply-patches.sh
+
+# Build NVIDIA's FSP into a static archive that the firmware crate's
+# Cargo build links against (cargo wants the archive to exist for
+# metadata mmap; the final link happens in NVIDIA's Makefile, but
+# Cargo errors before the Makefile gets a chance to run if the
+# archive is missing).
+#
+# Repackages every `.o` produced by the upstream demo Makefile (minus
+# the demo's `main.o` / `app_init.o` entry points so they don't
+# collide with our `nros_app_init`) into a single
+# `libtegra_aon_fsp.a` plus stages headers under
+# `external/spe-fsp/install/`. Mirrors nano-ros's
+# `just orin_spe bsp-build`.
+orin_spe-bsp-stage: orin_spe-bsp-download
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BSP="${SPE_BSP_SRC_DIR:-$(pwd)/scripts/spe/downloads/spe-freertos-bsp}"
+    TC="${ARM_TOOLCHAIN_DIR:-$(pwd)/scripts/spe/downloads/arm-gnu-toolchain-13.2.rel1}"
+    PREFIX="$(pwd)/external/spe-fsp/install"
+
+    [ -d "$BSP/fsp/source" ] || { echo "BSP missing at $BSP"; exit 1; }
+    [ -x "$TC/bin/arm-none-eabi-gcc" ] || { echo "Toolchain missing"; exit 1; }
+
+    if [ -f "$PREFIX/lib/libtegra_aon_fsp.a" ]; then
+        echo "==> Staged FSP already at $PREFIX (run 'just clean-spe' to refresh)"
+        exit 0
+    fi
+
+    echo "==> Building rt-aux-cpu-demo-fsp (without ENABLE_NROS_APP) to produce .o files"
+    make -C "$BSP/rt-aux-cpu-demo-fsp" -j"$(nproc)" \
+        SPE_FREERTOS_BSP="$BSP" \
+        FREERTOS_DIR="$BSP/FreeRTOSV10.4.3/FreeRTOS/Source" \
+        FREERTOS_PORT="GCC/ARM_R5" \
+        FSP_SRC_DIR="$BSP/fsp/source" \
+        CROSS_COMPILE="$TC/bin/arm-none-eabi-" \
+        bin_t23x
+
+    OUTDIR="$BSP/rt-aux-cpu-demo-fsp/out/t23x"
+    [ -d "$OUTDIR" ] || { echo "no $OUTDIR — make failed?"; exit 1; }
+
+    mkdir -p "$PREFIX/lib" "$PREFIX/include"
+
+    echo "==> Packaging FSP/FreeRTOS objects into libtegra_aon_fsp.a"
+    OBJS=$(find "$OUTDIR" -name '*.o' \
+        -not -name 'main.o' \
+        -not -name 'app_init.o' \
+        -not -name 'startup.o' \
+        | sort)
+    [ -n "$OBJS" ] || { echo "no .o under $OUTDIR"; exit 1; }
+    "$TC/bin/arm-none-eabi-ar" rcs "$PREFIX/lib/libtegra_aon_fsp.a" $OBJS
+
+    LIBC="$(find "$TC/arm-none-eabi/lib" -name 'libc.a' | head -1 || true)"
+    if [ -n "$LIBC" ]; then
+        cp "$LIBC" "$PREFIX/lib/libnewlib.a"
+    fi
+
+    rm -rf "$PREFIX/include/fsp" "$PREFIX/include/freertos"
+    mkdir -p "$PREFIX/include/fsp" "$PREFIX/include/freertos"
+    cp -a "$BSP/fsp/source/include/." "$PREFIX/include/fsp/"
+    cp -a "$BSP/FreeRTOSV10.4.3/FreeRTOS/Source/include/." "$PREFIX/include/freertos/"
+
+    echo "==> Staged at $PREFIX:"
+    ls -lh "$PREFIX/lib"/*.a | awk '{print "    " $0}'
+
+    # Wipe the demo's out/ so the subsequent `build-spe-image` make
+    # invocation rebuilds with ENABLE_NROS_APP=1 from scratch (the
+    # generated `.o` files are CFLAGS-dependent and we'd otherwise
+    # link a mix).
+    rm -rf "$OUTDIR"
+
+# Build the Rust firmware staticlib (Phase 11.5.b). Uses its own
+# .cargo/config.toml that pins armv7r-none-eabi (soft float).
+# Depends on bsp-stage so cargo's link-search resolves
+# `libtegra_aon_fsp.a` for metadata.
+build-spe-firmware: orin_spe-bsp-stage
+    #!/usr/bin/env bash
+    set -euo pipefail
+    PREFIX="$(pwd)/external/spe-fsp/install"
+    TC="${ARM_TOOLCHAIN_DIR:-$(pwd)/scripts/spe/downloads/arm-gnu-toolchain-13.2.rel1}"
+    [ -f "$PREFIX/lib/libtegra_aon_fsp.a" ] || \
+        { echo "FSP not staged at $PREFIX — run 'just orin_spe-bsp-stage'"; exit 1; }
+    cd src/sentinel_spe_firmware
+    NV_SPE_FSP_DIR="$PREFIX" cargo +nightly build --release
+    OUT="$(pwd)/target/armv7r-none-eabi/release/libsentinel_spe_firmware.a"
+    [ -f "$OUT" ] || { echo "expected staticlib not produced: $OUT"; exit 1; }
+
+    # Strip FSP/FreeRTOS objects that cargo bundled into the staticlib.
+    # The board crate emits `cargo:rustc-link-lib=static=tegra_aon_fsp`
+    # in its build.rs, and `staticlib` archives slurp every transitive
+    # native lib. NVIDIA's Makefile compiles the same FSP/FreeRTOS
+    # sources directly, so leaving them in our staticlib triggers
+    # multiple-definition errors at the final link. Drop the
+    # duplicates here — at the cost of one `ar d` per .o.
+    AR="$TC/bin/arm-none-eabi-ar"
+    "$AR" t "$PREFIX/lib/libtegra_aon_fsp.a" | sort -u > /tmp/fsp_objs.list
+    "$AR" t "$PREFIX/lib/libnewlib.a"        | sort -u >> /tmp/fsp_objs.list
+    cnt=0
+    while read -r obj; do
+        if "$AR" t "$OUT" 2>/dev/null | grep -qx "$obj"; then
+            "$AR" d "$OUT" "$obj" 2>/dev/null || true
+            cnt=$((cnt + 1))
+        fi
+    done < /tmp/fsp_objs.list
+    rm -f /tmp/fsp_objs.list
+    echo "==> built: $OUT ($(du -h "$OUT" | cut -f1)); stripped $cnt FSP/newlib duplicates"
+
+# End-to-end image build: cargo staticlib → patch BSP → upstream Make
+# → spe.bin staged into build/. Phase 11.5.d.
+build-spe-image: build-spe-firmware orin_spe-bsp-patch
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BSP="${SPE_BSP_SRC_DIR:-$(pwd)/scripts/spe/downloads/spe-freertos-bsp}"
+    TC="${ARM_TOOLCHAIN_DIR:-$(pwd)/scripts/spe/downloads/arm-gnu-toolchain-13.2.rel1}"
+    FW_OUT="$(pwd)/src/sentinel_spe_firmware/target/armv7r-none-eabi/release"
+    [ -f "$FW_OUT/libsentinel_spe_firmware.a" ] || \
+        { echo "firmware staticlib missing — build-spe-firmware failed?"; exit 1; }
+
+    echo "==> make bin_t23x ENABLE_NROS_APP=1"
+    make -C "$BSP/rt-aux-cpu-demo-fsp" -j"$(nproc)" \
+        SPE_FREERTOS_BSP="$BSP" \
+        FREERTOS_DIR="$BSP/FreeRTOSV10.4.3/FreeRTOS/Source" \
+        FREERTOS_PORT="GCC/ARM_R5" \
+        FSP_SRC_DIR="$BSP/fsp/source" \
+        CROSS_COMPILE="$TC/bin/arm-none-eabi-" \
+        ENABLE_NROS_APP=1 \
+        SENTINEL_FW_OUT="$FW_OUT" \
+        bin_t23x
+
+    OUTDIR="$BSP/rt-aux-cpu-demo-fsp/out/t23x"
+    mkdir -p build
+    cp "$OUTDIR/spe.bin" build/spe.bin
+    cp "$OUTDIR/spe.elf" build/spe.elf
+
+    echo ""
+    echo "==> Image staged:"
+    ls -lh build/spe.bin build/spe.elf | awk '{print "    " $0}'
+    echo ""
+    echo "==> Memory budget (256 KB BTCM):"
+    "$TC/bin/arm-none-eabi-size" build/spe.elf
+    echo ""
+    echo "==> Symbol-presence sanity check:"
+    for sym in nros_app_rust_entry nros_app_init _z_open_ivc tegra_ivc_channel_get xPortStartScheduler; do
+        if "$TC/bin/arm-none-eabi-nm" build/spe.elf | grep -qE "[Tt] $sym\$"; then
+            echo "    [OK] $sym"
+        else
+            echo "    [MISS] $sym (linker may have garbage-collected it)"
+        fi
+    done
+
+# Stage the built spe.bin into the L4T BSP's bootloader/ tree so
+# flash.sh picks it up by filename. Must run before flash-spe.
+stage-spe-image: build-spe-image
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -n "${L4T_BSP_DIR:-}" ] || \
+        { echo "L4T_BSP_DIR not set (e.g. ~/nvidia/Linux_for_Tegra)"; exit 1; }
+    [ -f build/spe.bin ] || { echo "build/spe.bin missing"; exit 1; }
+    cp build/spe.bin "$L4T_BSP_DIR/bootloader/spe_t234.bin"
+    echo "==> Staged: $L4T_BSP_DIR/bootloader/spe_t234.bin"
+
+# Flash the SPE firmware partition. Board must be in USB recovery
+# mode (force-recovery + reset). Phase 11.7.a.
+flash-spe: stage-spe-image
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -n "${L4T_BSP_DIR:-}" ] || \
+        { echo "L4T_BSP_DIR not set"; exit 1; }
+    [ -x "$L4T_BSP_DIR/flash.sh" ] || \
+        { echo "flash.sh not found at $L4T_BSP_DIR"; exit 1; }
+    echo "Put the AGX Orin DevKit in USB recovery mode (force-recovery + reset)."
+    echo "Press Enter to continue, Ctrl-C to abort..."
+    read -r
+    cd "$L4T_BSP_DIR"
+    sudo ./flash.sh -k A_spe-fw jetson-agx-orin-devkit internal
+
+# Clean SPE build artifacts. Leaves scripts/spe/downloads/ alone.
+clean-spe:
+    #!/usr/bin/env bash
+    rm -rf src/sentinel_spe_firmware/target build/spe.bin build/spe.elf
+    BSP="${SPE_BSP_SRC_DIR:-$(pwd)/scripts/spe/downloads/spe-freertos-bsp}"
+    if [ -d "$BSP/rt-aux-cpu-demo-fsp/out" ]; then
+        rm -rf "$BSP/rt-aux-cpu-demo-fsp/out"
+    fi
+    echo "==> SPE build artifacts cleaned"
+
+# ════════════════════════════════════════════════════════════════════
 # Run
 # ════════════════════════════════════════════════════════════════════
 

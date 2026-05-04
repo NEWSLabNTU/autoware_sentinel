@@ -1,0 +1,20 @@
+# SPE Cortex-R5F firmware build config.
+#
+# `armv7r-none-eabi` (NOT `eabihf`) — NVIDIA's BSP CFLAGS are
+# `-mfloat-abi=softfp -mfpu=vfpv3-d16`, and the bundled newlib in
+# `arm-gnu-toolchain-13.2.rel1` ships only the soft-float libc.
+# Linking hardfp Rust objects against softfp BSP objects fails with
+# `error: ... uses VFP register arguments, ... does not`. Using the
+# soft-float Rust target sidesteps the conflict; perf hit on the
+# sentinel's float-light control path is negligible (no MPC).
+#
+# `-Zbuild-std` is required because `armv7r-none-eabi` is a Tier-3
+# target without a prebuilt `core` rlib in the rustup tree, and we
+# need the same compile-time flags applied to `core` + `alloc` as to
+# our own crates so panic-strategy + float-ABI propagate uniformly.
+
+[build]
+target = "armv7r-none-eabi"
+
+[unstable]
+build-std = ["core", "alloc"]

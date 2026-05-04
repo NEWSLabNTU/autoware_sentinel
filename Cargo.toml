@@ -5,6 +5,7 @@ exclude = [
     "src/autoware_sentinel_zephyr",
     "src/autoware_sentinel_freertos",
     "src/autoware_sentinel_nuttx",
+    "src/sentinel_spe_firmware",
     "src/verification",
 ]
 members = [
@@ -39,13 +40,15 @@ members = [
 #   tests                          — nextest integration tests, standalone
 
 [patch.crates-io]
-# nano-ros — pinned to the rev that includes Phase 13.K1's
-# `xTaskCreate` uint16_t cast fix (9c4aa312, bumped to 036057ff for nros-px4 / xrce-agent updates). Local development against
-# the sibling clone (`~/repos/nano-ros-sentinel`) can override these
-# patches via per-crate `.cargo/config.toml` path entries.
-nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
-nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
-nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
+# nano-ros — pinned to the rev that includes Phase 100 (Orin SPE
+# infrastructure: nvidia-ivc, nros-platform-orin-spe,
+# nros-board-orin-spe, Z_FEATURE_LINK_IVC, BSP recipes). Local
+# development against the sibling clone (`~/repos/nano-ros-sentinel`)
+# can override these patches via per-crate `.cargo/config.toml`
+# path entries.
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "587adc6b" }
+nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "587adc6b" }
+nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "587adc6b" }
 
 # Generated message packages (from sentinel_linux — the superset of all packages)
 autoware_adapi_v1_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }

@@ -1,0 +1,67 @@
+# Autoware Sentinel — SPE firmware wrap (Phase 11.5.b)
+#
+# `staticlib` wrap of nano-ros's `nros-board-orin-spe` rlib + a panic
+# handler. NVIDIA's `rt-aux-cpu-demo-fsp/Makefile` links the resulting
+# `libsentinel_spe_firmware.a` into `spe.elf` via the `ENABLE_NROS_APP`
+# branch (see `scripts/spe/apply-patches.sh`).
+#
+# Excluded from the workspace because cargo can't unify the workspace's
+# host target (`x86_64-unknown-linux-gnu`) with the SPE's
+# `armv7r-none-eabi`. Build via:
+#   `cd src/sentinel_spe_firmware && cargo +nightly build --release`
+# or via `just build-spe-image` from the repo root, which orchestrates
+# cargo + the BSP patch + the upstream Makefile.
+
+[package]
+name = "sentinel-spe-firmware"
+version = "0.1.0"
+edition = "2024"
+description = "Autoware Sentinel SPE firmware (Cortex-R5F + NVIDIA FSP)"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "sentinel_spe_firmware"
+crate-type = ["staticlib"]
+
+# Workspace excluded → must declare git deps locally; the workspace's
+# `[patch.crates-io]` block is invisible from here. Pin matches the
+# rev in the parent workspace's Cargo.toml so a future bump touches
+# both files together.
+[dependencies]
+# Phase 11.5 scaffold pulls only the board crate. `nros` (executor +
+# pub/sub types) joins under Phase 11.3 once the SafetyIsland wiring
+# moves over from `src/autoware_sentinel/` (Zephyr) — that's also
+# when message-package patches (std_msgs, autoware_*_msgs) become
+# necessary, similar to the per-example `generated/` patches in
+# `examples/qemu-arm-freertos/rust/zenoh/talker/.cargo/config.toml`.
+nros-board-orin-spe = { git = "https://github.com/jerry73204/nano-ros.git", rev = "587adc6b", default-features = false, features = ["fsp", "cortex-r"] }
+
+# `nros-platform` is a transitive dep of the board crate; declared
+# explicitly here to flip on `global-allocator` (Phase 71.27 — wires
+# the FreeRTOS `pvPortMalloc` / `vPortFree` pair as Rust's
+# `#[global_allocator]`). Without this, even crates that pull `alloc`
+# transitively fail with "no global memory allocator found" when
+# linked into a `staticlib`.
+nros-platform = { git = "https://github.com/jerry73204/nano-ros.git", rev = "587adc6b", default-features = false, features = ["platform-orin-spe", "global-allocator"] }
+
+# `panic-halt` is the simplest correct strategy for the SPE: an
+# uncaught panic blocks the FreeRTOS task forever via WFI. The MRM
+# safety path is in the application closure itself, not in the
+# panic handler. A future iteration may swap this for a logger that
+# emits the panic location to TCU before halting.
+panic-halt = "1"
+
+# Cortex-R5F has no unwinder. Panics must abort everywhere — both this
+# crate and every transitive dependency. Setting the strategy on the
+# top-level profile is what makes cargo propagate it.
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = "fat"
+opt-level = "z"      # 256 KB BTCM is tight; size before speed
+codegen-units = 1
+debug = false        # Strip; debug symbols inflate the rlib but are
+                     # discarded by the final link anyway.

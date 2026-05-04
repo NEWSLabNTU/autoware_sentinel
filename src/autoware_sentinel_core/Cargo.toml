@@ -66,6 +66,11 @@ platform-zephyr = ["nros/platform-zephyr"]
 platform-freertos = ["nros/platform-freertos"]
 platform-nuttx = ["std", "nros/platform-nuttx"]
 platform-bare-metal = ["nros/platform-bare-metal"]
+# Phase 11 — AGX Orin SPE (Cortex-R5F + NVIDIA FreeRTOS FSP, IVC link).
+# Same `nros::Executor` shape as `platform-freertos`; the difference is
+# the underlying `PlatformClock` / `PlatformIvc` impls live in
+# `nros-platform-orin-spe` rather than the upstream FreeRTOS port.
+platform-orin-spe = ["nros/platform-orin-spe"]
 
 [dependencies]
 log = { version = "0.4", default-features = false }

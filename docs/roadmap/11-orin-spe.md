@@ -417,7 +417,48 @@ file path + commit hash in the bridge crate's README so divergence is review-vis
 Wire the sentinel algorithms into the FreeRTOS POSIX application and run end-to-end
 integration tests against the Autoware planning simulator.
 
-**Tasks:**
+**Status:** infrastructure landed, body wiring **BLOCKED** on three nano-ros gaps
+(tracked under nano-ros Phase 100.0-fsp-fix). Until they clear, the SPE firmware
+crate stays a `wfi`-loop scaffold; build-spe-image produces a bootable but inert
+`spe.bin`.
+
+**Blockers (need fixing on nano-ros side before re-enabling the SafetyIsland wiring):**
+
+1. **`nvidia-ivc/fsp` extern decls don't match the FSP's actual symbol set.** The
+   crate declares `tegra_ivc_channel_{get,read,write,notify,frame_size}`, but
+   `nm libtegra_aon_fsp.a` shows the FSP exposes
+   `tegra_ivc_init_channel_from_ram`, `tegra_ivc_rx_get_read_frame`,
+   `tegra_ivc_rx_get_contiguous_read_available`, `tegra_ivc_tx_send_buffers`,
+   `tegra_ivc_channel_notified`, etc. — a **frame-buffer get/release zero-copy
+   API**, not read/write. Phase 100.0 implementation gap; the safe wrapper in
+   `nvidia-ivc/src/fsp.rs` needs to be rewritten against the real API.
+2. **`zpico_spin_once` calls POSIX `select(2)`** even on the orin-spe / IVC-only
+   backend (no network feature). Undefined symbol at final link. zpico-sys's C
+   side needs a `Z_FEATURE_LINK_IVC == 1 && !network`-gated path that doesn't
+   reach for `select`.
+3. **256 KB BTCM overflow by ~462 KB** with `nros + autoware_sentinel_core +
+   msg packages` linked in. Needs either:
+   - aggressive feature pruning (drop param-services, drop most msg packages,
+     reduce executor MAX_CBS / SUBSCRIPTION_BUFFER_SIZE),
+   - or DRAM mapping via AST so the `.text` segment lives off-BTCM,
+   - or a `SafetyIsland::minimal()` constructor that pulls only the
+     heartbeat/MRM/cmd-gate trio and skips the rest.
+
+**Infrastructure landed in this commit (works without running the full body):**
+
+- `autoware_sentinel_core` adds `platform-orin-spe` feature alongside
+  `platform-{posix,zephyr,freertos,nuttx,bare-metal}`. Forwards to
+  `nros/platform-orin-spe`.
+- `sentinel_spe_firmware/Cargo.toml`: `[patch.crates-io]` block mirroring
+  `autoware_sentinel_freertos/.cargo/config.toml`'s message-package patches +
+  the nano-ros pin. Workspace-excluded crates need their own patch block.
+- nano-ros 6289555e plumbs `platform-orin-spe` through `nros-rmw-zenoh`
+  (forwards to `zpico-sys/orin-spe + link-ivc`), `nros-node`, and the `nros`
+  umbrella. Source-side `cfg(any(feature = "platform-*"))` lists in
+  `nros-rmw-zenoh/src/{lib,zpico}.rs` and `zpico-sys/src/lib.rs` updated.
+
+**Tasks (when blockers clear):**
+
 - [ ] Determine minimum viable sentinel feature set:
   - Heartbeat watchdog (subscribe `/autoware/state`, publish MRM state)
   - MRM emergency stop operator (jerk-limited braking)

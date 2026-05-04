@@ -277,11 +277,15 @@ build-spe-firmware: orin_spe-bsp-stage
     "$AR" t "$PREFIX/lib/libtegra_aon_fsp.a" | sort -u > /tmp/fsp_objs.list
     "$AR" t "$PREFIX/lib/libnewlib.a"        | sort -u >> /tmp/fsp_objs.list
     cnt=0
+    # The staticlib can carry MULTIPLE archive members with the same
+    # basename (cargo bundles libtegra_aon_fsp.a AND libnewlib.a, both
+    # of which can ship e.g. `event_groups.o`). `ar d` removes only
+    # the first match per call, so loop until each name is gone.
     while read -r obj; do
-        if "$AR" t "$OUT" 2>/dev/null | grep -qx "$obj"; then
+        while "$AR" t "$OUT" 2>/dev/null | grep -qx "$obj"; do
             "$AR" d "$OUT" "$obj" 2>/dev/null || true
             cnt=$((cnt + 1))
-        fi
+        done
     done < /tmp/fsp_objs.list
     rm -f /tmp/fsp_objs.list
     echo "==> built: $OUT ($(du -h "$OUT" | cut -f1)); stripped $cnt FSP/newlib duplicates"

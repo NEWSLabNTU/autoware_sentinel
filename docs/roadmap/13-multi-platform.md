@@ -1,6 +1,6 @@
 # Phase 13: Multi-Platform Sentinel
 
-**Status:** Not started
+**Status:** Complete (13.1 – 13.6 + 13.K1 + 13.K2 closed; sentinel runs on Linux, Zephyr, FreeRTOS QEMU, and NuttX QEMU with comp-all parity).
 **Depends on:** Phase 6 (Zephyr application), Phase 7 (integration testing), Phase 10.5 (controller node)
 **Goal:** Run the sentinel on every nano-ros-supported RTOS (Linux, Zephyr, FreeRTOS, NuttX)
 from a single shared core crate, and gate the trajectory follower (controller_node) so
@@ -283,12 +283,12 @@ Linux subset.
 
 ### 13.6 — Documentation + cross-check
 
-- [ ] 13.6.1 Update `CLAUDE.md` Project Structure section to list all four platform
+- [x] 13.6.1 Update `CLAUDE.md` Project Structure section to list all four platform
       crates + the core crate.
-- [ ] 13.6.2 Update root `justfile` `build` recipe to drive every platform target.
-- [ ] 13.6.3 Update `just cross-check` to include core (no controller-node) for
+- [x] 13.6.2 Update root `justfile` `build` recipe to drive every platform target.
+- [x] 13.6.3 Update `just cross-check` to include core (no controller-node) for
       `thumbv7em-none-eabihf`.
-- [ ] 13.6.4 Add a short `docs/guides/multi-platform.md` covering how to add a fifth
+- [x] 13.6.4 Add a short `docs/guides/multi-platform.md` covering how to add a fifth
       platform.
 
 **Acceptance:** `just ci` builds and tests every platform that has CI infrastructure

@@ -29,8 +29,11 @@ generate-bindings:
     echo "=== autoware_sentinel_zephyr ==="
     (cd "src/autoware_sentinel_zephyr" && cargo nano-ros generate-rust --force)
 
-# Build all packages + Zephyr + Linux sentinel
-build: generate-bindings build-zephyr build-sentinel-linux build-rmw-zenoh
+# Build all packages + every platform target. Cross-target sentinels
+# (Zephyr / FreeRTOS / NuttX) are built last so their cross-toolchain
+# requirements (`west`, `arm-none-eabi-gcc`, NuttX kernel) only block
+# the cross builds, not the workspace test compile.
+build: generate-bindings build-rmw-zenoh build-sentinel-linux build-zephyr build-sentinel-freertos build-sentinel-nuttx
     cargo build --workspace --tests
 
 # Build Linux sentinel binary
@@ -311,9 +314,25 @@ format:
 format-check:
     cargo fmt --all -- --check
 
-# Cross-compile check all algorithm crates (excludes sentinel_linux which requires std)
+# Cross-compile check.
+#
+# 1. Algorithm crates + autoware_sentinel_core (no controller-node) for
+#    `thumbv7em-none-eabihf` — proves the no_std + alloc surface still
+#    compiles for Cortex-M4F class targets.
+# 2. autoware_sentinel_core with `controller-node` for the same triple
+#    — catches feature-gated code that breaks the embedded path.
+#
+# `autoware_sentinel_linux` (std-only) is excluded; the sibling
+# cross-target binaries (zephyr / freertos / nuttx) are excluded too —
+# they each have their own toolchain pin and run via `just
+# build-sentinel-{zephyr,freertos,nuttx}`.
 cross-check:
-    cargo check --workspace --exclude autoware_sentinel_linux --target thumbv7em-none-eabihf
+    # Algorithm crates only — no nros / no platform features needed.
+    cargo check --workspace --exclude autoware_sentinel_linux --exclude autoware_sentinel_core --target thumbv7em-none-eabihf
+    # Core no-controller (FreeRTOS profile).
+    cargo check -p autoware_sentinel_core --no-default-features --features platform-zephyr --target thumbv7em-none-eabihf
+    # Core with controller-node (Linux dev profile, but checked for thumb).
+    cargo check -p autoware_sentinel_core --no-default-features --features platform-zephyr,controller-node --target thumbv7em-none-eabihf
 
 # CI: format-check, cross-check, and test
 ci: format-check cross-check test

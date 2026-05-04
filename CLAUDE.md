@@ -12,8 +12,12 @@ when the main compute fails.
 All algorithm crates are organized in a Cargo workspace (`Cargo.toml` at root). Message
 crates are generated in `src/autoware_sentinel_linux/generated/` and shared via root
 `[patch.crates-io]`. nano-ros is referenced as a git dependency (pinned rev).
-`src/autoware_sentinel/` (Zephyr), `src/verification/` (Verus), and `tests/` are
-excluded from the workspace.
+The cross-target sentinel binaries (`src/autoware_sentinel_zephyr`,
+`src/autoware_sentinel_freertos`, `src/autoware_sentinel_nuttx`) plus
+`src/verification/` (Verus) and `tests/` are excluded from the workspace; each has its
+own `.cargo/config.toml` with a `[patch.crates-io]` block that pins the same nano-ros
+revision and overrides the message crates to the Linux-side superset under
+`src/autoware_sentinel_linux/generated/`.
 
 ```
 autoware-nano-ros/
@@ -34,9 +38,11 @@ autoware-nano-ros/
 │   ├── autoware_control_validator/  # Phase 4 — command safety validation
 │   ├── autoware_operation_mode_transition_manager/ # Phase 4 — mode transitions
 │   ├── verification/                # Phase 5 — Verus formal proofs
-│   ├── autoware_sentinel_core/      # Phase 13 — shared wiring (no_std)
-│   ├── autoware_sentinel_zephyr/    # Phase 6 — Zephyr application
-│   └── autoware_sentinel_linux/     # Phase 7.1 — Linux native binary
+│   ├── autoware_sentinel_core/      # Phase 13 — shared wiring (no_std + alloc)
+│   ├── autoware_sentinel_linux/     # Phase 7.1 — Linux native binary (x86_64)
+│   ├── autoware_sentinel_zephyr/    # Phase 6 — Zephyr native_sim binary
+│   ├── autoware_sentinel_freertos/  # Phase 13.4 — FreeRTOS QEMU MPS2-AN385 (thumbv7m-none-eabi)
+│   └── autoware_sentinel_nuttx/     # Phase 13.5 — NuttX QEMU virt cortex-a7 (armv7a-nuttx-eabihf)
 ├── tests/                           # Phase 7.2–7.3 — Integration tests (nextest)
 │   ├── Cargo.toml                   # sentinel-tests crate
 │   ├── src/

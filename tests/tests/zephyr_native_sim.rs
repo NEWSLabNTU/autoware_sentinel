@@ -152,9 +152,16 @@ fn start_zenohd_bridge() -> ManagedProcess {
 }
 
 /// Start the Zephyr native_sim sentinel binary.
+///
+/// Pass `--seed-random` to the native-sim entropy driver so each boot
+/// reseeds `srandom()` from `/dev/urandom` instead of the default
+/// deterministic `0x5678` seed. Without this every Zephyr instance
+/// computes the same zenoh ZID and zenohd rejects the duplicate
+/// session in subsequent tests within the same suite run.
 fn start_zephyr_sentinel() -> ManagedProcess {
     let binary = zephyr_binary_path();
-    let cmd = Command::new(binary);
+    let mut cmd = Command::new(binary);
+    cmd.arg("--seed-random");
     let mut proc = ManagedProcess::spawn_command(cmd, "zephyr-sentinel")
         .expect("Failed to start Zephyr sentinel");
 
@@ -168,7 +175,6 @@ fn start_zephyr_sentinel() -> ManagedProcess {
         output
     );
     if !output.contains("Executor ready") {
-        // Save full output for post-mortem.
         let path = std::env::temp_dir().join(format!(
             "zephyr-sentinel-{}.log",
             std::process::id()
@@ -178,6 +184,11 @@ fn start_zephyr_sentinel() -> ManagedProcess {
             "WARNING: sentinel never reached `Executor ready` — full boot log saved to {path:?}"
         );
     }
+    // Keep the child's stdout/stderr drained so the kernel pipe buffer
+    // never fills — Zephyr's logger blocks on a full pipe, which stalls
+    // the zenoh-pico read thread and breaks downstream round-trip
+    // tests with truncated output.
+    proc.drain_in_background();
     proc
 }
 
@@ -227,24 +238,21 @@ fn test_zephyr_sentinel_starts() {
 ///
 /// The Zephyr sentinel uses topic `/control/command/control_cmd`.
 ///
-/// **Currently `#[ignore]`-d** because the round-trip tests share host
-/// state (`/dev/shm/*.zenoh`, ROS 2 daemon, TCP TIME_WAIT on 7447) that
-/// nextest's per-test process cleanup does not fully reset. Each test
-/// passes in isolation (`cargo nextest run -E 'test(<name>)'`) but
-/// running the suite end-to-end fails the second/third round-trip
-/// test with `_Z_ERR_GENERIC (-128)` from the next Zephyr boot's first
-/// queryable declare. Native-sim's deterministic `sys_rand32_get` PRNG
-/// reuses the same zenoh ZID across boots, so even a fresh zenohd
-/// inherits stale shared-memory state from the previous run.
-///
-/// Run with `cargo nextest run -E 'binary(zephyr_native_sim)' --run-ignored
-/// only` after `pkill zenohd zephyr.exe; rm /dev/shm/*.zenoh` for an
-/// in-isolation pass. The bigger fix is to either (a) randomise the
-/// native-sim entropy source per boot, or (b) wire each test to a
-/// per-process-unique zenohd port so the shared filesystem state never
-/// collides.
+/// **`#[ignore]`-d in suite runs.** The test passes when run alone
+/// (`cargo nextest run -E 'test(test_zephyr_to_ros2_control)'`) and
+/// when `--nocapture` is passed to nextest, but the suite-level run
+/// fails the round-trip tests after `test_zephyr_sentinel_starts` has
+/// already used the same Zephyr binary. The native-sim build now
+/// passes `--seed-random` to randomise the deterministic
+/// `sys_rand32_get` ZID seed and routes UART output to stdin/stdout
+/// so the captured pipe drains continuously, but a `ros2 topic echo`
+/// process running alongside Zephyr still triggers
+/// `z_declare_publisher failed: -128 (_Z_ERR_GENERIC)` on a
+/// publisher whose keyexpr already has an rmw_zenoh_cpp subscriber on
+/// the shared zenohd. Tracked as a separate ROS 2 / zenoh-pico
+/// interop issue — does not block Phase 13's multi-platform goal.
 #[rstest]
-#[ignore = "flaky in nextest sequential run; passes in isolation. See doc comment."]
+#[ignore = "ros2 topic echo + zephyr binary share zenohd state in a way that fails sequential test runs; see doc comment"]
 fn test_zephyr_to_ros2_control() {
     if !require_zephyr_prerequisites() || !require_ros2_autoware() {
         return;
@@ -295,7 +303,7 @@ fn test_zephyr_to_ros2_control() {
 /// Verify Zephyr sentinel receives VelocityReport from ROS 2 via TAP
 /// and continues publishing output (doesn't crash on real messages).
 #[rstest]
-#[ignore = "flaky in nextest sequential run; same shared-state issue as test_zephyr_to_ros2_control"]
+#[ignore = "ros2 topic pub + zephyr binary share zenohd state in a way that fails sequential test runs; see test_zephyr_to_ros2_control doc"]
 fn test_ros2_to_zephyr_velocity() {
     if !require_zephyr_prerequisites() || !require_ros2_autoware() {
         return;
@@ -353,7 +361,7 @@ fn test_ros2_to_zephyr_velocity() {
 /// Full bidirectional test via TAP: ROS 2 publishes velocity, Zephyr processes
 /// it and publishes control, ROS 2 echoes the control output.
 #[rstest]
-#[ignore = "flaky in nextest sequential run; same shared-state issue as test_zephyr_to_ros2_control"]
+#[ignore = "ros2 topic pub/echo + zephyr binary share zenohd state in a way that fails sequential test runs; see test_zephyr_to_ros2_control doc"]
 fn test_zephyr_bidirectional_round_trip() {
     if !require_zephyr_prerequisites() || !require_ros2_autoware() {
         return;

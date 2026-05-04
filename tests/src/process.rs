@@ -92,6 +92,41 @@ impl ManagedProcess {
         matches!(self.handle.try_wait(), Ok(None))
     }
 
+    /// Detach background drainer threads on stdout + stderr so the
+    /// piped child process keeps writing without filling the kernel
+    /// pipe buffer. Call this after `wait_for_output_pattern` returns
+    /// when the parent no longer needs further output but the child
+    /// will keep producing log lines (e.g. a long-running sentinel
+    /// binary that ties up zenoh I/O if its stdout pipe blocks).
+    ///
+    /// The threads exit naturally when the child closes its end of
+    /// the pipe (e.g. on SIGKILL from `Drop`).
+    pub fn drain_in_background(&mut self) {
+        use std::io::Read;
+        if let Some(mut stdout) = self.handle.stdout.take() {
+            std::thread::spawn(move || {
+                let mut buf = [0u8; 4096];
+                loop {
+                    match stdout.read(&mut buf) {
+                        Ok(0) | Err(_) => break,
+                        Ok(_) => continue,
+                    }
+                }
+            });
+        }
+        if let Some(mut stderr) = self.handle.stderr.take() {
+            std::thread::spawn(move || {
+                let mut buf = [0u8; 4096];
+                loop {
+                    match stderr.read(&mut buf) {
+                        Ok(0) | Err(_) => break,
+                        Ok(_) => continue,
+                    }
+                }
+            });
+        }
+    }
+
     /// Wait until a pattern appears in stdout+stderr, then return all output so far.
     pub fn wait_for_output_pattern(
         &mut self,

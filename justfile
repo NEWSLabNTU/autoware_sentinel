@@ -225,8 +225,33 @@ test-planning:
 test-auto-drive:
     cd tests && cargo nextest run -E 'binary(auto_drive_comparison)'
 
-# Run Zephyr native_sim integration tests
+# Run Zephyr native_sim integration tests.
+#
+# nextest forks a new process per test. The Zephyr round-trip tests
+# share `tcp/127.0.0.1:7447` baked into the firmware. Two complications
+# stack up across sequential tests:
+#
+# 1. Native-sim Zephyr's `sys_rand32_get` is the test PRNG (deterministic
+#    seed) — every Zephyr boot generates the same zenoh ZID. zenohd
+#    rejects the duplicate session until the previous one's keepalive
+#    lease (10 s) expires.
+# 2. ROS 2's `ros2 daemon` survives `ros2 topic` exits and accumulates
+#    DDS/zenoh participants that slow each successive test's discovery
+#    handshake.
+#
+# Workaround: reap orphans before nextest, then run tests with
+# `--test-threads=1` and a generous slow timeout so the per-test
+# `start_zephyr_sentinel` wait has room for the lease to expire on the
+# zenohd side before the next test reuses the same ZID.
 test-zephyr:
+    #!/usr/bin/env bash
+    set -eo pipefail
+    # Only target zenohd bound to the Zephyr port so other platform
+    # suites running in parallel are unaffected.
+    pkill -9 -f 'zenohd.*tcp/127\.0\.0\.1:7447' >/dev/null 2>&1 || true
+    pkill -9 -f zephyr.exe >/dev/null 2>&1 || true
+    pkill -9 -f _ros2_daemon >/dev/null 2>&1 || true
+    sleep 1
     cd tests && cargo nextest run -E 'binary(zephyr_native_sim)'
 
 # ════════════════════════════════════════════════════════════════════

@@ -73,7 +73,11 @@ fn require_zephyr_prerequisites() -> bool {
 fn start_zenohd_bridge() -> ManagedProcess {
     let zenohd_path = sentinel_tests::process::zenohd_binary_path();
     let mut cmd = Command::new(zenohd_path);
-    cmd.args(["--listen", "tcp/127.0.0.1:7447"]);
+    cmd.args([
+        "--listen",
+        "tcp/127.0.0.1:7447",
+        "--no-multicast-scouting",
+    ]);
     let mut proc =
         ManagedProcess::spawn_command(cmd, "zenohd-bridge").expect("Failed to start zenohd");
 
@@ -97,7 +101,7 @@ fn start_zephyr_sentinel() -> ManagedProcess {
 
     // Wait for Zephyr sentinel to be ready
     let output = proc
-        .wait_for_output_pattern("Executor ready", Duration::from_secs(15))
+        .wait_for_output_pattern("Executor ready", Duration::from_secs(30))
         .unwrap_or_default();
     eprintln!(
         "Zephyr sentinel started:\n{}",

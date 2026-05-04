@@ -31,39 +31,39 @@ CFLAGS_armv7a_nuttx_eabihf = "-mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon-vfpv4"
 
 [patch.crates-io.nros]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-core]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-serdes]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-node]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-rmw]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-params]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-macros]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-rmw-zenoh]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.zpico-sys]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 # Patched libc with NuttX's _SC_HOST_NAME_MAX (used by build-std).
 # Cargo's git source resolves the root crate only, so the patch must

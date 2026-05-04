@@ -363,24 +363,6 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.70.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f49d8fed880d473ea71efb9bf597651e77201bdd4893efe54c9e5d65ae04ce6f"
-dependencies = [
- "bitflags",
- "cexpr",
- "clang-sys",
- "itertools",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash 1.1.0",
- "shlex",
- "syn",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.72.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
@@ -395,7 +377,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "rustc-hash 2.1.2",
+ "rustc-hash",
  "shlex",
  "syn",
 ]
@@ -446,7 +428,7 @@ dependencies = [
  "serde_json",
  "syn",
  "tempfile",
- "toml 0.9.12+spec-1.1.0",
+ "toml",
 ]
 
 [[package]]
@@ -610,17 +592,17 @@ dependencies = [
 [[package]]
 name = "dust_dds"
 version = "0.15.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "critical-section",
  "dust_dds_derive",
  "md5",
- "regex",
- "tracing",
 ]
 
 [[package]]
 name = "dust_dds_derive"
 version = "0.15.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -917,6 +899,7 @@ dependencies = [
 [[package]]
 name = "nros"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "nros-core",
  "nros-macros",
@@ -934,6 +917,7 @@ dependencies = [
 [[package]]
 name = "nros-builtin-interfaces"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "heapless",
  "nros-core",
@@ -943,6 +927,7 @@ dependencies = [
 [[package]]
 name = "nros-core"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "heapless",
  "log",
@@ -952,6 +937,7 @@ dependencies = [
 [[package]]
 name = "nros-macros"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -961,14 +947,15 @@ dependencies = [
 [[package]]
 name = "nros-node"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
+ "atomic-waker",
  "heapless",
  "nros-core",
  "nros-params",
  "nros-rcl-interfaces",
  "nros-rmw",
  "nros-rmw-dds",
- "nros-rmw-uorb",
  "nros-rmw-xrce",
  "nros-rmw-zenoh",
  "portable-atomic",
@@ -977,6 +964,7 @@ dependencies = [
 [[package]]
 name = "nros-params"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "heapless",
 ]
@@ -984,6 +972,7 @@ dependencies = [
 [[package]]
 name = "nros-platform"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "nros-platform-api",
  "nros-platform-zephyr",
@@ -992,10 +981,12 @@ dependencies = [
 [[package]]
 name = "nros-platform-api"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 
 [[package]]
 name = "nros-platform-zephyr"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "nros-platform-api",
 ]
@@ -1003,6 +994,7 @@ dependencies = [
 [[package]]
 name = "nros-rcl-interfaces"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "heapless",
  "nros-builtin-interfaces",
@@ -1013,6 +1005,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "heapless",
  "nros-core",
@@ -1021,6 +1014,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw-dds"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "dust_dds",
  "heapless",
@@ -1031,27 +1025,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "nros-rmw-uorb"
-version = "0.1.0"
-dependencies = [
- "critical-section",
- "heapless",
- "nros-core",
- "nros-rmw",
- "phf",
- "phf_codegen",
- "portable-atomic",
- "px4-log",
- "px4-sys",
- "px4-uorb",
- "px4-workqueue",
- "serde",
- "toml 0.8.23",
-]
-
-[[package]]
 name = "nros-rmw-xrce"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "atomic-waker",
  "heapless",
@@ -1063,6 +1039,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw-zenoh"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "atomic-waker",
  "heapless",
@@ -1075,6 +1052,7 @@ dependencies = [
 [[package]]
 name = "nros-serdes"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "heapless",
 ]
@@ -1141,50 +1119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "phf"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd6780a80ae0c52cc120a26a1a42c1ae51b247a253e4e06113d23d2c2edd078"
-dependencies = [
- "phf_shared",
-]
-
-[[package]]
-name = "phf_codegen"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aef8048c789fa5e851558d709946d6d79a8ff88c0440c587967f8e94bfb1216a"
-dependencies = [
- "phf_generator",
- "phf_shared",
-]
-
-[[package]]
-name = "phf_generator"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c80231409c20246a13fddb31776fb942c38553c51e871f8cbd687a4cfb5843d"
-dependencies = [
- "phf_shared",
- "rand",
-]
-
-[[package]]
-name = "phf_shared"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67eabc2ef2a60eb7faa00097bd1ffdb5bd28e62bf39990626a582201b7a754e5"
-dependencies = [
- "siphasher",
-]
-
-[[package]]
-name = "pin-project-lite"
-version = "0.2.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
-
-[[package]]
 name = "portable-atomic"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1213,63 +1147,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc-macro-crate"
-version = "3.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e67ba7e9b2b56446f1d419b1d807906278ffa1a658a8a5d8a39dcb1f5a78614f"
-dependencies = [
- "toml_edit 0.25.11+spec-1.1.0",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "px4-log"
-version = "0.1.0"
-dependencies = [
- "px4-sys",
-]
-
-[[package]]
-name = "px4-sys"
-version = "0.1.0"
-dependencies = [
- "bindgen 0.70.1",
- "cc",
-]
-
-[[package]]
-name = "px4-uorb"
-version = "0.1.0"
-dependencies = [
- "px4-sys",
- "px4-workqueue",
-]
-
-[[package]]
-name = "px4-workqueue"
-version = "0.1.0"
-dependencies = [
- "px4-log",
- "px4-sys",
- "px4-workqueue-macros",
-]
-
-[[package]]
-name = "px4-workqueue-macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1286,21 +1169,6 @@ name = "r-efi"
 version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
-
-[[package]]
-name = "rand"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
-dependencies = [
- "rand_core",
-]
-
-[[package]]
-name = "rand_core"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 
 [[package]]
 name = "regex"
@@ -1340,12 +1208,6 @@ dependencies = [
  "nros",
  "zephyr",
 ]
-
-[[package]]
-name = "rustc-hash"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc-hash"
@@ -1435,15 +1297,6 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "0.6.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde_spanned"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8bbf91e5a4d6315eee45e704372590b30e260ee83af6639d64557f51b067776"
@@ -1492,16 +1345,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "siphasher"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
-
-[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+dependencies = [
+ "portable-atomic",
+]
 
 [[package]]
 name = "stable_deref_trait"
@@ -1611,38 +1461,17 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.8.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
-dependencies = [
- "serde",
- "serde_spanned 0.6.9",
- "toml_datetime 0.6.11",
- "toml_edit 0.22.27",
-]
-
-[[package]]
-name = "toml"
 version = "0.9.12+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf92845e79fc2e2def6a5d828f0801e29a2f8acc037becc5ab08595c7d5e9863"
 dependencies = [
  "indexmap",
  "serde_core",
- "serde_spanned 1.0.4",
- "toml_datetime 0.7.5+spec-1.1.0",
+ "serde_spanned",
+ "toml_datetime",
  "toml_parser",
  "toml_writer",
  "winnow 0.7.14",
-]
-
-[[package]]
-name = "toml_datetime"
-version = "0.6.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -1655,41 +1484,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml_datetime"
-version = "1.1.1+spec-1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3165f65f62e28e0115a00b2ebdd37eb6f3b641855f9d636d3cd4103767159ad7"
-dependencies = [
- "serde_core",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.22.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
-dependencies = [
- "indexmap",
- "serde",
- "serde_spanned 0.6.9",
- "toml_datetime 0.6.11",
- "toml_write",
- "winnow 0.7.14",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.25.11+spec-1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b59c4d22ed448339746c59b905d24568fcbb3ab65a500494f7b8c3e97739f2b"
-dependencies = [
- "indexmap",
- "toml_datetime 1.1.1+spec-1.1.0",
- "toml_parser",
- "winnow 1.0.2",
-]
-
-[[package]]
 name = "toml_parser"
 version = "1.1.2+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1699,44 +1493,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml_write"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
-
-[[package]]
 name = "toml_writer"
 version = "1.0.6+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab16f14aed21ee8bfd8ec22513f7287cd4a91aa92e44edfe2c17ddd004e92607"
-
-[[package]]
-name = "tracing"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
-dependencies = [
- "pin-project-lite",
- "tracing-attributes",
- "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7490cfa5ec963746568740651ac6781f701c9c5ea257c58e057f3ba8cf69e8da"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "tracing-core"
-version = "0.1.36"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 
 [[package]]
 name = "typenum"
@@ -1880,18 +1640,12 @@ name = "winnow"
 version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "winnow"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ee1708bef14716a11bae175f579062d4554d95be2c6829f518df847b7b3fdd0"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "wit-bindgen"
@@ -1990,6 +1744,7 @@ checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 [[package]]
 name = "xrce-sys"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "cc",
 ]
@@ -2040,7 +1795,7 @@ name = "zephyr-sys"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bindgen 0.72.1",
+ "bindgen",
 ]
 
 [[package]]
@@ -2052,6 +1807,7 @@ checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 [[package]]
 name = "zpico-platform-shim"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "cc",
  "nros-platform",
@@ -2060,6 +1816,7 @@ dependencies = [
 [[package]]
 name = "zpico-sys"
 version = "0.1.0"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=036057ff#036057ffbace3c00f4b74ad01ba3ab64e38864d1"
 dependencies = [
  "cbindgen",
  "cc",

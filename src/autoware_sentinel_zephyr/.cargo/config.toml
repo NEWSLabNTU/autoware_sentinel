@@ -9,39 +9,39 @@
 
 [patch.crates-io.nros]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-core]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-serdes]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-node]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-rmw]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-params]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-macros]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.nros-rmw-zenoh]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 [patch.crates-io.zpico-sys]
 git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "020af3d5"
+rev = "036057ff"
 
 # --- Generated message crates (shared with sentinel_linux) ------------------
 

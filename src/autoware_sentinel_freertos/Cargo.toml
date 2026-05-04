@@ -40,10 +40,10 @@ panic-semihosting = { version = "0.6", features = ["exit"] }
 # Provide the GlobalAlloc impl. Sentinel pulls alloc-using paths in nros-core
 # (String/Vec used internally) so we need a registered allocator. Routes
 # Rust allocs through pvPortMalloc/free via nros-platform-freertos.
-nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "020af3d5", default-features = false, features = ["platform-freertos", "global-allocator"] }
+nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff", default-features = false, features = ["platform-freertos", "global-allocator"] }
 
 # FreeRTOS QEMU MPS2-AN385 board crate (provides run() + Config + println!).
-nros-board-mps2-an385-freertos = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "020af3d5" }
+nros-board-mps2-an385-freertos = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
 
 # Shared core wiring. Safety MCU build — no controller-node.
 autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos", "comp-all"] }

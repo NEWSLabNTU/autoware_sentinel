@@ -33,7 +33,7 @@ default = []
 log = { version = "0.4", default-features = false }
 
 # NuttX QEMU board crate (provides run() + Config + println!).
-nros-board-nuttx-qemu-arm = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "020af3d5" }
+nros-board-nuttx-qemu-arm = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
 
 # Shared core wiring. comp-all enables full Phase 12 topology; the NuttX
 # build runs in std mode (NuttX provides POSIX) so the heavy publishers

@@ -131,13 +131,21 @@ run-sentinel-nuttx: build-sentinel-nuttx
         -netdev user,id=net0 \
         -device virtio-net-device,netdev=net0
 
+# Capacity envs for the Zephyr build. Mirror the FreeRTOS / NuttX
+# overrides — `.env` defaults (`NROS_EXECUTOR_MAX_CBS=96`) inflate
+# the inline Executor arena past native_sim's main-thread stack via
+# the same NRVO-defeated copy chain documented in 13.K1.7. Zephyr
+# `west build` does not inherit `.env` (just's dotenv only loads in
+# the recipe shell), so export them explicitly.
+zephyr_env := "NROS_EXECUTOR_MAX_CBS=32 NROS_MAX_PARAMETERS=64 NROS_PARAM_SERVICE_BUFFER_SIZE=8192 ZPICO_MAX_PUBLISHERS=40 ZPICO_MAX_SUBSCRIBERS=8 ZPICO_MAX_QUERYABLES=32 ZPICO_MAX_LIVELINESS=80"
+
 # Build Zephyr application (native_sim)
 build-zephyr:
     #!/usr/bin/env bash
     set -eo pipefail
     source {{ env_script }}
     cd {{ workspace_dir }}
-    west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr -d build/sentinel
+    {{ zephyr_env }} west build -b native_sim/native/64 autoware-sentinel/src/autoware_sentinel_zephyr -d build/sentinel
 
 # Build rmw_zenoh_cpp from source
 build-rmw-zenoh:

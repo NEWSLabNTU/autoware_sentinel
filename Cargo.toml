@@ -40,12 +40,12 @@ members = [
 
 [patch.crates-io]
 # nano-ros — pinned to the rev that includes Phase 13.K1's
-# `xTaskCreate` uint16_t cast fix (9c4aa312, bumped to 020af3d5 for nros-px4 / xrce-agent updates). Local development against
+# `xTaskCreate` uint16_t cast fix (9c4aa312, bumped to 036057ff for nros-px4 / xrce-agent updates). Local development against
 # the sibling clone (`~/repos/nano-ros-sentinel`) can override these
 # patches via per-crate `.cargo/config.toml` path entries.
-nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "020af3d5" }
-nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "020af3d5" }
-nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "020af3d5" }
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
+nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
+nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
 
 # Generated message packages (from sentinel_linux — the superset of all packages)
 autoware_adapi_v1_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }

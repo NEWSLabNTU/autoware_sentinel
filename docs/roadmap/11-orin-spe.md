@@ -128,6 +128,178 @@ signaling.
 └──────────────────────────────────────────────────────────────┘
 ```
 
+## Integration model — SPE app is a library, not a binary
+
+The SPE deployment model is **inverted** relative to nano-ros's existing FreeRTOS
+examples (e.g. `examples/qemu-arm-freertos/rust/zenoh/talker/`). On QEMU, Cargo owns the
+build: it compiles the FreeRTOS kernel via `cc::Build`, links the application + kernel
+into one ELF, and ships a `[[bin]]` crate. On the SPE, **NVIDIA's Makefile owns the
+final link**, and the sentinel ships as a Rust **`staticlib`** that NVIDIA's firmware
+binary calls into.
+
+### Why the inversion
+
+1. **Closed-source FSP under SDK Manager EULA.** `tegra_aon_fsp.a` ships as a binary
+   blob; NVIDIA only sanctions building via `rt-aux-cpu-demo-fsp/Makefile`. Their
+   Makefile owns the `-D` flags, include paths, and HW-init source files (`spe-vic.c`,
+   `spe-pm.c`, `lic-map.c`, BPMP IPC) that we'd otherwise need to reverse-engineer.
+2. **Linker script owns BTCM layout.** `soc/t23x/spe.ld.in` is `gcc -E`-preprocessed
+   with `address_map_new.h` + `spe-map.h` to substitute `RUN_ADDR=0xc480000`,
+   `BTCM_SIZE=256K`, ARM exception-vector slots. Cargo would have to vendor those
+   headers and re-implement the preprocess step.
+3. **Secure-boot signing.** `flash.sh` re-signs `spe_t234.bin` against the SoC's
+   hardware key chain. The bin must be linked exactly the way NVIDIA's tooling expects
+   (one flat BTCM segment, fixed entry); a Cargo-driven link layout breaks signature
+   validation and the board refuses to boot.
+4. **Float ABI is set by the C side.** BSP CFLAGS = `-mfloat-abi=softfp -mfpu=vfpv3-d16`.
+   Cargo can't control the C side's ABI, so Rust must conform — switch firmware crate
+   to `armv7r-none-eabi` (soft) target. Reverse direction would require rebuilding
+   NVIDIA's bundled newlib `libc.a` hardfp, not worth the maintenance cost.
+5. **App-init hook pattern.** Every demo app (`gpio-app`, `i2c-app`, `gte-app`, …)
+   slots into `main_task()` via `#if defined(ENABLE_*_APP) *_app_init(); #endif`.
+   Sentinel adds `ENABLE_NROS_APP` as one more branch — minimum-friction patch on a
+   vendor tree.
+6. **Scheduler is already running.** NVIDIA's `main()` calls
+   `rtosTaskInitializeScheduler(NULL)` *before* any app code runs. App-side
+   `xTaskCreate` happens inside an existing task context. Therefore the SPE `run()` is
+   **not `-> !`** — it returns after spawning, in contrast to QEMU's `run() -> !` which
+   starts the scheduler itself.
+
+### QEMU vs SPE side-by-side
+
+| Aspect | QEMU FreeRTOS example | SPE deployment |
+|--------|----------------------|----------------|
+| Crate type | `[[bin]]` | `staticlib` |
+| Build owner | Cargo | NVIDIA Makefile |
+| Cargo output | linked ELF | rlib → `.a` in `target/.../deps/` |
+| FreeRTOS sources | Cargo `cc::Build` | NVIDIA Makefile |
+| Linker script | Cargo `-Tmps2_an385.ld` | NVIDIA `spe.ld` (preprocessed `spe.ld.in`) |
+| Final binary | runnable directly under QEMU | `spe.bin` raw, signed + flashed |
+| Network | LAN9118 + lwIP | none (IVC-only) |
+| Float ABI | `thumbv7m-none-eabi` | `armv7r-none-eabi` (soft) |
+| Boot signing | none | NVIDIA secure boot via `flash.sh` |
+| `panic_handler` | example bin owns it | firmware-wrap crate owns it |
+| `run()` shape | `pub fn run<F,E>(cfg, f) -> !` (starts scheduler) | `pub fn run<F,E>(cfg, f)` (returns; scheduler already running) |
+| Entry point | Rust `_start` | NVIDIA `_stext` → `main` → `main_task` → `nros_app_init` (C) → `nros_app_rust_entry` (Rust) |
+
+### Layout — why the SPE app does NOT live under `examples/orin-spe/`
+
+nano-ros's `examples/<platform>/rust/zenoh/<bin>/` directory layout assumes
+`crate-type = ["bin"]` + Cargo-driven build. That layout doesn't fit the SPE
+inversion: a flashable `spe.bin` requires NVIDIA's Makefile, not `cargo run`. The
+sentinel SPE app therefore lives **here** in this repo, not in nano-ros:
+
+```
+autoware-sentinel/                                  ← this repo
+├── src/
+│   └── sentinel-spe-firmware/                      ← Phase 11.5.b — staticlib wrap
+│       ├── Cargo.toml          crate-type = ["staticlib"]
+│       │                       lto = "fat", opt-level = "z", panic = "abort"
+│       │                       depends on nros-board-orin-spe (git, phase-100-orin-spe)
+│       ├── .cargo/config.toml  target = "armv7r-none-eabi"   (soft float)
+│       │                       [unstable] build-std = ["core", "alloc"]
+│       └── src/lib.rs          #![no_std]
+│                               #[no_mangle]
+│                               pub extern "C" fn nros_app_rust_entry() {
+│                                   run(Config::default(), |cfg| sentinel::run(cfg))
+│                               }
+│                               use panic_halt as _;
+│
+├── scripts/spe/                                    ← Phase 11.5.c — BSP patch series
+│   ├── downloads/                                  (BSP source + ARM toolchain — gitignored)
+│   │   └── spe-freertos-bsp/                       (shared with nano-ros via SPE_BSP_SRC_DIR)
+│   ├── patches/
+│   │   ├── 0001-add-ENABLE_NROS_APP-target-flag.patch
+│   │   └── 0002-main-task-call-nros-app-init.patch
+│   ├── app/
+│   │   └── nros-app.c          extern void nros_app_rust_entry(void);
+│   │                           void nros_app_init(void) { nros_app_rust_entry(); }
+│   └── apply-patches.sh        idempotent (`git apply --check` first)
+│
+├── src/ivc-bridge/                                 ← Phase 11.6 — Linux-side daemon
+│   └── ...                     pulls nano-ros's nvidia-ivc crate
+│                               unix-mock for tests, sysfs aon_echo for production
+│
+└── justfile                                        ← Phase 11.5.d / 11.7
+    build-spe-sim       ← Stage 1, FreeRTOS POSIX
+    build-spe-image     ← Stage 2, → build/spe.bin
+    stage-spe-image     ← cp build/spe.bin → $L4T_BSP_DIR/bootloader/spe_t234.bin
+    flash-spe           ← flash.sh -k A_spe-fw  (USB recovery)
+    run-ivc-bridge      ← production sysfs path, systemd-managed
+    run-ivc-bridge-sim  ← unix-mock pair for tests
+```
+
+### Build pipeline (one screenful)
+
+```
+cargo build -p sentinel-spe-firmware --release --target armv7r-none-eabi
+    │   └── pulls nros-board-orin-spe from nano-ros (git, phase-100-orin-spe)
+    │       └── pulls nvidia-ivc/fsp + nros-platform-orin-spe + Z_FEATURE_LINK_IVC
+    │
+    └── target/armv7r-none-eabi/release/libsentinel_spe_firmware.a
+
+just orin_spe bsp-download    (delegated; nano-ros owns the recipe, shares cache)
+just orin_spe bsp-build       → libtegra_aon_fsp.a + libnewlib.a + headers
+                                under external/spe-fsp/install/
+
+./scripts/spe/apply-patches.sh
+    └── git apply 0001-add-ENABLE_NROS_APP-target-flag.patch
+        git apply 0002-main-task-call-nros-app-init.patch
+        cp scripts/spe/app/nros-app.c $SPE_BSP/rt-aux-cpu-demo-fsp/app/
+
+make -C $SPE_BSP/rt-aux-cpu-demo-fsp -j$(nproc) bin_t23x \
+        ENABLE_NROS_APP=1 \
+        SENTINEL_FW_OUT=$(pwd)/target/armv7r-none-eabi/release \
+        FREERTOS_DIR=$SPE_BSP/FreeRTOSV10.4.3/FreeRTOS/Source \
+        FREERTOS_PORT=GCC/ARM_R5 \
+        CROSS_COMPILE=$ARM_TC/bin/arm-none-eabi-
+    └── compiles FSP + FreeRTOS + nros-app.c
+        links libsentinel_spe_firmware.a + libtegra_aon_fsp.a + libnewlib.a
+        → out/t23x/spe.elf (entry _stext, RUN 0xc480000)
+        → out/t23x/spe.bin (raw, ≤256 KB)
+
+cp out/t23x/spe.bin build/spe.bin
+
+cp build/spe.bin $L4T_BSP_DIR/bootloader/spe_t234.bin
+sudo $L4T_BSP_DIR/flash.sh -k A_spe-fw jetson-agx-orin-devkit internal
+                                       (board in USB recovery mode)
+    └── flash.sh signs spe_t234.bin against SoC HW key chain
+        writes A_spe-fw partition on QSPI
+```
+
+### Boot sequence
+
+```
+power-on
+  → BootROM
+    → MB1 / MB2 / BPMP firmware
+      → SPE firmware (signed spe.bin) loaded into BTCM at 0xc480000
+        → entry _stext (ARM_R5 reset vector → portASM.S → _start)
+          → main()                                 // demo's main.c
+            → spe_vic_init / lic_init / hsp_init / bpmp_ipc_init / spe_late_init
+            → rtosTaskInitializeScheduler(NULL)    // creates main_task, starts scheduler
+              → main_task()
+                → tegra_clk_init / debug_init / ivc_init_channels_ccplex
+                → #if defined(ENABLE_NROS_APP) nros_app_init();    // C shim
+                  → nros_app_rust_entry()                          // Rust staticlib
+                    → nros_board_orin_spe::run(Config { locator: "ivc/2", … }, |cfg| {
+                          // sentinel reduced set: heartbeat watchdog, MRM, cmd-gate
+                          sentinel::run(cfg)
+                      });
+                    └── xTaskCreate(app_task_entry, ...)
+                        return                      // run() returns
+                  return                            // nros_app_rust_entry returns
+                vTaskDelete(NULL);                  // main_task self-deletes
+              ──── scheduler keeps running ────
+                app_task_entry now runs
+                  → executor.spin_once forever
+                    → publishes / subscribes over Z_FEATURE_LINK_IVC → ivc/2
+                      → tegra_ivc_channel_write → HSP doorbell → CCPLEX
+```
+
+`/dev/ttyTCU0` on the Linux side surfaces SPE `printf` output (banner + `nros_app_init`
+log) — the first sanity signal that the firmware booted.
+
 ## Development Strategy
 
 Development proceeds in two stages: first validate all sentinel logic on the **FreeRTOS

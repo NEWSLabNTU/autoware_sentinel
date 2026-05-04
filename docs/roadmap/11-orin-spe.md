@@ -1,8 +1,8 @@
 # Phase 11: Orin SPE Deployment
 
-**Status:** Not started
+**Status:** 11.5 in progress (firmware wrap landed; SafetyIsland wiring + flash pending).
 **Depends on:** Phase 7 (integration testing), Phase 10 (actuation porting),
-**nano-ros Phase 100** (Orin SPE infrastructure — Cortex-R5 platform layer, `Z_FEATURE_LINK_IVC` in zenoh-pico, `nros-board-orin-spe`).
+[`NEWSLabNTU/nano-ros` Phase 100](https://github.com/NEWSLabNTU/nano-ros/blob/main/docs/roadmap/phase-100-orin-spe-infra.md) (done as of 2026-05-04 — provides everything below the application boundary).
 **Goal:** Run the Autoware Sentinel safety island on the Jetson AGX Orin SPE (Cortex-R5F,
 FreeRTOS), communicating with Autoware on the CCPLEX via IVC shared memory through a
 zenohd router.
@@ -74,6 +74,9 @@ in-progress. The dependency direction is strict:
 | 11.5 (board + cross-compile) | 100.0 (`fsp`), 100.5, 100.6 |
 | 11.6 (real bridge daemon)    | 100.0 (CCPLEX-side use of the driver) |
 | 11.7 (flash + integration)   | all above |
+
+All nano-ros 100.x sub-items landed on `NEWSLabNTU/nano-ros` main as of 2026-05-04
+(commit `587adc6b`). Sentinel pins this rev via root `Cargo.toml` `[patch.crates-io]`.
 
 ## Description
 
@@ -206,26 +209,30 @@ Implement a mock IVC transport layer that uses Unix domain sockets (or `shm_open
 simulate IVC communication between the sentinel process and a bridge process on localhost.
 
 **Tasks:**
-- [ ] Define IVC transport trait/API abstracting `tegra_ivc_channel_read/write` so that
-  the real IVC and mock IVC share the same interface
-- [ ] Implement mock IVC backend using Unix domain sockets (bidirectional, frame-oriented)
-- [ ] Implement mock IVC bridge: a small daemon that reads mock IVC frames from the Unix
-  socket and forwards them to zenohd via TCP on `localhost:7447`, and vice versa
-- [ ] Handle frame fragmentation: zenoh messages may exceed 64-byte IVC frame size —
-  implement simple length-prefixed reassembly (same protocol as real IVC bridge)
-- [ ] Add zenoh-pico IVC link backend (`Z_FEATURE_LINK_IVC`) in nano-ros, with the
-  transport trait dispatching to mock or real IVC at compile time
-- [ ] Add `just run-ivc-bridge-sim` recipe
+- [x] *(done in nano-ros Phase 100.0/0a)* Define IVC transport trait + driver crate.
+  `packages/drivers/nvidia-ivc/` provides both backends (`fsp`, `unix-mock`) behind the
+  same `Channel::{open,read,write,notify,frame_size}` API plus C-callable
+  `nvidia_ivc_channel_*` wrappers. `nros-platform-api::PlatformIvc` is the trait
+  contract.
+- [x] *(done in nano-ros Phase 100.0)* Unix-domain-socket mock backend (frame-oriented,
+  64-byte frames matching the real IVC default). Loopback test at
+  `packages/drivers/nvidia-ivc/tests/loopback.rs`.
+- [x] *(done in nano-ros Phase 100.4)* Zenoh-pico `Z_FEATURE_LINK_IVC` link transport.
+  Lives on `jerry73204/zenoh-pico` branch `nano-ros-phase-100-link-ivc` (commit
+  `3243086b`); wire format spec is the single source of truth for both sides of the
+  bridge.
+- [ ] **Bridge daemon** (sentinel side, `src/ivc-bridge/`): read/write mock IVC frames
+  from `nvidia-ivc/unix-mock` (test path) or sysfs `aon_echo` (production), forward to
+  zenohd TCP. Implement the same `u16 total_len + u16 offset + payload` framing the
+  nano-ros side uses — `phase-100-04-link-ivc-design.md` §5 pins it.
+- [ ] Add `just run-ivc-bridge-sim` recipe (driver = unix-mock pair).
 
-**Files to modify in nano-ros:**
-1. `packages/zpico/zpico-sys/zenoh-pico/src/link/unicast/ivc.c` (new)
-2. `packages/zpico/zpico-sys/zenoh-pico/include/zenoh-pico/link/config/ivc.h` (new)
-3. `packages/zpico/zpico-sys/zenoh-pico/src/link/link.c` — register IVC in link table
-4. `packages/zpico/zpico-sys/zenoh-pico/src/link/endpoint.c` — parse `ivc/` scheme
-5. `packages/zpico/zpico-sys/zenoh-pico/include/zenoh-pico/link/link.h` — IVC feature flag
-6. `packages/zpico/zpico-sys/zenoh-pico/src/link/unicast/transport.c` — open/listen
-7. `packages/zpico/zpico-sys/zenoh-pico/CMakeLists.txt` — conditional compile
-8. `packages/zpico/zpico-sys/build.rs` — add IVC source to POSIX and FreeRTOS builds
+**Wire-format conformance contract:**
+
+The bridge daemon's reassembly state machine must mirror the test fixture in
+`packages/testing/nros-tests/tests/orin_spe_mock_ivc.rs` (drops `total=0,offset=0`
+keep-alives, rejects `offset != accumulated_len` on a fresh batch). Cite that test by
+file path + commit hash in the bridge crate's README so divergence is review-visible.
 
 **Acceptance criteria:**
 - [ ] Mock IVC bridge forwards frames between Unix socket and zenohd TCP
@@ -279,45 +286,143 @@ Verify IVC communication works on the AGX Orin 64GB with L4T 36.4.4.
 - [ ] Latency and throughput numbers recorded
 - [ ] Device tree overlay documented
 
-#### - [ ] 11.5 — nros-orin-spe Board Crate and Cross-compilation
+#### - [ ] 11.5 — Sentinel SPE firmware wrap + BSP integration
 
-Create the board support crate for nano-ros on the Orin SPE and set up the full
-cross-compilation toolchain. The sentinel logic is already validated from Stage 1 —
-this subphase focuses on making it build and link for the real Cortex-R5F target.
+The board crate (`nros-board-orin-spe`) is provided by nano-ros Phase 100.6 as an
+`rlib` for `armv7r-none-eabihf`. This subphase lands the application-side pieces that
+turn that rlib into a flashable `spe.bin`: the **firmware wrap crate** (rlib →
+staticlib + panic handler + soft-float decision), the **C shim** that NVIDIA's
+`main_task` calls, and the **out-of-tree patch set** to the upstream demo Makefile that
+glues them together.
 
-**Tasks:**
-- [ ] Create `packages/boards/nros-orin-spe/` in nano-ros repo (following
-  `nros-mps2-an385-freertos` pattern)
-- [ ] Implement `run()` function: allocates FreeRTOS task via `xTaskCreate`, calls user
-  closure inside task context, returns immediately (scheduler already running)
-- [ ] Implement `Config` with `zenoh_locator: "ivc/2"` default
-- [ ] Implement `println!` macro via NVIDIA FSP `printf` (TCU debug output)
-- [ ] Wire real IVC init (`tegra_ivc_channel_get()`) — swap mock IVC backend for real
-  `tegra_ivc_channel_*` API using the transport trait from 11.2
-- [ ] Create `build.rs` to link against NVIDIA FSP static libraries
-- [ ] Set target triple to `armv7r-none-eabihf` in `.cargo/config.toml`
-- [ ] Resolve float ABI: either build BSP C code with `-mfloat-abi=hard` or use
-  `armv7r-none-eabi` (soft float) for Rust and add shims
-- [ ] Add `rustup target add armv7r-none-eabihf` to setup instructions
-- [ ] Create `scripts/spe/build.sh` — builds Rust board crate, then invokes NVIDIA Makefile
-- [ ] Add `ENABLE_NROS_APP := 1` to `target_specific.mk` template
-- [ ] Add `nros-app.c` C shim (calls `nros_app_rust_entry()`)
-- [ ] Modify NVIDIA Makefile to link `libnros_orin_spe.a` when `ENABLE_NROS_APP=1`
-- [ ] Add linker script awareness for BTCM 256 KB limit — fail build if `.text + .data +
-  .bss` exceeds budget
-- [ ] Create `just build-spe` recipe in root justfile
-- [ ] Verify linked binary fits in 256 KB with `arm-none-eabi-size`
-- [ ] If 256 KB is exceeded, evaluate:
-  - LTO + `opt-level = "z"` for size optimization
-  - Drop additional algorithms
-  - Move zenoh-pico to DRAM (if accessible from SPE via AST)
+##### 11.5.a — Resolve the float-ABI mismatch
 
-**Acceptance criteria:**
-- [ ] Board crate compiles for `armv7r-none-eabihf`
-- [ ] `just build-spe` produces `spe.bin` with nano-ros + sentinel linked in
-- [ ] Binary size < 256 KB (with margin report)
-- [ ] Float ABI consistent between Rust and C objects
-- [ ] Memory budget documented with per-component breakdown
+NVIDIA's BSP CFLAGS use `-mfloat-abi=softfp -mfpu=vfpv3-d16`. The demo `spe.elf` is
+flagged `Version5 EABI, soft-float ABI`. nano-ros's board crate currently builds
+against `armv7r-none-eabihf` (hardfp) — link will fail with `error: ... uses VFP
+register arguments, ... does not`.
+
+**Resolution path (recommended): switch Rust to soft float.**
+- [ ] Switch firmware crate's `.cargo/config.toml` to
+  `target = "armv7r-none-eabi"` + `rustflags = ["-C", "target-feature=+vfp3d16,+strict-align"]`
+  (or `-Cllvm-args="-mfloat-abi=softfp"` if rustc rejects the flag).
+- [ ] Rebuild nano-ros's `nros-board-orin-spe` rlib for the soft-float target. The
+  per-package `.cargo/config.toml` in `packages/boards/nros-board-orin-spe/` already
+  pins `armv7r-none-eabihf`; sentinel passes `--target armv7r-none-eabi` on the
+  cargo command line to override (or ships its own `.cargo/config.toml`).
+- [ ] Add `armv7r-none-eabi` to the workspace nightly's pinned targets in
+  `tools/rust-toolchain.toml` (nano-ros side; one-line PR upstream).
+
+**Alternative path (if soft float trips bindings):** rebuild BSP with `-mfloat-abi=hard
+-mfpu=vfpv3-d16`. Needs a hardfp newlib variant — the bundled toolchain ships only
+soft-float libc. Cost: maintain a vendored newlib build. Reject unless soft-float
+incurs a measurable perf regression on the sentinel's control-validator path.
+
+**Acceptance:** `arm-none-eabi-readelf -h spe.elf` prints `soft-float ABI` and the link
+step has zero `Tag_ABI_VFP_args` warnings.
+
+##### 11.5.b — Sentinel firmware wrap crate
+
+Lives in `src/sentinel-spe-firmware/` (sentinel side). Wraps the nano-ros board rlib
+into a `staticlib` + supplies the panic handler, the alloc shim, and the FFI entry
+point the C shim calls.
+
+**Files:**
+- [ ] `src/sentinel-spe-firmware/Cargo.toml`
+  ```toml
+  [lib]
+  crate-type = ["staticlib"]
+  [profile.release]
+  panic = "abort"
+  lto = "fat"
+  opt-level = "z"
+  codegen-units = 1
+  [dependencies]
+  nros-board-orin-spe = { git = "https://github.com/NEWSLabNTU/nano-ros.git", branch = "phase-100-orin-spe", default-features = false, features = ["fsp", "cortex-r"] }
+  panic-halt = "1"
+  ```
+- [ ] `src/sentinel-spe-firmware/.cargo/config.toml`
+  ```toml
+  [build]
+  target = "armv7r-none-eabi"
+  [unstable]
+  build-std = ["core", "alloc"]
+  ```
+- [ ] `src/sentinel-spe-firmware/src/lib.rs`
+  ```rust
+  #![no_std]
+  use nros_board_orin_spe::{Config, run};
+  use panic_halt as _;
+
+  #[unsafe(no_mangle)]
+  pub extern "C" fn nros_app_rust_entry() {
+      run(Config::default(), |config| {
+          // 11.3 Stage-1 sentinel runtime, reduced algorithm set, picked
+          // up here. Heartbeat watchdog + MRM + cmd-gate.
+          sentinel::run(config)
+      });
+  }
+  ```
+
+**Build output:** `target/armv7r-none-eabi/release/libsentinel_spe_firmware.a`.
+
+##### 11.5.c — BSP integration patch (out-of-tree)
+
+The upstream `rt-aux-cpu-demo-fsp/` tree is licensed under the NVIDIA SDK Manager EULA
+and lives outside both repos (under `scripts/spe/downloads/spe-freertos-bsp/`). Patches
+land as a small Git-format-patch series in `scripts/spe/patches/` and are applied at
+build time by a wrapper recipe.
+
+- [ ] `scripts/spe/patches/0001-add-ENABLE_NROS_APP-target-flag.patch`
+      Adds `app/nros-app.c` to `SRCS` when `ENABLE_NROS_APP := 1`, and
+      `LDFLAGS += -L$(SENTINEL_FW_OUT)/lib -lsentinel_spe_firmware`.
+- [ ] `scripts/spe/patches/0002-main-task-call-nros-app-init.patch`
+      In `main.c::main_task`, adds `#if defined(ENABLE_NROS_APP) nros_app_init();`
+      next to the existing `*_app_init()` calls.
+- [ ] `scripts/spe/app/nros-app.c` (sentinel-owned, copied into the BSP tree at apply
+      time):
+      ```c
+      #include <stdio.h>
+      extern void nros_app_rust_entry(void);
+      void nros_app_init(void) {
+          printf("nros_app_init: registering nano-ros task\r\n");
+          nros_app_rust_entry();
+      }
+      ```
+- [ ] `scripts/spe/apply-patches.sh` — applies the patch series + copies the shim
+      into the BSP tree. Idempotent (`git apply --check` first).
+
+##### 11.5.d — `just build-spe-image` recipe
+
+End-to-end build from rlib to flashable `spe.bin`:
+
+- [ ] `just build-spe-image` driver:
+      ```
+      1. cargo build -p sentinel-spe-firmware --release
+         → target/armv7r-none-eabi/release/libsentinel_spe_firmware.a
+      2. just orin_spe bsp-download   (delegates to nano-ros's recipe via submodule
+         or shared cache; pulls BSP + ARM toolchain if not cached)
+      3. ./scripts/spe/apply-patches.sh
+      4. make -C $SPE_BSP/rt-aux-cpu-demo-fsp -j$(nproc) bin_t23x \
+            ENABLE_NROS_APP=1 \
+            SENTINEL_FW_OUT=$(pwd)/target/armv7r-none-eabi/release \
+            FREERTOS_DIR=$SPE_BSP/FreeRTOSV10.4.3/FreeRTOS/Source \
+            FREERTOS_PORT=GCC/ARM_R5 \
+            CROSS_COMPILE=$ARM_TC/bin/arm-none-eabi-
+         → out/t23x/spe.bin
+      5. cp out/t23x/spe.bin build/spe.bin
+      6. arm-none-eabi-size out/t23x/spe.elf  (must show .text+.data+.bss < 256 KB)
+      ```
+
+**Acceptance:**
+- [ ] `just build-spe-image` produces `build/spe.bin` reproducibly.
+- [ ] `arm-none-eabi-size out/t23x/spe.elf` reports `.text + .data + .bss < 256 KB`
+      with at least 16 KB headroom for runtime stacks.
+- [ ] Float ABI is consistent (no `Tag_ABI_VFP_args` warnings).
+- [ ] `arm-none-eabi-nm` confirms `nros_app_rust_entry`, `_z_open_ivc`,
+      `tegra_ivc_channel_*`, `xPortStartScheduler` all present in the linked ELF.
+- [ ] `scripts/spe/patches/` series applies cleanly to a fresh
+      `bsp-download`-extracted tree.
 
 #### - [ ] 11.6 — Linux IVC Bridge Daemon (Real Hardware)
 
@@ -336,44 +441,97 @@ Adapt the mock IVC bridge from 11.2 to use real IVC sysfs/device interfaces.
 - [ ] Fragmented zenoh messages reassembled correctly
 - [ ] zenohd sees SPE sentinel as a connected client
 
-#### - [ ] 11.7 — Integration Test and Flash Deployment
+#### - [ ] 11.7 — Flash deployment + on-target integration test
 
-End-to-end test: flash SPE firmware, start bridge daemon, verify sentinel participates
-in Autoware planning simulator. The sentinel logic is already proven from Stage 1 —
-this subphase validates the real hardware transport and deployment procedure.
+End-to-end deploy: stage `spe.bin` from 11.5, flash via L4T `flash.sh -k A_spe-fw`,
+boot, verify sentinel participates in the Autoware planning simulator over real IVC.
 
-**Tasks:**
-- [ ] Flash SPE firmware to AGX Orin (see "SPE Firmware Flashing" section below)
-- [ ] Start IVC bridge daemon on Linux
-- [ ] Start zenohd + Autoware planning simulator
-- [ ] Verify SPE sentinel topics visible via `ros2 topic list`
-- [ ] Verify heartbeat watchdog triggers MRM on simulated failure
-- [ ] Measure end-to-end latency: Autoware pub → IVC → SPE → IVC → Autoware sub
-- [ ] Create `just flash-spe` recipe
-- [ ] Document full deployment procedure in `docs/guides/orin-spe-setup.md`
+##### 11.7.a — Stage + flash
+
+- [ ] `just stage-spe-image` recipe:
+      `cp build/spe.bin $L4T_BSP_DIR/bootloader/spe_t234.bin` (overwrites the stock
+      L4T SPE binary in place — flash.sh picks it up by filename, no command-line
+      override).
+- [ ] `just flash-spe` recipe (refines nano-ros's `just orin_spe flash`):
+      board in USB recovery mode (force-recovery + reset), then
+      `sudo $L4T_BSP_DIR/flash.sh -k A_spe-fw jetson-agx-orin-devkit internal`.
+      Read `L4T_BSP_DIR` from env; refuse to run without it. (Note: `internal`
+      not `mmcblk0p1` for AGX Orin DevKit running off NVMe — verify against
+      target-storage env on each board.)
+- [ ] First-boot sanity check via TCU console (`sudo tio /dev/ttyTCU0 -b 115200`):
+      look for `nros_app_init: registering nano-ros task` printf from the C shim
+      and the board crate's banner (`nros-board-orin-spe (Cortex-R5F)`).
+
+##### 11.7.b — Device-tree overlay for `aon_echo`
+
+- [ ] Author DTB overlay enabling `aon_echo { status = "okay"; }` for IVC channel 2,
+      apply via `/boot/extlinux/extlinux.conf` `FDT` entry or
+      `nv_update_engine`-bundled overlay.
+- [ ] Confirm `/sys/devices/platform/bus@0/bus@0:aon_echo/data_channel` appears.
+- [ ] Quick echo round-trip from Linux userspace:
+      `printf 'ping' > .../data_channel; cat .../data_channel`. Validates the
+      hardware-level IVC path independently of zenoh-pico.
+
+##### 11.7.c — Bridge daemon on production sysfs path
+
+- [ ] `src/ivc-bridge/` (the daemon shipped under 11.6) reads/writes the sysfs
+      `data_channel` for production deployment, and `nvidia-ivc/unix-mock` for
+      tests. systemd unit auto-starts on boot, after `network-online.target` so
+      zenohd is reachable.
+- [ ] `just run-ivc-bridge` recipe — foreground run with verbose logging for
+      bring-up.
+
+##### 11.7.d — Autoware planning-simulator E2E
+
+- [ ] Start the bridge daemon, `zenohd`, and the Autoware planning simulator.
+- [ ] `ros2 topic list` shows the SPE-side sentinel topics
+      (`/sentinel/heartbeat/state`, `/control/command/control_cmd_emergency`, etc.).
+- [ ] Measure end-to-end latency: Autoware pub → IVC frame → SPE handler → IVC
+      reply → Autoware sub. Target < 5 ms (one shared-memory round-trip).
+- [ ] Heartbeat-watchdog trip test: kill the CCPLEX heartbeat publisher; the SPE
+      sentinel must engage MRM emergency-stop within 3 s and assert the e-stop
+      GPIO mirror.
+- [ ] Soak test: 24 h continuous run under planning-simulator load. Watch for
+      memory drift via `/proc/$(pidof zenohd)/status` on Linux side and the SPE's
+      `vTaskGetRunTimeStats` over TCU.
+
+##### 11.7.e — Documentation
+
+- [ ] Update `docs/guides/orin-spe-setup.md` with the actual measured numbers
+      (text/data/bss footprint, BTCM headroom, IVC RTT, heartbeat trip latency).
+- [ ] Add a "What can go wrong" section keyed off failure modes seen during
+      bring-up (USB recovery flakes, DTB overlay precedence, capsule-vs-flash.sh
+      slot confusion, etc.).
+- [ ] Cross-reference nano-ros Phase 100's design doc by URL + commit hash so the
+      wire-format provenance trail is permanent.
 
 **Acceptance criteria:**
-- [ ] SPE sentinel runs on real AGX Orin hardware
-- [ ] Heartbeat watchdog triggers emergency stop within 3s of CCPLEX failure
-- [ ] End-to-end topic latency < 5 ms (IVC shared memory)
-- [ ] Deployment guide complete
+- [ ] SPE sentinel runs on real AGX Orin hardware after `just flash-spe`.
+- [ ] Heartbeat watchdog triggers emergency stop within 3 s of CCPLEX failure.
+- [ ] End-to-end topic latency < 5 ms (IVC shared memory).
+- [ ] 24-hour soak with no observable memory drift on either side.
+- [ ] `docs/guides/orin-spe-setup.md` reflects the as-built procedure with measured
+      numbers, not the speculative pre-bring-up estimates.
 
 ## Dependencies
 
 | Subphase | Depends on | Repository |
 |----------|------------|------------|
 | **Stage 1** | | |
-| 11.1 | Phase 7 (integration testing) | autoware-nano-ros |
-| 11.2 | 11.1 (FreeRTOS POSIX running) | autoware-nano-ros + nano-ros |
-| 11.3 | 11.2 (mock IVC transport) | autoware-nano-ros |
+| 11.1 | Phase 7 (integration testing) | autoware-sentinel |
+| 11.2 | 11.1 (FreeRTOS POSIX running) + nano-ros Phase 100 (done — driver, link, mock) | autoware-sentinel (bridge daemon only) |
+| 11.3 | 11.2 (mock IVC transport) | autoware-sentinel |
 | **Stage 2** | | |
-| 11.4 | Hardware (AGX Orin 64GB) | autoware-nano-ros |
-| 11.5 | 11.3 (sentinel validated) + 11.4 (IVC verified) | autoware-nano-ros + nano-ros |
-| 11.6 | 11.4 (IVC verified) + 11.2 (bridge protocol) | autoware-nano-ros |
-| 11.7 | 11.5 + 11.6 | autoware-nano-ros |
+| 11.4 | Hardware (AGX Orin 64GB) | autoware-sentinel |
+| 11.5 | 11.3 (sentinel validated) + 11.4 (IVC verified) + nano-ros Phase 100 (done) | autoware-sentinel (firmware wrap + BSP patch) |
+| 11.6 | 11.4 (IVC verified) + 11.2 (bridge protocol) | autoware-sentinel |
+| 11.7 | 11.5 + 11.6 | autoware-sentinel |
 
 Note: Stage 2 subphases 11.4 and 11.6 can proceed in parallel. Stage 1 can run entirely
 without hardware — Stage 2 begins once the sentinel is validated and hardware is ready.
+nano-ros Phase 100 is **done** as of 2026-05-04 on branch `phase-100-orin-spe`; sentinel
+sub-items previously labelled "modify nano-ros" are now upstream-provided and marked
+`[x]` in the task lists.
 
 ## Risk Assessment
 

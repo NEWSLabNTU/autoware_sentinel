@@ -240,6 +240,18 @@ orin_spe-bsp-stage: orin_spe-bsp-download
     mkdir -p "$PREFIX/include/fsp" "$PREFIX/include/freertos"
     cp -a "$BSP/fsp/source/include/." "$PREFIX/include/fsp/"
     cp -a "$BSP/FreeRTOSV10.4.3/FreeRTOS/Source/include/." "$PREFIX/include/freertos/"
+    # Phase 11.3.B — zpico-sys's orin-spe path also needs the ARM_R5
+    # port (`portmacro.h`) and the demo's `FreeRTOSConfig.h` to
+    # cross-compile zenoh-pico's `system/freertos/system.c`.
+    mkdir -p "$PREFIX/include/freertos/portable"
+    cp -a "$BSP/FreeRTOSV10.4.3/FreeRTOS/Source/portable/GCC" "$PREFIX/include/freertos/portable/"
+    # FreeRTOSConfig.h: drop the `#include <artimer.h>` line — that's
+    # an FSP runtime dependency we don't need at C-compile time, and
+    # pulling artimer.h would drag in dozens of additional include
+    # paths from `rt-aux-cpu-demo-fsp/soc/t23x/include/`. zenoh-pico's
+    # `system/freertos/system.c` only needs the `config*` defines.
+    sed '/^#include <artimer\.h>/d' "$BSP/rt-aux-cpu-demo-fsp/FreeRTOSConfig.h" \
+        > "$PREFIX/include/FreeRTOSConfig.h"
 
     echo "==> Staged at $PREFIX:"
     ls -lh "$PREFIX/lib"/*.a | awk '{print "    " $0}'
@@ -325,7 +337,12 @@ build-spe-image: build-spe-firmware orin_spe-bsp-patch
     "$TC/bin/arm-none-eabi-size" build/spe.elf
     echo ""
     echo "==> Symbol-presence sanity check:"
-    for sym in nros_app_rust_entry nros_app_init _z_open_ivc tegra_ivc_channel_get xPortStartScheduler; do
+    # `_z_open_ivc` / `tegra_ivc_*` are gc-sectioned on the scaffold
+    # build (no actual zenoh session opened in the wfi-loop closure).
+    # Once 11.3.D wires `wire_executor`, those get pulled in. Until
+    # then, only check for the boot-path symbols that prove the C
+    # shim resolved + the FreeRTOS port linked.
+    for sym in nros_app_rust_entry nros_app_init xPortStartScheduler; do
         if "$TC/bin/arm-none-eabi-nm" build/spe.elf | grep -qE "[Tt] $sym\$"; then
             echo "    [OK] $sym"
         else

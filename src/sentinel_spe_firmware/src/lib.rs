@@ -95,8 +95,13 @@ fn now_ms() -> u64 {
 #[unsafe(no_mangle)]
 pub extern "C" fn nros_app_rust_entry() {
     run(Config::default(), |config| -> Result<(), NodeError> {
+        // Plain-string banners only — `Display` formatting (e.g.
+        // `println!("Locator: {}", ...)`) drags `core::fmt::Formatter::pad`,
+        // `escape_debug_ext`, `PadAdapter::write_str`, `from_utf8`, …
+        // which collectively cost ~2.5 KB BTCM. The locator is a build-
+        // time constant baked into `Config`, so the literal banner is
+        // sufficient for boot-up confirmation.
         println!("Autoware Sentinel — Safety Island (Orin SPE)");
-        println!("Locator: {}", config.zenoh_locator);
 
         let exec_config = ExecutorConfig::new(config.zenoh_locator)
             .domain_id(config.domain_id)
@@ -107,7 +112,7 @@ pub extern "C" fn nros_app_rust_entry() {
         autoware_sentinel_core::init_island(sentinel_params);
         autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
 
-        println!("Executor ready — spinning...");
+        println!("Executor ready - spinning");
         executor.spin(core::time::Duration::from_millis(10));
 
         #[allow(unreachable_code)]

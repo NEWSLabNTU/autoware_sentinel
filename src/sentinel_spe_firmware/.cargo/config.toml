@@ -32,6 +32,15 @@ build-std = ["core", "alloc"]
 # `error: ... uses VFP register arguments` mismatch the eabihf target
 # would trigger.
 [target.armv7r-none-eabi]
+# `-Cpanic=immediate-abort` collapses every `panic!` into a single
+# `abort` intrinsic — drops panic locations, message formatter, and
+# `core::panicking::panic_fmt`. Saves ~3 KB BTCM on `core` alone
+# (escape_debug_ext, PadAdapter, from_utf8 are mostly Debug/Display
+# formatting reachable only from panic messages). Trade-off: panics
+# no longer print location; a runtime panic looks like a halt —
+# acceptable since `panic-halt` is the configured handler anyway.
 rustflags = [
     "-C", "target-feature=+vfp3,+d32",
+    "-Z", "unstable-options",
+    "-C", "panic=immediate-abort",
 ]

@@ -1,0 +1,45 @@
+# Autoware Sentinel — Linux IVC bridge daemon
+#
+# Forwards zenoh frames between an IVC channel (real `tegra-ivc-*` sysfs
+# on the AGX Orin, or a Unix-domain-socket pair via the `unix-mock`
+# backend on POSIX dev hosts) and a TCP zenohd router on
+# `127.0.0.1:7447`. Pairs with the SPE-side `Z_FEATURE_LINK_IVC` link
+# transport (nano-ros Phase 100.4) to give the SPE sentinel a path to
+# Autoware's rmw_zenoh_cpp via the standard zenohd.
+#
+# Two build modes:
+# - default + `unix-mock`: dev/CI mode. Reads/writes the SPE-side
+#   `nvidia-ivc::Channel` Unix-socket twin so a single host process
+#   stands in for the Cortex-R5F + IVC ring.
+# - default + `fsp-sysfs`: production mode (TODO Phase 11.6). Reads
+#   from `/sys/devices/platform/.../data_channel` instead of a
+#   socket.
+
+[package]
+name = "ivc-bridge"
+version = "0.1.0"
+edition = "2024"
+description = "Autoware Sentinel IVC ↔ TCP bridge daemon (Linux side)"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "ivc-bridge"
+path = "src/main.rs"
+
+[features]
+default = ["unix-mock"]
+unix-mock = []
+fsp-sysfs = []
+
+[dependencies]
+log = "0.4"
+env_logger = "0.11"
+clap = { version = "4", features = ["derive"] }
+
+# Bridge implements the wire protocol from
+# `docs/roadmap/phase-100-04-link-ivc-design.md` §5.2 directly (4-byte LE
+# `total_len + offset` header, 60-byte payload, 64-byte fixed frame) —
+# no nvidia-ivc dep so the daemon stays portable to non-Tegra Linux
+# hosts and the protocol stays a single-source-of-truth contract that
+# both sides cite by spec rather than by shared crate.

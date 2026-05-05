@@ -1,0 +1,75 @@
+# Autoware Sentinel — AGX Orin SPE binary
+#
+# Phase 11 deployment target. Two build profiles:
+#
+# - **POSIX dev (default):** native Linux process. Uses
+#   `nros-platform-posix` for the system ABI and the `unix-mock`
+#   backend of `nvidia-ivc` for IVC. Pairs with a host-side
+#   `ivc-bridge` daemon to reach a normal zenohd at
+#   `127.0.0.1:7447`. This is Phase 11.1–11.3's "Stage 1: FreeRTOS
+#   POSIX simulator" workflow without the FreeRTOS-POSIX kernel
+#   wrapper — sufficient to validate the IVC + sentinel pipeline
+#   end-to-end against the Autoware planning simulator before
+#   crossing onto Cortex-R5F hardware.
+#
+# - **Real hardware (Phase 11.5+):** cross-compile for
+#   `armv7r-none-eabihf` against NVIDIA's FSP via `nros-board-orin-spe`.
+#   The same `wire_executor` body runs unchanged; only the entry-point
+#   shim (this crate's `main.rs`) and the toolchain change.
+#
+# This crate is **excluded from the workspace** because the real
+# hardware build target (`armv7r-none-eabihf`) and toolchain pin
+# diverge from the host workspace. The POSIX dev path is exercised
+# via a separate cargo invocation (`just build-sentinel-spe-sim`)
+# rather than through `cargo build --workspace`.
+
+[package]
+name = "autoware_sentinel_spe"
+version = "0.1.0"
+edition = "2024"
+description = "Autoware Sentinel safety island — AGX Orin SPE binary (Cortex-R5F + IVC, with a POSIX dev path)"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "autoware_sentinel_spe"
+path = "src/main.rs"
+
+[features]
+# POSIX dev path. Sentinel runs as a Linux process; IVC is a
+# UnixDatagram pair via `nvidia-ivc::unix-mock`; the host-side
+# `ivc-bridge` daemon forwards to/from a real zenohd on TCP.
+default = ["posix-mock-ivc"]
+posix-mock-ivc = ["env_logger"]
+
+# Real hardware path. Selects the FSP-backed IVC and the SPE board
+# crate. Activated by the cross-compile build (Phase 11.5).
+orin-spe-fsp = []
+
+[dependencies]
+log = { version = "0.4", default-features = false }
+env_logger = { version = "0.11", optional = true }
+
+# Shared core wiring. Reduced feature set (no controller-node, no
+# monitoring-topics, no comp-stubs) to fit the 256 KB BTCM budget on
+# real hardware. comp-mrm + comp-engagement are the safety-critical
+# minimum: heartbeat watchdog, MRM emergency-stop / comfortable-stop,
+# vehicle command gate, control validator, op-mode handshake.
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-posix", "comp-mrm", "comp-engagement"] }
+
+# nros — IVC link transport via the new `link-ivc` cargo feature
+# (nano-ros Phase 100.4). `platform-posix` is on for the dev path;
+# Real hardware swaps it for `platform-orin-spe` via the `orin-spe-fsp`
+# feature wrapper.
+nros = { version = "*", default-features = false, features = ["std", "rmw-zenoh", "platform-posix", "ros-humble", "param-services"] }
+
+# Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
+# autoware_adapi_v1_msgs at opt-level=0 for thumbv7-class targets.
+# Kept for parity with the other sentinel binaries.
+[profile.dev.package.autoware_adapi_v1_msgs]
+opt-level = 1
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false

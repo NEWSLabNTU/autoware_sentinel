@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "autoware_internal_debug_msgs"
-version = "1.12.0"
+version = "1.12.1"
 dependencies = [
  "builtin_interfaces",
  "heapless",
@@ -159,40 +159,13 @@ dependencies = [
 
 [[package]]
 name = "autoware_internal_msgs"
-version = "1.12.0"
+version = "1.12.1"
 dependencies = [
  "builtin_interfaces",
  "heapless",
  "nros-core",
  "nros-serdes",
  "std_msgs",
-]
-
-[[package]]
-name = "autoware_interpolation"
-version = "0.1.0"
-dependencies = [
- "geometry_msgs",
- "libm",
-]
-
-[[package]]
-name = "autoware_motion_utils"
-version = "0.1.0"
-dependencies = [
- "autoware_interpolation",
- "autoware_planning_msgs",
- "autoware_universe_utils",
- "geometry_msgs",
- "libm",
-]
-
-[[package]]
-name = "autoware_mpc_lateral_controller"
-version = "0.1.0"
-dependencies = [
- "autoware_vehicle_info_utils",
- "libm",
 ]
 
 [[package]]
@@ -242,22 +215,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "autoware_pid_longitudinal_controller"
-version = "0.1.0"
-dependencies = [
- "autoware_control_msgs",
- "autoware_interpolation",
- "autoware_motion_utils",
- "autoware_planning_msgs",
- "autoware_universe_utils",
- "autoware_vehicle_info_utils",
- "autoware_vehicle_msgs",
- "geometry_msgs",
- "libm",
- "nav_msgs",
-]
-
-[[package]]
 name = "autoware_planning_msgs"
 version = "1.11.0"
 dependencies = [
@@ -283,29 +240,23 @@ dependencies = [
  "autoware_heartbeat_watchdog",
  "autoware_internal_debug_msgs",
  "autoware_internal_msgs",
- "autoware_mpc_lateral_controller",
  "autoware_mrm_comfortable_stop_operator",
  "autoware_mrm_emergency_stop_operator",
  "autoware_mrm_handler",
  "autoware_operation_mode_transition_manager 0.1.0",
  "autoware_operation_mode_transition_manager 0.48.0",
- "autoware_pid_longitudinal_controller",
  "autoware_planning_msgs",
  "autoware_shift_decider",
  "autoware_stop_filter",
  "autoware_system_msgs",
- "autoware_trajectory_follower_base",
- "autoware_trajectory_follower_node",
  "autoware_twist2accel",
  "autoware_vehicle_cmd_gate 0.1.0",
  "autoware_vehicle_cmd_gate 0.48.0",
- "autoware_vehicle_info_utils",
  "autoware_vehicle_msgs",
  "autoware_vehicle_velocity_converter",
  "builtin_interfaces",
  "diagnostic_msgs",
  "geometry_msgs",
- "libm",
  "log",
  "logging_demo",
  "nav_msgs",
@@ -319,7 +270,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "autoware_sentinel_linux"
+name = "autoware_sentinel_spe"
 version = "0.1.0"
 dependencies = [
  "autoware_sentinel_core",
@@ -358,37 +309,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "autoware_trajectory_follower_base"
-version = "0.1.0"
-
-[[package]]
-name = "autoware_trajectory_follower_node"
-version = "0.1.0"
-dependencies = [
- "autoware_interpolation",
- "autoware_motion_utils",
- "autoware_mpc_lateral_controller",
- "autoware_pid_longitudinal_controller",
- "autoware_trajectory_follower_base",
- "autoware_universe_utils",
- "autoware_vehicle_info_utils",
- "libm",
-]
-
-[[package]]
 name = "autoware_twist2accel"
 version = "0.1.0"
 dependencies = [
  "geometry_msgs",
  "nav_msgs",
-]
-
-[[package]]
-name = "autoware_universe_utils"
-version = "0.1.0"
-dependencies = [
- "geometry_msgs",
- "libm",
 ]
 
 [[package]]
@@ -409,13 +334,6 @@ dependencies = [
  "heapless",
  "nros-core",
  "nros-serdes",
-]
-
-[[package]]
-name = "autoware_vehicle_info_utils"
-version = "0.1.0"
-dependencies = [
- "libm",
 ]
 
 [[package]]
@@ -450,27 +368,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "rustc-hash 1.1.0",
- "shlex",
- "syn",
-]
-
-[[package]]
-name = "bindgen"
-version = "0.72.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
-dependencies = [
- "bitflags",
- "cexpr",
- "clang-sys",
- "itertools",
- "log",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash 2.1.2",
+ "rustc-hash",
  "shlex",
  "syn",
 ]
@@ -558,7 +456,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ddb117e43bbf7dacf0a4190fef4d345b9bad68dfc649cb349e7d17d28428e51"
 dependencies = [
  "clap_builder",
- "clap_derive",
 ]
 
 [[package]]
@@ -571,18 +468,6 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
-]
-
-[[package]]
-name = "clap_derive"
-version = "4.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2ce8604710f6733aa641a2b3731eaa1e8b3d9973d5e3565da11800813f997a9"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -625,7 +510,7 @@ dependencies = [
 [[package]]
 name = "dust_dds"
 version = "0.15.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "critical-section",
  "dust_dds_derive",
@@ -637,7 +522,7 @@ dependencies = [
 [[package]]
 name = "dust_dds_derive"
 version = "0.15.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -707,14 +592,6 @@ name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
-
-[[package]]
-name = "freertos-lwip-sys"
-version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
-dependencies = [
- "bindgen 0.72.1",
-]
 
 [[package]]
 name = "geographic_msgs"
@@ -837,15 +714,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
-name = "ivc-bridge"
-version = "0.1.0"
-dependencies = [
- "clap",
- "env_logger",
- "log",
-]
-
-[[package]]
 name = "jiff"
 version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -911,7 +779,7 @@ checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
 name = "logging_demo"
-version = "0.20.8"
+version = "0.20.9"
 dependencies = [
  "heapless",
  "nros-core",
@@ -973,7 +841,7 @@ dependencies = [
 [[package]]
 name = "nros"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "nros-core",
  "nros-macros",
@@ -992,7 +860,7 @@ dependencies = [
 [[package]]
 name = "nros-builtin-interfaces"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "heapless",
  "nros-core",
@@ -1002,7 +870,7 @@ dependencies = [
 [[package]]
 name = "nros-core"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "heapless",
  "log",
@@ -1012,7 +880,7 @@ dependencies = [
 [[package]]
 name = "nros-macros"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1022,7 +890,7 @@ dependencies = [
 [[package]]
 name = "nros-node"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "atomic-waker",
  "heapless",
@@ -1041,7 +909,7 @@ dependencies = [
 [[package]]
 name = "nros-params"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "heapless",
 ]
@@ -1049,60 +917,30 @@ dependencies = [
 [[package]]
 name = "nros-platform"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "nros-platform-api",
- "nros-platform-freertos",
- "nros-platform-nuttx",
  "nros-platform-posix",
- "nros-platform-zephyr",
 ]
 
 [[package]]
 name = "nros-platform-api"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
-
-[[package]]
-name = "nros-platform-freertos"
-version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
-dependencies = [
- "freertos-lwip-sys",
- "nros-platform-api",
-]
-
-[[package]]
-name = "nros-platform-nuttx"
-version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
-dependencies = [
- "nros-platform-api",
- "nros-platform-posix",
- "nuttx-sys",
-]
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 
 [[package]]
 name = "nros-platform-posix"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "libc",
  "nros-platform-api",
 ]
 
 [[package]]
-name = "nros-platform-zephyr"
-version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
-dependencies = [
- "nros-platform-api",
-]
-
-[[package]]
 name = "nros-rcl-interfaces"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "heapless",
  "nros-builtin-interfaces",
@@ -1113,7 +951,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "heapless",
  "log",
@@ -1123,7 +961,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw-dds"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "dust_dds",
  "heapless",
@@ -1136,7 +974,7 @@ dependencies = [
 [[package]]
 name = "nros-rmw-uorb"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "heapless",
  "nros-core",
@@ -1151,24 +989,26 @@ dependencies = [
 [[package]]
 name = "nros-rmw-xrce"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "atomic-waker",
  "heapless",
  "nros-platform",
  "nros-rmw",
+ "portable-atomic",
  "xrce-sys",
 ]
 
 [[package]]
 name = "nros-rmw-zenoh"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "atomic-waker",
  "heapless",
  "log",
  "nros-core",
+ "nros-platform",
  "nros-rmw",
  "portable-atomic",
  "zpico-sys",
@@ -1177,17 +1017,9 @@ dependencies = [
 [[package]]
 name = "nros-serdes"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "heapless",
-]
-
-[[package]]
-name = "nuttx-sys"
-version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
-dependencies = [
- "bindgen 0.72.1",
 ]
 
 [[package]]
@@ -1254,7 +1086,7 @@ dependencies = [
 [[package]]
 name = "px4-log"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "px4-sys",
 ]
@@ -1262,16 +1094,16 @@ dependencies = [
 [[package]]
 name = "px4-sys"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
- "bindgen 0.70.1",
+ "bindgen",
  "cc",
 ]
 
 [[package]]
 name = "px4-uorb"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "px4-sys",
  "px4-workqueue",
@@ -1280,7 +1112,7 @@ dependencies = [
 [[package]]
 name = "px4-workqueue"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "px4-log",
  "px4-sys",
@@ -1290,7 +1122,7 @@ dependencies = [
 [[package]]
 name = "px4-workqueue-macros"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -1347,12 +1179,6 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
-
-[[package]]
-name = "rustc-hash"
-version = "2.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94300abf3f1ae2e2b8ffb7b58043de3d399c73fa6f4b73826402a5c457614dbe"
 
 [[package]]
 name = "rustix"
@@ -1978,7 +1804,7 @@ checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 [[package]]
 name = "xrce-platform-shim"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "nros-platform",
 ]
@@ -1986,7 +1812,7 @@ dependencies = [
 [[package]]
 name = "xrce-sys"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "cc",
  "xrce-platform-shim",
@@ -2001,7 +1827,7 @@ checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 [[package]]
 name = "zpico-platform-shim"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "cc",
  "nros-platform",
@@ -2010,26 +1836,10 @@ dependencies = [
 [[package]]
 name = "zpico-sys"
 version = "0.1.0"
-source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=587adc6b#587adc6b76c651fee1cf3a69c8e4cd7fe6cb4a9c"
+source = "git+https://github.com/NEWSLabNTU/nano-ros.git?rev=cbd18a0e#cbd18a0e6a043fb369f72d571f758a4383be069f"
 dependencies = [
  "cbindgen",
  "cc",
  "cmake",
  "zpico-platform-shim",
 ]
-
-[[patch.unused]]
-name = "autoware_internal_metric_msgs"
-version = "1.12.0"
-
-[[patch.unused]]
-name = "autoware_internal_perception_msgs"
-version = "1.12.0"
-
-[[patch.unused]]
-name = "autoware_internal_planning_msgs"
-version = "1.12.0"
-
-[[patch.unused]]
-name = "autoware_perception_msgs"
-version = "1.11.0"

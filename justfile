@@ -155,6 +155,34 @@ build-rmw-zenoh:
 build-zenohd:
     cd external/zenoh && cargo build --profile fast -p zenohd
 
+# Build the IVC ↔ TCP bridge daemon (Phase 11.2 / 11.6).
+build-ivc-bridge:
+    cargo build -p ivc-bridge --release
+
+# Run the IVC bridge against a host zenohd. Defaults match the
+# autoware_sentinel_spe POSIX dev path: a Unix socket at
+# /tmp/autoware-sentinel-ivc.sock and zenohd on 127.0.0.1:7447.
+run-ivc-bridge: build-ivc-bridge
+    target/release/ivc-bridge --backend unix-mock
+
+# Build the AGX Orin SPE sentinel binary (Phase 11.1 — POSIX dev path).
+# Same wire_executor body as the other platform binaries; reduced
+# feature set sized for the 256 KB BTCM budget on real Cortex-R5F.
+# Uses the workspace-default `.env` capacity caps so the comp-mrm +
+# comp-engagement entity count fits in zpico's static tables.
+build-sentinel-spe-sim:
+    #!/usr/bin/env bash
+    set -eo pipefail
+    cd src/autoware_sentinel_spe
+    cargo build --release
+
+# Run the SPE sentinel as a Linux process (Phase 11.3 dev workflow).
+# Currently uses TCP locator directly until the link-ivc cargo feature
+# is plumbed through nros for the platform-posix profile (TODO 11.2.b);
+# pair with `just run-zenohd` in another terminal.
+run-sentinel-spe-sim: build-sentinel-spe-sim
+    src/autoware_sentinel_spe/target/release/autoware_sentinel_spe
+
 # ════════════════════════════════════════════════════════════════════
 # SPE firmware (Phase 11.5 + 11.7 — autoware-sentinel on AGX Orin SPE)
 #

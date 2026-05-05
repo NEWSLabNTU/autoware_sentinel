@@ -6,6 +6,7 @@ exclude = [
     "src/autoware_sentinel_freertos",
     "src/autoware_sentinel_nuttx",
     "src/sentinel_spe_firmware",
+    "src/autoware_sentinel_spe",
     "src/verification",
 ]
 members = [
@@ -22,6 +23,7 @@ members = [
     "src/autoware_pid_longitudinal_controller",
     "src/autoware_sentinel_linux",
     "src/autoware_shift_decider",
+    "src/ivc-bridge",
     "src/autoware_stop_filter",
     "src/autoware_trajectory_follower_base",
     "src/autoware_trajectory_follower_node",

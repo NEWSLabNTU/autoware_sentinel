@@ -588,39 +588,81 @@ Match the FreeRTOS path. **Don't** stub `select` on the SPE side.
 `zpico_spin_once` resolves through `_z_condvar_wait_until` →
 `xSemaphoreTake(timeout)`.
 
-##### 11.3.C — Feature pruning to fit 256 KB BTCM (sentinel side)
+##### 11.3.C — Feature pruning to fit 256 KB BTCM — MEASURED, INSUFFICIENT
 
-Full `nros + autoware_sentinel_core + all msg packages + zenoh-pico` overflows
-BTCM by ~462 KB. Try **feature pruning only** — don't add a `SafetyIsland::
-minimal()` constructor or mess with DRAM mapping yet (those are bigger
-architectural decisions; defer until pruning either succeeds or is
-demonstrably insufficient).
+Per-build size, with nano-ros pin `b5d599f4` (post 11.3.A + 11.3.B):
 
-**Tasks (sentinel side, lands once 11.3.A + 11.3.B clear):**
+| Feature set                         | text+data+bss | overflow vs BTCM |
+|-------------------------------------|---------------|------------------|
+| `wfi`-loop scaffold                 | 146 KB        | none (-110 KB)   |
+| + `Executor::open` + `spin`         | ~595 KB       | **+339 KB**      |
+| + `autoware_sentinel_core` (`comp-*` off, monitoring off) | ~727 KB | **+471 KB**      |
 
-- [ ] In `sentinel_spe_firmware/Cargo.toml`, drop `nros` features:
-      - remove `param-services`
-      - keep only `rmw-zenoh,platform-orin-spe,ros-humble`
-      - if executor sizing is configurable via env, set
-        `NROS_EXECUTOR_MAX_CBS=8`, `NROS_SUBSCRIPTION_BUFFER_SIZE=512`
-        (or smaller — the SafetyIsland's reduced set is small).
-- [ ] In `autoware_sentinel_core` features, drop `comp-*` (already off in the
-      scaffold — confirm). `monitoring-topics` already off.
-- [ ] Trim `[patch.crates-io]` msg-package list to only the packages the
-      reduced sentinel actually subscribes/publishes (mrm, heartbeat,
-      autoware_control_msgs, autoware_vehicle_msgs, autoware_system_msgs,
-      builtin_interfaces, std_msgs, std_srvs). Drop adapi, planning, vehicle_
-      cmd_gate, control_validator generated msg crates.
-- [ ] Run `cargo bloat --release -p sentinel-spe-firmware --target armv7r-none-eabi`
-      after each prune. Track per-crate `.text` contribution; the goal is
-      `.text + .data + .bss < 232 KB` (16 KB headroom for runtime stacks).
-- [ ] Add a `just orin_spe-bloat-report` recipe that prints the cargo-bloat
-      output so size regressions are CI-visible.
+The `Executor::open` baseline (zenoh-pico session + nros executor +
+the messaging machinery they pull) is already 339 KB over. **Feature
+pruning at the `nros` / `autoware_sentinel_core` level cannot bridge
+the gap** — the floor is the runtime itself, not the algorithm
+crates.
 
-**Acceptance:** `arm-none-eabi-size build/spe.elf` reports `.text + .data + .bss
-< 232 KB` with the SafetyIsland wiring active. If pruning isn't enough, this
-sub-item is incomplete and a follow-up phase reopens the architectural options
-(custom-minimal sentinel or DRAM/AST mapping).
+What 11.3.C tried (all kept, none sufficient):
+
+- Dropped `nros` features: `param-services`, `lifecycle-services`,
+  `safety-e2e`, `stream`, `unstable-zenoh-api`. Kept the minimum
+  buildable: `rmw-zenoh,platform-orin-spe,ros-humble`.
+- `autoware_sentinel_core` `default` features only — `comp-*` and
+  `monitoring-topics` already off.
+- Aggressive size profile: `lto = "fat"`, `opt-level = "z"`,
+  `codegen-units = 1`, `panic = "abort"`, debug stripped.
+
+The math doesn't close at the feature-flag level. The next move is
+the architectural option that 11.3.C deliberately deferred:
+
+**Option A — DRAM mapping via AST (~1-2 days).** Split linker
+layout: vector table + IRQ handlers + critical paths in BTCM (256 KB),
+bulk `.text + .rodata` in a DRAM carveout reachable through the
+SPE's AST. Requires:
+
+- Edit `spe.ld.in` to add a DRAM region + section directives.
+- Configure AST in NVIDIA's `late-init.c` to map a DRAM carveout to
+  the SPE virtual range.
+- Verify R5 L1 caching covers the DRAM range (R5 has L1 D$ + I$, no
+  MMU; cache control via system control coprocessor).
+- Re-test bring-up — DRAM access latency may break real-time
+  deadlines; may need to pin specific functions to BTCM via
+  `__attribute__((section(".btcm.text")))`.
+
+**Option B — Custom minimal sentinel without nros::Executor
+(~half day).** Bypass the full executor and speak the IVC wire
+format directly. Footprint is dominated by the watchdog timer +
+emergency-stop GPIO + minimal IVC frame builder; algorithm crates
+optional. Trade: less safety coverage, no zenoh routing — sentinel
+becomes a single-purpose watchdog. Acceptable for first hardware
+bring-up; wire the full stack later when DRAM mapping lands.
+
+**Recommendation:** start with Option B for 11.4 hardware bring-up
+verification (proves IVC + boot path), then Option A for full
+sentinel parity. Both are out of 11.3.C scope.
+
+**Done bits in 11.3.C:**
+
+- [x] Pruned `nros` features down to the minimum buildable set
+      (`rmw-zenoh,platform-orin-spe,ros-humble`). Documented in
+      `src/sentinel_spe_firmware/Cargo.toml`.
+- [x] Confirmed `autoware_sentinel_core` `default` features are
+      already minimal (`comp-*` off, monitoring off).
+- [x] Measured baseline overflow with both `Executor`-only and
+      `Executor + sentinel_core` builds. Numbers above are the floor
+      under the 11.3.A + 11.3.B nano-ros stack.
+- [x] Updated `src/sentinel_spe_firmware/src/lib.rs` to document
+      the size measurement results inline (kept as `wfi`-loop
+      scaffold so `build-spe-image` stays green for CI smoke).
+
+**Open work (becomes its own sub-item):**
+
+- [ ] Pick Option A or B above, file as Phase 11.3.E (DRAM mapping)
+      or 11.3.F (custom minimal sentinel).
+- [ ] Add `just orin_spe-bloat-report` recipe once a build path
+      successfully fits BTCM, so future regressions are caught.
 
 ##### 11.3.D — SafetyIsland wiring + integration tests
 

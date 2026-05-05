@@ -32,7 +32,7 @@ crate-type = ["staticlib"]
 log = { version = "0.4", default-features = false }
 
 # Board crate (run<F,E>, Config, println!) from nano-ros.
-nros-board-orin-spe = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "74d80acc", default-features = false, features = ["fsp", "cortex-r"] }
+nros-board-orin-spe = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4", default-features = false, features = ["fsp", "cortex-r"] }
 
 # `nros-platform` is a transitive dep of the board crate; declared
 # explicitly here to flip on `global-allocator` (Phase 71.27 — wires
@@ -40,31 +40,30 @@ nros-board-orin-spe = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev 
 # `#[global_allocator]`). Without this, even crates that pull `alloc`
 # transitively fail with "no global memory allocator found" when
 # linked into a `staticlib`.
-nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "74d80acc", default-features = false, features = ["platform-orin-spe", "global-allocator"] }
+nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4", default-features = false, features = ["platform-orin-spe", "global-allocator"] }
 
-# Phase 11.3 (in progress) — `nros` umbrella + `autoware_sentinel_core`
-# deps prototyped here. `build-spe-image` blockers cleared one at a
-# time:
-#
-#   [x] 11.3.A — nano-ros's `nvidia-ivc/fsp` backend now uses the
-#       actual FSP zero-copy API (`tegra_ivc_rx_get_read_frame` /
-#       `tegra_ivc_rx_notify_buffers_consumed` /
-#       `tegra_ivc_tx_get_write_buffer` / `tegra_ivc_tx_send_buffers`).
-#       Channel struct is firmware-supplied via
-#       `nvidia_ivc::fsp::register_fsp_channel(id, ch_ptr)` — call once
-#       per channel after FSP `ivc_init_channels_ccplex()`. Pin
-#       74d80acc carries the rewrite + the matching shim ABI break.
-#   [ ] 11.3.B — `zpico_spin_once` still calls POSIX `select()` on
-#       the `orin-spe` backend; needs `Z_FEATURE_MULTI_THREAD=1` +
-#       `ZENOH_ORIN_SPE` platform header so it falls into the
-#       FreeRTOS condvar wait path. Tracked under nano-ros.
-#   [ ] 11.3.C — `nros + autoware_sentinel_core + msg packages`
-#       overflow the 256 KB BTCM by ~462 KB. Feature pruning
-#       (drop param-services, trim msg crates) once 11.3.B clears.
-#
-# Until 11.3.B + 11.3.C clear, the firmware crate stays a pure
-# scaffold so `build-spe-image` keeps the 137 KB / 143 KB BTCM
-# green output that 11.5 landed.
+# Phase 11.3 status:
+#   [x] 11.3.A — zero-copy `nvidia-ivc/fsp` API on nano-ros side.
+#   [x] 11.3.B — `Z_FEATURE_MULTI_THREAD=1` + `ZENOH_ORIN_SPE`
+#       platform header. `zpico_spin_once` uses the FreeRTOS
+#       condvar wait path; no `select(2)` in the SPE link.
+#   [~] 11.3.C — feature pruning. nros pulled with the smallest
+#       feature set that still gives `Executor` + `ExecutorConfig`:
+#       `rmw-zenoh,platform-orin-spe,ros-humble`. Dropped:
+#       `param-services`, `lifecycle-services`, `safety-e2e`,
+#       `stream`, `unstable-zenoh-api`. Watch
+#       `arm-none-eabi-size build/spe.elf` after each prune; goal
+#       is .text+.data+.bss < 232 KB.
+#   [ ] 11.3.D — SafetyIsland wiring in lib.rs.
+
+# nros umbrella — `Executor` / `ExecutorConfig` / `NodeError`.
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4", default-features = false, features = ["rmw-zenoh", "platform-orin-spe", "ros-humble"] }
+
+# Shared sentinel core — pulls all algorithm crates transitively.
+# Default features only (`comp-*` off, `monitoring-topics` off):
+# minimal core baseline of 6 pubs / 3 subs / 1 service / 1 timer.
+# 11.3.D wires `init_island` + `wire_executor` in lib.rs.
+autoware_sentinel_core = { path = "../autoware_sentinel_core", default-features = false, features = ["platform-orin-spe"] }
 
 # `panic-halt` is the simplest correct strategy for the SPE: an
 # uncaught panic blocks the FreeRTOS task forever via WFI. The MRM
@@ -94,11 +93,11 @@ debug = false        # Strip; debug symbols inflate the rlib but are
 # generated/ tree (single source of truth for the msg superset, same
 # pattern as freertos / nuttx / zephyr siblings).
 [patch.crates-io]
-nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "74d80acc" }
-nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "74d80acc" }
-nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "74d80acc" }
-nros-rmw-zenoh = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "74d80acc" }
-zpico-sys = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "74d80acc" }
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
+nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
+nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
+nros-rmw-zenoh = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
+zpico-sys = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
 
 autoware_adapi_v1_msgs = { path = "../autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }
 autoware_adapi_version_msgs = { path = "../autoware_sentinel_linux/generated/autoware_adapi_version_msgs" }

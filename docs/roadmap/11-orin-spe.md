@@ -417,66 +417,204 @@ file path + commit hash in the bridge crate's README so divergence is review-vis
 Wire the sentinel algorithms into the FreeRTOS POSIX application and run end-to-end
 integration tests against the Autoware planning simulator.
 
-**Status:** infrastructure landed, body wiring **BLOCKED** on three nano-ros gaps
-(tracked under nano-ros Phase 100.0-fsp-fix). Until they clear, the SPE firmware
-crate stays a `wfi`-loop scaffold; build-spe-image produces a bootable but inert
-`spe.bin`.
+**Status:** infrastructure landed (commit `32c9037`); body wiring depends on three
+nano-ros work items (11.3.A / 11.3.B / 11.3.C below). The SPE firmware crate stays
+a `wfi`-loop scaffold until they clear; `just build-spe-image` keeps producing a
+bootable-but-inert `spe.bin` (137 KB, 143 KB BTCM `.text + .data + .bss`).
 
-**Blockers (need fixing on nano-ros side before re-enabling the SafetyIsland wiring):**
+##### Infrastructure already in place
 
-1. **`nvidia-ivc/fsp` extern decls don't match the FSP's actual symbol set.** The
-   crate declares `tegra_ivc_channel_{get,read,write,notify,frame_size}`, but
-   `nm libtegra_aon_fsp.a` shows the FSP exposes
-   `tegra_ivc_init_channel_from_ram`, `tegra_ivc_rx_get_read_frame`,
-   `tegra_ivc_rx_get_contiguous_read_available`, `tegra_ivc_tx_send_buffers`,
-   `tegra_ivc_channel_notified`, etc. — a **frame-buffer get/release zero-copy
-   API**, not read/write. Phase 100.0 implementation gap; the safe wrapper in
-   `nvidia-ivc/src/fsp.rs` needs to be rewritten against the real API.
-2. **`zpico_spin_once` calls POSIX `select(2)`** even on the orin-spe / IVC-only
-   backend (no network feature). Undefined symbol at final link. zpico-sys's C
-   side needs a `Z_FEATURE_LINK_IVC == 1 && !network`-gated path that doesn't
-   reach for `select`.
-3. **256 KB BTCM overflow by ~462 KB** with `nros + autoware_sentinel_core +
-   msg packages` linked in. Needs either:
-   - aggressive feature pruning (drop param-services, drop most msg packages,
-     reduce executor MAX_CBS / SUBSCRIPTION_BUFFER_SIZE),
-   - or DRAM mapping via AST so the `.text` segment lives off-BTCM,
-   - or a `SafetyIsland::minimal()` constructor that pulls only the
-     heartbeat/MRM/cmd-gate trio and skips the rest.
-
-**Infrastructure landed in this commit (works without running the full body):**
-
-- `autoware_sentinel_core` adds `platform-orin-spe` feature alongside
+- `autoware_sentinel_core::platform-orin-spe` feature, peer of
   `platform-{posix,zephyr,freertos,nuttx,bare-metal}`. Forwards to
   `nros/platform-orin-spe`.
-- `sentinel_spe_firmware/Cargo.toml`: `[patch.crates-io]` block mirroring
-  `autoware_sentinel_freertos/.cargo/config.toml`'s message-package patches +
-  the nano-ros pin. Workspace-excluded crates need their own patch block.
-- nano-ros 6289555e plumbs `platform-orin-spe` through `nros-rmw-zenoh`
-  (forwards to `zpico-sys/orin-spe + link-ivc`), `nros-node`, and the `nros`
-  umbrella. Source-side `cfg(any(feature = "platform-*"))` lists in
-  `nros-rmw-zenoh/src/{lib,zpico}.rs` and `zpico-sys/src/lib.rs` updated.
+- `sentinel_spe_firmware/Cargo.toml`: full `[patch.crates-io]` block (mirroring
+  `autoware_sentinel_freertos/.cargo/config.toml`'s per-crate pattern). Workspace-
+  excluded crates need their own patch block; this one is consistent with the
+  workspace pin.
+- `justfile build-spe-firmware`: loop-based `ar d` strip (basename can repeat
+  inside the cargo-bundled staticlib).
+- nano-ros pin `587adc6b → 6289555e` (`NEWSLabNTU/nano-ros#main`): plumbs
+  `platform-orin-spe` through `nros-rmw-zenoh` (forwards to
+  `zpico-sys/orin-spe + link-ivc`), `nros-node`, the `nros` umbrella, and the
+  source-side `cfg(any(feature = "platform-*"))` whitelists in
+  `nros-rmw-zenoh/src/{lib,zpico}.rs` + `zpico-sys/src/lib.rs`.
 
-**Tasks (when blockers clear):**
+##### 11.3.A — Zero-copy `nvidia-ivc/fsp` API rewrite (nano-ros side)
+
+Phase 100.0's `nvidia-ivc/src/fsp.rs` declared
+`tegra_ivc_channel_{get,read,write,notify,frame_size}` — a copying read/write
+API that doesn't exist in the FSP. `nm libtegra_aon_fsp.a` shows the actual
+shape is **zero-copy frame buffer get/release**:
+
+```
+tegra_ivc_init_channel_from_ram(ch, ram, nframes, frame_size, ...)
+tegra_ivc_rx_get_read_frame(ch)             → *const u8 (NULL if empty)
+tegra_ivc_rx_notify_buffers_consumed(ch)    → release after consumption
+tegra_ivc_tx_get_contiguous_write_space(ch) → *mut u8 (NULL if full)
+tegra_ivc_tx_send_buffers(ch, nbytes)       → commit
+tegra_ivc_channel_is_synchronized(ch)       → bool
+tegra_ivc_channel_notified(ch)              → IRQ ack
+```
+
+Land the trait/ABI as zero-copy throughout (don't paper over with a memcpy
+adapter — the API gets propagated to autoware_sentinel's CCPLEX-side bridge
+daemon and we want zero-copy semantics there too).
+
+**Tasks (nano-ros, lands as `phase-100-fsp-zero-copy` follow-up):**
+
+- [ ] Rewrite `packages/drivers/nvidia-ivc/src/lib.rs` `Channel` API:
+      - `pub fn read_frame(&self) -> Option<RxFrame<'_>>` — returns a borrowed
+        slice handle whose `Drop` calls `tegra_ivc_rx_notify_buffers_consumed`,
+        OR an explicit `ack(self)` method for `no_std` callers wary of Drop
+        ordering.
+      - `pub fn write_frame(&self, len: usize) -> Option<TxFrame<'_>>` — returns
+        a mutable borrowed slice; `commit(self)` calls `tegra_ivc_tx_send_buffers(len)`.
+      - Drop the `read(buf)` / `write(buf)` copying methods.
+- [ ] Rewrite `packages/drivers/nvidia-ivc/src/fsp.rs` against the FSP's actual
+      symbol set listed above. `Channel::open(id)` should call into the
+      BSP-supplied `ivc_channels_get_channel(id)` (or whatever the demo's
+      `drivers/ivc-channels.c` exposes) rather than re-doing the AST/carveout
+      init from scratch.
+- [ ] Update `packages/drivers/nvidia-ivc/src/unix_mock.rs` to fake zero-copy
+      via an internal frame buffer + cursor. `read_frame()` returns a slice of
+      the next-pending frame; `notify_buffers_consumed` advances the cursor.
+- [ ] Update `nros-platform-api::PlatformIvc` trait shape:
+      ```rust
+      pub trait PlatformIvc {
+          fn channel_get(id: u32) -> *mut c_void;
+          fn read_frame(ch: *mut c_void) -> Option<NonNull<[u8]>>;
+          fn ack_read(ch: *mut c_void);
+          fn write_frame(ch: *mut c_void, len: usize) -> Option<NonNull<[u8]>>;
+          fn commit_write(ch: *mut c_void, len: usize);
+          fn frame_size(ch: *mut c_void) -> u32;
+          fn notify(ch: *mut c_void);
+      }
+      ```
+- [ ] Update `zpico-platform-shim::ivc_helpers` extern symbols
+      (`_z_open_ivc`, `_z_read_frame_ivc`, `_z_ack_read_ivc`,
+      `_z_write_frame_ivc`, `_z_commit_write_ivc`, `_z_ivc_frame_size`,
+      `_z_ivc_notify`).
+- [ ] Update `packages/zpico/zpico-sys/zenoh-pico/src/link/unicast/ivc.c`'s
+      `__z_ivc_send_batch` / `__z_ivc_recv_batch` to use the zero-copy
+      forwarders instead of memcpy-into-stack-buffer + `_z_send_ivc`.
+- [ ] Update `packages/testing/nros-tests/tests/orin_spe_mock_ivc.rs` to use
+      the new API; reassert wire-format conformance unchanged (4 tests).
+
+**Acceptance:** `cargo nextest run -p nros-tests --test orin_spe_mock_ivc`
+green; sentinel firmware link no longer surfaces undefined `tegra_ivc_*`
+symbols.
+
+##### 11.3.B — Native FreeRTOS condvar wait on orin-spe (nano-ros side)
+
+`zpico_spin_once` falls into its single-threaded `select(2)` branch on
+orin-spe because `Z_FEATURE_MULTI_THREAD=0` is forced for `use_bare_metal ||
+use_orin_spe` in `zpico-sys/build.rs`. The FreeRTOS path
+(`Z_FEATURE_MULTI_THREAD=1`) uses zenoh-pico's own
+`_z_mutex_lock` / `_z_condvar_wait_until` primitives, which on FreeRTOS resolve
+to `xSemaphoreCreate*` — already present in NVIDIA's FSP V10.4.3.
+
+Match the FreeRTOS path. **Don't** stub `select` on the SPE side.
+
+**Tasks (nano-ros, lands as `phase-100-orin-spe-multithread` follow-up):**
+
+- [ ] Add `ZENOH_ORIN_SPE` platform header in
+      `packages/zpico/zpico-sys/zenoh-pico/include/zenoh-pico/system/platform/`.
+      Either:
+      - Subset of `freertos/lwip.h` minus the lwIP socket types (preferred
+        — reuses upstream's FreeRTOS thread/sync types directly), or
+      - Adds the alternative path to `zenoh-pico/system/common/platform.h`'s
+        platform dispatch.
+- [ ] Bring up a `system/freertos/no_lwip/system.c` (or share
+      `system/freertos/system.c` with the lwIP variant). Threads, mutexes,
+      condvars resolve to FSP `xTaskCreate` / `xSemaphoreCreate*` —
+      bit-identical to upstream FreeRTOS on Cortex-M.
+- [ ] In `zpico-sys/build.rs`, route `use_orin_spe` to set
+      `ZENOH_ORIN_SPE` (or `ZENOH_FREERTOS_LWIP` with a `Z_FEATURE_LINK_TCP=0
+      Z_FEATURE_LINK_UDP_*=0` lockdown) and `Z_FEATURE_MULTI_THREAD=1`. The
+      bare-metal probe path is wrong for orin-spe — separate the two.
+- [ ] Verify `zpico_spin_once` falls into the condvar wait branch by setting
+      `g_spin_sem_initialized = true` etc. (those globals live in
+      `c/zpico/zpico.c`).
+
+**Acceptance:** `arm-none-eabi-nm spe.elf | grep ' U select'` is empty;
+`zpico_spin_once` resolves through `_z_condvar_wait_until` →
+`xSemaphoreTake(timeout)`.
+
+##### 11.3.C — Feature pruning to fit 256 KB BTCM (sentinel side)
+
+Full `nros + autoware_sentinel_core + all msg packages + zenoh-pico` overflows
+BTCM by ~462 KB. Try **feature pruning only** — don't add a `SafetyIsland::
+minimal()` constructor or mess with DRAM mapping yet (those are bigger
+architectural decisions; defer until pruning either succeeds or is
+demonstrably insufficient).
+
+**Tasks (sentinel side, lands once 11.3.A + 11.3.B clear):**
+
+- [ ] In `sentinel_spe_firmware/Cargo.toml`, drop `nros` features:
+      - remove `param-services`
+      - keep only `rmw-zenoh,platform-orin-spe,ros-humble`
+      - if executor sizing is configurable via env, set
+        `NROS_EXECUTOR_MAX_CBS=8`, `NROS_SUBSCRIPTION_BUFFER_SIZE=512`
+        (or smaller — the SafetyIsland's reduced set is small).
+- [ ] In `autoware_sentinel_core` features, drop `comp-*` (already off in the
+      scaffold — confirm). `monitoring-topics` already off.
+- [ ] Trim `[patch.crates-io]` msg-package list to only the packages the
+      reduced sentinel actually subscribes/publishes (mrm, heartbeat,
+      autoware_control_msgs, autoware_vehicle_msgs, autoware_system_msgs,
+      builtin_interfaces, std_msgs, std_srvs). Drop adapi, planning, vehicle_
+      cmd_gate, control_validator generated msg crates.
+- [ ] Run `cargo bloat --release -p sentinel-spe-firmware --target armv7r-none-eabi`
+      after each prune. Track per-crate `.text` contribution; the goal is
+      `.text + .data + .bss < 232 KB` (16 KB headroom for runtime stacks).
+- [ ] Add a `just orin_spe-bloat-report` recipe that prints the cargo-bloat
+      output so size regressions are CI-visible.
+
+**Acceptance:** `arm-none-eabi-size build/spe.elf` reports `.text + .data + .bss
+< 232 KB` with the SafetyIsland wiring active. If pruning isn't enough, this
+sub-item is incomplete and a follow-up phase reopens the architectural options
+(custom-minimal sentinel or DRAM/AST mapping).
+
+##### 11.3.D — SafetyIsland wiring + integration tests
+
+Once 11.3.A / 11.3.B / 11.3.C are green, restore the body of
+`sentinel_spe_firmware::nros_app_rust_entry`:
+
+```rust
+let exec_config = ExecutorConfig::new(config.zenoh_locator)
+    .domain_id(config.domain_id)
+    .node_name("sentinel");
+let mut executor = Executor::open(&exec_config)?;
+let p = autoware_sentinel_core::params::default_params();
+autoware_sentinel_core::init_island(p);
+autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
+executor.spin(core::time::Duration::from_millis(10));
+```
+
+**Tasks:**
 
 - [ ] Determine minimum viable sentinel feature set:
   - Heartbeat watchdog (subscribe `/autoware/state`, publish MRM state)
   - MRM emergency stop operator (jerk-limited braking)
   - Vehicle command gate (pass-through or emergency override)
   - Drop: trajectory follower, debug topics, parameter services, control validator
-- [ ] Wire reduced algorithm set with `Executor::<_, N, ARENA>` sized for SPE constraints
-- [ ] Use `has_external_control = true` (receive control commands from CCPLEX)
-- [ ] Start mock IVC bridge + zenohd + FreeRTOS POSIX sentinel as a test harness
-- [ ] Verify sentinel topics visible via `ros2 topic list`
-- [ ] Verify heartbeat watchdog triggers MRM on simulated failure
-- [ ] Run Autoware planning simulator integration tests against the POSIX sentinel
-- [ ] Add `just test-spe-sim` recipe
+- [ ] Use `has_external_control = true` (receive control commands from CCPLEX).
+- [ ] Start mock IVC bridge (subphase 11.2) + zenohd + FreeRTOS POSIX sentinel
+      as a test harness.
+- [ ] Verify sentinel topics visible via `ros2 topic list`.
+- [ ] Verify heartbeat watchdog triggers MRM on simulated failure.
+- [ ] Run Autoware planning simulator integration tests against the POSIX
+      sentinel.
+- [ ] Add `just test-spe-sim` recipe.
 
-**Acceptance criteria:**
-- [ ] Sentinel runs as FreeRTOS POSIX process with reduced algorithm set
-- [ ] Heartbeat watchdog + emergency stop + gate functional end-to-end
-- [ ] Planning simulator integration tests pass with the POSIX sentinel
-- [ ] All sentinel logic validated before moving to real hardware
+**Acceptance criteria (overall 11.3):**
+
+- [ ] 11.3.A: zero-copy IVC API merged on nano-ros; conformance test green.
+- [ ] 11.3.B: `select` symbol absent from `spe.elf`; zpico_spin_once uses the
+      FreeRTOS condvar path.
+- [ ] 11.3.C: BTCM budget under 232 KB with sentinel wired in.
+- [ ] 11.3.D: sentinel runs as FreeRTOS POSIX process with reduced algorithm
+      set; heartbeat watchdog + emergency stop + gate functional end-to-end;
+      planning simulator integration tests pass.
 
 ### Stage 2: Real SPE Hardware
 

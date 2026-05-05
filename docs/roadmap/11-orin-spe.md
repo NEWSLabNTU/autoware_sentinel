@@ -439,7 +439,55 @@ bootable-but-inert `spe.bin` (137 KB, 143 KB BTCM `.text + .data + .bss`).
   source-side `cfg(any(feature = "platform-*"))` whitelists in
   `nros-rmw-zenoh/src/{lib,zpico}.rs` + `zpico-sys/src/lib.rs`.
 
-##### 11.3.A — Zero-copy `nvidia-ivc/fsp` API rewrite (nano-ros side)
+##### 11.3.A — Zero-copy `nvidia-ivc/fsp` API rewrite (nano-ros side) — DONE
+
+Landed on `NEWSLabNTU/nano-ros#main` at commit `2342c7f1` (merged from
+branch `phase-100-ivc-zero-copy`). Sentinel pin bumped to consume.
+
+What shipped:
+
+- `nvidia-ivc::Channel` exposes `read_frame() -> Option<RxFrame<'_>>`
+  and `write_frame() -> Option<TxFrame<'_>>`. Frames borrow the
+  channel; Drop releases (RX) or abandons (TX). `RxFrame::ack()` and
+  `TxFrame::commit(len)` are explicit alternatives.
+- `nvidia-ivc/src/fsp.rs` rewritten against the actual FSP API
+  (`tegra_ivc_rx_get_read_frame` /
+  `tegra_ivc_rx_notify_buffers_consumed` /
+  `tegra_ivc_tx_get_write_buffer` / `tegra_ivc_tx_send_buffers`).
+  Channel structs are firmware-supplied — sentinel firmware calls
+  `nvidia_ivc::fsp::register_fsp_channel(id, ch_ptr)` once per
+  channel after FSP `ivc_init_channels_ccplex()`.
+- `nvidia-ivc/src/unix_mock.rs` rewritten with per-channel TX + RX
+  scratch slots. `tx_get` hands out the slot pointer; `commit` does
+  the `send()`; `rx_get` does non-blocking `recv()` into the slot.
+- `PlatformIvc` trait reshaped to the seven-method zero-copy
+  contract; `OrinSpe` impl forwards verbatim.
+- `zpico-platform-shim::ivc_helpers` exposes nine extern symbols
+  (`_z_open_ivc / _z_close_ivc / _z_ivc_notify / _z_ivc_frame_size`
+  + `_z_ivc_{rx_get,rx_release,tx_get,tx_commit,tx_abandon}`). Old
+  `_z_read_ivc` / `_z_send_ivc` removed (ABI break — bridge daemon
+  in 11.6 must move to the new ABI).
+- zenoh-pico fork (`jerry73204/zenoh-pico` branch
+  `nano-ros-phase-100-link-ivc` commit `cd36289b`) updated:
+  `__z_ivc_send_batch` writes the framing header + payload directly
+  into the FSP-supplied TX slot; `__z_ivc_recv_batch` reads from the
+  RX slot before releasing. Stack scratch frame (1 KiB) eliminated
+  from both paths. Wire format unchanged.
+
+Verified:
+
+- `cargo test -p nvidia-ivc --features unix-mock` — 1/1 (zero-copy
+  loopback + multi-frame fragmentation + abandon).
+- `cargo nextest run -p nros-tests --test orin_spe_mock_ivc` —
+  4/4 (single-frame, multi-frame reassembly, keep-alive drop, wire
+  violation rejection — all using the new `read_frame` /
+  `write_frame` API).
+- `arm-none-eabi-nm libzpico_platform_shim.rlib | grep _z_ivc_`
+  shows all 8 symbols defined.
+- `just build-spe-image` (sentinel side) still produces 137 KB
+  `spe.bin`; same scaffold, no functional regression.
+
+Original task list (kept for archival reference):
 
 Phase 100.0's `nvidia-ivc/src/fsp.rs` declared
 `tegra_ivc_channel_{get,read,write,notify,frame_size}` — a copying read/write

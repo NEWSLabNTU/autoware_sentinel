@@ -18,3 +18,20 @@ target = "armv7r-none-eabi"
 
 [unstable]
 build-std = ["core", "alloc"]
+
+# `armv7r-none-eabi` defaults to pure soft-float (`llvm-floatabi=soft`),
+# which makes rustc emit calls to `__adddf3`/`__divdf3`/`__muldf3` for
+# every f64 op — ~3 KB BTCM on the Cortex-R5F just for the soft-emul
+# routines that the SafetyIsland tick path drags in (PID gain math, MRM
+# velocity update). Cortex-R5 ships VFPv3-D16 with double-precision
+# support, and the FSP is built `-mfloat-abi=softfp -mfpu=vfpv3-d16`.
+# Enabling those features here flips rustc to use the VFP coproc for
+# fp ops while keeping the soft *call* ABI, which is the same softfp
+# convention the FSP uses — so the resulting Rust objects link cleanly
+# against `libtegra_aon_fsp.a` without the
+# `error: ... uses VFP register arguments` mismatch the eabihf target
+# would trigger.
+[target.armv7r-none-eabi]
+rustflags = [
+    "-C", "target-feature=+vfp3,+d32",
+]

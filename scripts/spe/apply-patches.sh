@@ -71,7 +71,11 @@ else
             print "# symbols and no .o has been read yet). -Wl,-u,SYM forces an"
             print "# explicit undefined entry so the library scan pulls our entry"
             print "# point + transitive closure."
-            print "LDFLAGS += -L$(SENTINEL_FW_OUT) -Wl,-u,nros_app_rust_entry -Wl,--start-group -lsentinel_spe_firmware -Wl,--end-group"
+            print "# `-Wl,-u,vsnprintf` force-pulls our `printf_shim.o`"
+            print "# from libsentinel_spe_firmware.a inside the group scan,"
+            print "# overriding newlib`s float-aware vsnprintf (which would"
+            print "# otherwise drag _dtoa_r + fmaf128 + ~25 KB BTCM)."
+            print "LDFLAGS += -L$(SENTINEL_FW_OUT) -Wl,-u,nros_app_rust_entry -Wl,-u,vsnprintf -Wl,-u,printf -Wl,-u,vprintf -Wl,--start-group -lsentinel_spe_firmware -Wl,--end-group"
             print "endif"
             ldflags_done = 1
         }

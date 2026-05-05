@@ -588,9 +588,9 @@ Match the FreeRTOS path. **Don't** stub `select` on the SPE side.
 `zpico_spin_once` resolves through `_z_condvar_wait_until` →
 `xSemaphoreTake(timeout)`.
 
-##### 11.3.C — Feature pruning to fit 256 KB BTCM — MEASURED, INSUFFICIENT
+##### 11.3.C — Feature pruning to fit 256 KB BTCM — IN PROGRESS, 106 KB recovered
 
-Per-build size, with nano-ros pin `b5d599f4` (post 11.3.A + 11.3.B):
+Initial measurement (nano-ros pin `b5d599f4`, post 11.3.A + 11.3.B):
 
 | Feature set                         | text+data+bss | overflow vs BTCM |
 |-------------------------------------|---------------|------------------|
@@ -598,11 +598,40 @@ Per-build size, with nano-ros pin `b5d599f4` (post 11.3.A + 11.3.B):
 | + `Executor::open` + `spin`         | ~595 KB       | **+339 KB**      |
 | + `autoware_sentinel_core` (`comp-*` off, monitoring off) | ~727 KB | **+471 KB**      |
 
-The `Executor::open` baseline (zenoh-pico session + nros executor +
-the messaging machinery they pull) is already 339 KB over. **Feature
-pruning at the `nros` / `autoware_sentinel_core` level cannot bridge
-the gap** — the floor is the runtime itself, not the algorithm
-crates.
+Then via the `ffi-size-markers` cargo feature gate on nano-ros
+(commit `682f1404`), the spurious 340 KB `__NROS_SIZE_EXECUTOR_SIZE`
+rodata blob in the staticlib stopped surviving `--gc-sections` —
+that single change brought `Executor::open + spin` to 245 KB,
+under-budget by 10 KB. SafetyIsland-wired (`autoware_sentinel_core`)
+remained over by 143 KB.
+
+Subsequent recovery work (11.3.D commits below) brought the
+SafetyIsland-wired build's overflow from 143 KB to **37 KB**:
+
+| Step (cumulative)                                     | overflow |
+|-------------------------------------------------------|----------|
+| Baseline (`ffi-size-markers` already gated)           | 143 KB   |
+| ZPICO_MAX_*/NROS_SUBSCRIPTION_BUFFER_SIZE right-size  | 74 KB    |
+| Drop `nros/param-services` from `autoware_sentinel_core` | 68 KB |
+| `printf` / `vsnprintf` / `vprintf` shims (vsniprintf-only) | 51 KB |
+| Rust `+vfp3,+d32` target features (no soft-emul fp)   | 41 KB    |
+| `-Cpanic=immediate-abort` (drops fmt formatter chain) | 37 KB    |
+
+The remaining 37 KB lives in:
+
+- 8.5 KB `app_task_entry::<sentinel_spe_firmware::nros_app_rust_entry::{closure#0}, _>`
+  monomorphization (everything `Executor::open + spin + wire_executor`
+  inlines into the single closure).
+- 5.5 KB `timer_try_process::<wire_executor::{closure#4}>` — the
+  SafetyIsland tick body inlined into one closure type.
+- 2.3 KB `libm::tanf` — pulled by `vehicle_cmd_gate::filter::calc_lateral_accel`,
+  always-on as part of `cmd_gate.update()`.
+- BSP fixed cost: `tegra-ast` (9.3 KB), `hsp-tegra` (4.8 KB),
+  `uart-tegra` (2.7 KB), `lic-tegra` (1.7 KB) — NVIDIA's drivers,
+  not reducible without DRAM relocation.
+
+Further pure-feature pruning is unlikely to recover more than ~5-10 KB
+without giving up SafetyIsland's emergency-stop / MRM / cmd-gate path.
 
 What 11.3.C tried (all kept, none sufficient):
 

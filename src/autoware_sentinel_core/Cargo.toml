@@ -72,11 +72,20 @@ platform-bare-metal = ["nros/platform-bare-metal"]
 # `nros-platform-orin-spe` rather than the upstream FreeRTOS port.
 platform-orin-spe = ["nros/platform-orin-spe"]
 
+# `param-services` opts in declaring ROS 2 `rcl_interfaces/srv/*`
+# parameter handlers from inside `wire_executor`. SafetyIsland uses
+# static `default_params()` on Cortex-R5F where 256 KB BTCM is too
+# tight for the param-service arena slots + ParamServer state.
+# Linux/Zephyr targets that wire dynamic params re-enable explicitly.
+param-services = ["nros/param-services"]
+
 [dependencies]
 log = { version = "0.4", default-features = false }
 
 # nros unified API — platform feature is selected by the binary crate.
-nros = { version = "*", default-features = false, features = ["rmw-zenoh", "ros-humble", "param-services"] }
+# `param-services` is feature-gated (see above) rather than always-on
+# because SafetyIsland's static `default_params()` doesn't need them.
+nros = { version = "*", default-features = false, features = ["rmw-zenoh", "ros-humble"] }
 
 # Algorithm crates always compiled.
 autoware_stop_filter = { path = "../autoware_stop_filter" }

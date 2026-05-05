@@ -274,7 +274,23 @@ build-spe-firmware: orin_spe-bsp-stage
     [ -f "$PREFIX/lib/libtegra_aon_fsp.a" ] || \
         { echo "FSP not staged at $PREFIX — run 'just orin_spe-bsp-stage'"; exit 1; }
     cd src/sentinel_spe_firmware
-    NV_SPE_FSP_DIR="$PREFIX" cargo +nightly build --release
+    # Slot counts sized to wire_executor's actual usage (Phase 11.3.D):
+    # 6 publishers (core only) / 3 subscribers / 1 service / 1 timer /
+    # 1 liveliness token per node. Defaults of 56/16/32/96 (set somewhere
+    # else in the workspace) cost ~70 KB BTCM in arena buffers — fatal on
+    # 256 KB BTCM. Buffer sizes drop to 256 B since heartbeat /
+    # velocity_status / control_cmd msgs all fit well under 256 B.
+    NV_SPE_FSP_DIR="$PREFIX" \
+        ZPICO_MAX_PUBLISHERS=8 \
+        ZPICO_MAX_SUBSCRIBERS=4 \
+        ZPICO_MAX_QUERYABLES=2 \
+        ZPICO_MAX_LIVELINESS=16 \
+        ZPICO_MAX_PENDING_GETS=2 \
+        ZPICO_SUBSCRIBER_BUFFER_SIZE=256 \
+        ZPICO_SERVICE_BUFFER_SIZE=256 \
+        NROS_EXECUTOR_MAX_CBS=8 \
+        NROS_SUBSCRIPTION_BUFFER_SIZE=256 \
+        cargo +nightly build --release
     OUT="$(pwd)/target/armv7r-none-eabi/release/libsentinel_spe_firmware.a"
     [ -f "$OUT" ] || { echo "expected staticlib not produced: $OUT"; exit 1; }
 

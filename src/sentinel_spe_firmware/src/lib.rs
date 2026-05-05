@@ -103,11 +103,9 @@ pub extern "C" fn nros_app_rust_entry() {
             .node_name("sentinel");
         let mut executor = Executor::open(&exec_config)?;
 
-        // 11.3.D — uncomment once SafetyIsland's 143 KB residual fits.
-        //
-        // let sentinel_params = autoware_sentinel_core::params::default_params();
-        // autoware_sentinel_core::init_island(sentinel_params);
-        // autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
+        let sentinel_params = autoware_sentinel_core::params::default_params();
+        autoware_sentinel_core::init_island(sentinel_params);
+        autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
 
         println!("Executor ready — spinning...");
         executor.spin(core::time::Duration::from_millis(10));

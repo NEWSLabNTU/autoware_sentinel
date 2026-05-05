@@ -59,6 +59,7 @@ pub struct SentinelParams {
 }
 
 /// Declare all sentinel parameters on the parameter server (read-only).
+#[cfg(feature = "param-services")]
 pub fn declare_parameters(server: &mut ParameterServer) {
     macro_rules! ro {
         ($server:expr, $name:expr, $val:expr, $desc:expr) => {
@@ -443,6 +444,7 @@ pub fn declare_parameters(server: &mut ParameterServer) {
 }
 
 /// Read all declared parameters into algorithm param structs.
+#[cfg(feature = "param-services")]
 pub fn read_params(server: &ParameterServer) -> SentinelParams {
     let f = |name: &str| -> f64 {
         server

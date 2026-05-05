@@ -46,9 +46,9 @@ members = [
 # development against the sibling clone (`~/repos/nano-ros-sentinel`)
 # can override these patches via per-crate `.cargo/config.toml`
 # path entries.
-nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
-nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
-nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
+nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
+nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
 
 # Generated message packages (from sentinel_linux — the superset of all packages)
 autoware_adapi_v1_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }

@@ -51,6 +51,7 @@
 #![no_std]
 #![allow(internal_features)]
 
+use nros::prelude::*;
 use nros_board_orin_spe::{Config, println, run};
 
 // Pull the global-allocator impl in. `nros-platform`'s
@@ -70,14 +71,48 @@ use panic_halt as _;
 
 /// Called from `app/nros-app.c` (added to the BSP tree by
 /// `scripts/spe/apply-patches.sh`).
+/// Monotonic clock in milliseconds. FSP `xTaskGetTickCount` returns
+/// ticks; `configTICK_RATE_HZ = 1000` makes ticks ≡ ms.
+#[allow(dead_code)]
+fn now_ms() -> u64 {
+    unsafe extern "C" {
+        fn xTaskGetTickCount() -> u32;
+    }
+    unsafe { xTaskGetTickCount() as u64 }
+}
+
+/// Phase 11.3.D scaffold — opens the executor over IVC and spins.
+///
+/// 245 KB BTCM (10 KB headroom) with `nros = { default-features =
+/// false, features = ["rmw-zenoh", "platform-orin-spe", "ros-humble"] }`
+/// (no `ffi-size-markers`). `autoware_sentinel_core::wire_executor` is
+/// **commented out** — wiring it pulls 11 algorithm crates + 14 msg
+/// crates + 6 pubs / 3 subs / 1 srv / 1 timer of arena entries that
+/// currently overflow BTCM by 143 KB. Next-step pruning candidates:
+/// trim msg-package list (autoware_adapi_v1_msgs is the largest single
+/// consumer), or split `autoware_sentinel_core` features so unused
+/// algorithms become opt-in.
 #[unsafe(no_mangle)]
 pub extern "C" fn nros_app_rust_entry() {
-    run(Config::default(), |config| -> Result<(), &'static str> {
-        println!("sentinel-spe-firmware: boot complete on {}", config.zenoh_locator);
-        loop {
-            unsafe {
-                core::arch::asm!("wfi", options(nomem, nostack, preserves_flags));
-            }
-        }
+    run(Config::default(), |config| -> Result<(), NodeError> {
+        println!("Autoware Sentinel — Safety Island (Orin SPE)");
+        println!("Locator: {}", config.zenoh_locator);
+
+        let exec_config = ExecutorConfig::new(config.zenoh_locator)
+            .domain_id(config.domain_id)
+            .node_name("sentinel");
+        let mut executor = Executor::open(&exec_config)?;
+
+        // 11.3.D — uncomment once SafetyIsland's 143 KB residual fits.
+        //
+        // let sentinel_params = autoware_sentinel_core::params::default_params();
+        // autoware_sentinel_core::init_island(sentinel_params);
+        // autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
+
+        println!("Executor ready — spinning...");
+        executor.spin(core::time::Duration::from_millis(10));
+
+        #[allow(unreachable_code)]
+        Ok(())
     });
 }

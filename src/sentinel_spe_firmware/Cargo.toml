@@ -32,7 +32,7 @@ crate-type = ["staticlib"]
 log = { version = "0.4", default-features = false }
 
 # Board crate (run<F,E>, Config, println!) from nano-ros.
-nros-board-orin-spe = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4", default-features = false, features = ["fsp", "cortex-r"] }
+nros-board-orin-spe = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404", default-features = false, features = ["fsp", "cortex-r"] }
 
 # `nros-platform` is a transitive dep of the board crate; declared
 # explicitly here to flip on `global-allocator` (Phase 71.27 — wires
@@ -40,7 +40,7 @@ nros-board-orin-spe = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev 
 # `#[global_allocator]`). Without this, even crates that pull `alloc`
 # transitively fail with "no global memory allocator found" when
 # linked into a `staticlib`.
-nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4", default-features = false, features = ["platform-orin-spe", "global-allocator"] }
+nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404", default-features = false, features = ["platform-orin-spe", "global-allocator"] }
 
 # Phase 11.3 status:
 #   [x] 11.3.A — zero-copy `nvidia-ivc/fsp` API on nano-ros side.
@@ -57,7 +57,7 @@ nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d
 #   [ ] 11.3.D — SafetyIsland wiring in lib.rs.
 
 # nros umbrella — `Executor` / `ExecutorConfig` / `NodeError`.
-nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4", default-features = false, features = ["rmw-zenoh", "platform-orin-spe", "ros-humble"] }
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404", default-features = false, features = ["rmw-zenoh", "platform-orin-spe", "ros-humble"] }
 
 # Shared sentinel core — pulls all algorithm crates transitively.
 # Default features only (`comp-*` off, `monitoring-topics` off):
@@ -93,11 +93,11 @@ debug = false        # Strip; debug symbols inflate the rlib but are
 # generated/ tree (single source of truth for the msg superset, same
 # pattern as freertos / nuttx / zephyr siblings).
 [patch.crates-io]
-nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
-nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
-nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
-nros-rmw-zenoh = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
-zpico-sys = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "b5d599f4" }
+nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
+nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
+nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
+nros-rmw-zenoh = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
+zpico-sys = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
 
 autoware_adapi_v1_msgs = { path = "../autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }
 autoware_adapi_version_msgs = { path = "../autoware_sentinel_linux/generated/autoware_adapi_version_msgs" }

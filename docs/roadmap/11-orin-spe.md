@@ -836,9 +836,20 @@ hardware in the loop.
       `127.0.0.1:7447`, declares 6 core + 7 mrm + 4 engagement
       publishers + 5 subs + 6 services, prints `Executor ready —
       spinning…`.
+- [x] `tests/tests/sentinel_spe.rs` nextest harness:
+      `test_sentinel_spe_starts` (boot to `Executor ready`) +
+      `test_sentinel_spe_topics_visible` (asserts
+      `/control/command/control_cmd`, `/system/mrm/emergency_stop/status`,
+      and `/system/emergency_holding` show up via `ros2 topic info`
+      against the same zenohd). Both PASS locally.
+- [x] `just test-spe-sim` recipe shipped (`cargo nextest run -E
+      'binary(sentinel_spe)'`). Nextest test-group `sentinel-spe`
+      serialises the suite to avoid port contention with
+      `transport_smoke`.
 - [ ] Run Autoware planning simulator integration tests against the
-      SPE sentinel binary.
-- [ ] Add `just test-spe-sim` nextest harness.
+      SPE sentinel binary (deferred; the smoke harness above plus the
+      existing `auto_drive_comparison` against `autoware_sentinel_linux`
+      already cover the `wire_executor` body end-to-end).
 
 **Acceptance criteria (overall 11.3):**
 

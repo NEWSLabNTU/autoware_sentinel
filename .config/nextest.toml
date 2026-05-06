@@ -82,6 +82,19 @@ filter = "binary(nuttx_qemu)"
 test-group = "nuttx-qemu"
 slow-timeout = { period = "180s", terminate-after = 2 }
 
+# SPE sentinel tests (Phase 11.3.E): POSIX dev path of
+# autoware_sentinel_spe — Linux process boot + topic visibility via
+# zenohd. Run sequentially: shares the same comp-mrm + comp-engagement
+# publisher/subscription topology and conflicts with the regular
+# transport_smoke set.
+[test-groups.sentinel-spe]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = "binary(sentinel_spe)"
+test-group = "sentinel-spe"
+slow-timeout = { period = "60s", terminate-after = 2 }
+
 [profile.ci]
 slow-timeout = { period = "30s", terminate-after = 2 }
 fail-fast = true

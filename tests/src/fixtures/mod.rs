@@ -4,12 +4,14 @@ mod autoware_launcher;
 mod sentinel;
 mod sentinel_freertos;
 mod sentinel_nuttx;
+mod sentinel_spe;
 mod zenohd_router;
 
 pub use autoware_launcher::*;
 pub use sentinel::*;
 pub use sentinel_freertos::*;
 pub use sentinel_nuttx::*;
+pub use sentinel_spe::*;
 pub use zenohd_router::*;
 
 // Re-export commonly used items for convenience

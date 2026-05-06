@@ -518,6 +518,10 @@ test-planning:
 test-auto-drive:
     cd tests && cargo nextest run -E 'binary(auto_drive_comparison)'
 
+# Run SPE sentinel POSIX dev path tests (Phase 11.3.E)
+test-spe-sim:
+    cd tests && cargo nextest run -E 'binary(sentinel_spe)'
+
 # Run Zephyr native_sim integration tests.
 #
 # nextest forks a new process per test. The Zephyr round-trip tests

@@ -55,3 +55,7 @@ path = "tests/freertos_qemu.rs"
 [[test]]
 name = "nuttx_qemu"
 path = "tests/nuttx_qemu.rs"
+
+[[test]]
+name = "sentinel_spe"
+path = "tests/sentinel_spe.rs"

@@ -17,7 +17,7 @@ env_logger = "0.11"
 
 # Shared core wiring. Linux dev binary enables the trajectory follower
 # (controller-node) for solo planning-simulator runs; safety MCUs do not.
-autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-posix", "controller-node", "monitoring-topics", "comp-all"] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-posix", "controller-node", "monitoring-topics", "comp-all", "param-services"] }
 
 # nros — for `ExecutorConfig`, `Executor`, `SpinOptions`, `NodeError`.
 nros = { version = "*", default-features = false, features = ["std", "rmw-zenoh", "platform-posix", "ros-humble", "param-services"] }

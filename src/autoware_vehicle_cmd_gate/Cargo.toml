@@ -24,3 +24,12 @@ std = [
     "autoware_vehicle_msgs/std",
     "autoware_adapi_v1_msgs/std",
 ]
+# Replace `libm::tanf` / `libm::atanf` (lateral-acceleration limit math)
+# with closed-form polynomial approximations valid over the steering
+# range a passenger vehicle actually sees (|θ| ≤ ~0.7 rad). Trades a
+# bounded accuracy loss (≤5e-4 rad over ±π/4) for ~3-5 KB of code that
+# would otherwise pull `libm::tanf` + the soft-float scalbnf / fmaf /
+# k_tanf chain. Used by the SPE firmware build to fit BTCM (Phase
+# 11.3.C). Off by default — host / Linux / Zephyr / FreeRTOS / NuttX
+# builds keep the libm-accurate versions.
+compact-trig = []

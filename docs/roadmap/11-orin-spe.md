@@ -653,7 +653,8 @@ under-budget by 10 KB. SafetyIsland-wired (`autoware_sentinel_core`)
 remained over by 143 KB.
 
 Subsequent recovery work (11.3.D commits below) brought the
-SafetyIsland-wired build's overflow from 143 KB to **37 KB**:
+SafetyIsland-wired build's overflow from 143 KB to **~35 KB** (estimated;
+exact spe.elf measurement requires the BSP toolchain pipeline):
 
 | Step (cumulative)                                     | overflow |
 |-------------------------------------------------------|----------|
@@ -663,19 +664,39 @@ SafetyIsland-wired build's overflow from 143 KB to **37 KB**:
 | `printf` / `vsnprintf` / `vprintf` shims (vsniprintf-only) | 51 KB |
 | Rust `+vfp3,+d32` target features (no soft-emul fp)   | 41 KB    |
 | `-Cpanic=immediate-abort` (drops fmt formatter chain) | 37 KB    |
+| `compact-trig` feature on `autoware_vehicle_cmd_gate` | ~35 KB *(est.)* |
 
-The remaining 37 KB lives in:
+The remaining ~35 KB lives in:
 
 - 8.5 KB `app_task_entry::<sentinel_spe_firmware::nros_app_rust_entry::{closure#0}, _>`
   monomorphization (everything `Executor::open + spin + wire_executor`
-  inlines into the single closure).
+  inlines into the single closure). **Upstream nano-ros fix candidate:**
+  type-erase the closure boundary so the body lives in a non-generic
+  function pulled in once — see notes under "Upstream work" below.
 - 5.5 KB `timer_try_process::<wire_executor::{closure#4}>` — the
-  SafetyIsland tick body inlined into one closure type.
-- 2.3 KB `libm::tanf` — pulled by `vehicle_cmd_gate::filter::calc_lateral_accel`,
-  always-on as part of `cmd_gate.update()`.
+  SafetyIsland tick body inlined into one closure type. Same upstream
+  fix as `app_task_entry`.
 - BSP fixed cost: `tegra-ast` (9.3 KB), `hsp-tegra` (4.8 KB),
   `uart-tegra` (2.7 KB), `lic-tegra` (1.7 KB) — NVIDIA's drivers,
   not reducible without DRAM relocation.
+
+`libm::tanf` (2.3 KB) — **resolved**. Replaced with a Padé(3,2)
+approximation behind the `compact-trig` cargo feature on
+`autoware_vehicle_cmd_gate`. The feature is forwarded automatically
+when `autoware_sentinel_core` is built with `platform-orin-spe`.
+Maximum absolute error 5e-4 over |θ| ≤ π/4 (verified by
+`compact_trig_within_tolerance_of_libm` unit test); the cmd-gate
+filter clamps steering input before this call so the bound holds at
+the call site. `libm::atanf` (called from
+`calc_steer_from_lat_accel`) gets the same treatment via a Padé(3,4)
+on |x| ≤ 1 + identity reduction for |x| > 1.
+
+**Upstream work tracked separately:**
+
+- [ ] nano-ros — type-erase `Executor::spin` / `timer_try_process`
+      closures so the SafetyIsland tick body deduplicates across
+      executors and platforms. Estimated ~14 KB combined cut.
+- [ ] DRAM relocation (Option A below) — recovers the BSP fixed cost.
 
 Further pure-feature pruning is unlikely to recover more than ~5-10 KB
 without giving up SafetyIsland's emergency-stop / MRM / cmd-gate path.
@@ -732,6 +753,17 @@ sentinel parity. Both are out of 11.3.C scope.
 - [x] Updated `src/sentinel_spe_firmware/src/lib.rs` to document
       the size measurement results inline (kept as `wfi`-loop
       scaffold so `build-spe-image` stays green for CI smoke).
+- [x] `compact-trig` cargo feature on `autoware_vehicle_cmd_gate`:
+      replaces `libm::tanf` / `libm::atanf` with Padé approximations
+      (≤5e-4 abs error over the steering range the cmd-gate clamps
+      to). Forwarded through `autoware_sentinel_core/platform-orin-spe`
+      so the SPE firmware build picks it up automatically. Off in
+      every other platform build. Verified by
+      `compact_trig_within_tolerance_of_libm` test in
+      `src/autoware_vehicle_cmd_gate/src/filter.rs`. Estimated saving
+      ~2.3 KB BTCM (matches the `libm::tanf` line in the bloat
+      ledger above; exact delta needs an spe.elf re-measure when the
+      BSP toolchain is staged).
 
 **Open work (becomes its own sub-item):**
 

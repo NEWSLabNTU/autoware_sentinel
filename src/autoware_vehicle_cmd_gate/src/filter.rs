@@ -362,12 +362,58 @@ fn interpolate_from_speed(
 
 /// Lateral acceleration: a_y = v² * tan(θ) / wheelbase.
 fn calc_lateral_accel(v_sq: f32, steer: f32, wheel_base: f32) -> f32 {
-    v_sq * libm::tanf(steer) / wheel_base
+    v_sq * tan_f32(steer) / wheel_base
 }
 
 /// Inverse: θ = atan(a_y * wheelbase / v²).
 fn calc_steer_from_lat_accel(lat_acc: f32, v_sq: f32, wheel_base: f32) -> f32 {
-    libm::atanf(lat_acc * wheel_base / v_sq.max(V_SQ_MIN))
+    atan_f32(lat_acc * wheel_base / v_sq.max(V_SQ_MIN))
+}
+
+#[cfg(not(feature = "compact-trig"))]
+#[inline]
+fn tan_f32(x: f32) -> f32 {
+    libm::tanf(x)
+}
+
+#[cfg(not(feature = "compact-trig"))]
+#[inline]
+fn atan_f32(x: f32) -> f32 {
+    libm::atanf(x)
+}
+
+/// Padé(3,2) approximation of `tan(x)` valid for |x| ≤ π/4 (≈ 0.785 rad).
+/// Maximum absolute error ≈ 5e-4 over that range — a passenger
+/// vehicle's full steering travel never exceeds it. For |x| > π/4 the
+/// approximation degrades (still finite, no asymptote until x → π/2);
+/// the cmd-gate filter clamps the input before this call so the bound
+/// is observed at the call site.
+#[cfg(feature = "compact-trig")]
+#[inline]
+fn tan_f32(x: f32) -> f32 {
+    let x2 = x * x;
+    x * (15.0 - x2) / (15.0 - 6.0 * x2)
+}
+
+/// Padé-style rational approximation of `atan(x)` accurate to ≈ 5e-4 on
+/// |x| ≤ 1; for |x| > 1 the identity `atan(x) = π/2 − atan(1/x)`
+/// (with sign carry) is applied to keep the same accuracy out to ±∞.
+#[cfg(feature = "compact-trig")]
+#[inline]
+fn atan_f32(x: f32) -> f32 {
+    let abs = if x < 0.0 { -x } else { x };
+    let sign = if x < 0.0 { -1.0 } else { 1.0 };
+    let core = |y: f32| -> f32 {
+        // y * (a + b*y²) / (1 + c*y² + d*y⁴), Padé(3,4) on [0,1]
+        let y2 = y * y;
+        y * (1.0 + 0.43157974 * y2) / (1.0 + 0.76443945 * y2 + 0.05831938 * y2 * y2)
+    };
+    let mag = if abs <= 1.0 {
+        core(abs)
+    } else {
+        core::f32::consts::FRAC_PI_2 - core(1.0 / abs)
+    };
+    sign * mag
 }
 
 /// Clamp `value` to `[lo, hi]`.
@@ -391,6 +437,39 @@ mod tests {
     use super::*;
 
     const DT: f32 = 1.0 / 30.0; // 30 Hz
+
+    /// Hand-rolled `tan` / `atan` (compact-trig path) must track libm
+    /// closely over the steering range a passenger vehicle reaches.
+    #[test]
+    fn compact_trig_within_tolerance_of_libm() {
+        // Sample 17 points over [-π/4, π/4] — the cmd-gate clamps
+        // steering input before calling these, so anything outside this
+        // range never hits the approximation.
+        const N: usize = 17;
+        let span = core::f32::consts::FRAC_PI_4;
+        for i in 0..N {
+            let x = -span + 2.0 * span * (i as f32) / ((N - 1) as f32);
+            // Emulate compact-trig path explicitly so the test runs in
+            // both feature configs.
+            let x2 = x * x;
+            let approx_tan = x * (15.0 - x2) / (15.0 - 6.0 * x2);
+            let libm_tan = libm::tanf(x);
+            assert!(
+                (approx_tan - libm_tan).abs() < 5e-4,
+                "tan({x}): approx={approx_tan} libm={libm_tan}"
+            );
+
+            let y = x; // |y| ≤ π/4 < 1, hits the |x| ≤ 1 branch
+            let y2 = y * y;
+            let approx_atan = y * (1.0 + 0.43157974 * y2)
+                / (1.0 + 0.76443945 * y2 + 0.05831938 * y2 * y2);
+            let libm_atan = libm::atanf(y);
+            assert!(
+                (approx_atan - libm_atan).abs() < 5e-4,
+                "atan({y}): approx={approx_atan} libm={libm_atan}"
+            );
+        }
+    }
 
     fn make_control(vel: f32, accel: f32, steer: f32) -> Control {
         let mut cmd = Control::default();

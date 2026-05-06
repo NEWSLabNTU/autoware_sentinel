@@ -70,7 +70,12 @@ platform-bare-metal = ["nros/platform-bare-metal"]
 # Same `nros::Executor` shape as `platform-freertos`; the difference is
 # the underlying `PlatformClock` / `PlatformIvc` impls live in
 # `nros-platform-orin-spe` rather than the upstream FreeRTOS port.
-platform-orin-spe = ["nros/platform-orin-spe"]
+platform-orin-spe = [
+    "nros/platform-orin-spe",
+    # Cortex-R5F builds are BTCM-bound. Drop libm::tanf/atanf in
+    # vehicle_cmd_gate's lateral-acceleration math (Phase 11.3.C).
+    "autoware_vehicle_cmd_gate/compact-trig",
+]
 
 # `param-services` opts in declaring ROS 2 `rcl_interfaces/srv/*`
 # parameter handlers from inside `wire_executor`. SafetyIsland uses

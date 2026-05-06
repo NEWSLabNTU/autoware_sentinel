@@ -658,7 +658,9 @@ format-check:
 # build-sentinel-{zephyr,freertos,nuttx}`.
 cross-check:
     # Algorithm crates only — no nros / no platform features needed.
-    cargo check --workspace --exclude autoware_sentinel_linux --exclude autoware_sentinel_core --target thumbv7em-none-eabihf
+    # `ivc-bridge` is a Linux-only daemon (clap / env_logger), exclude
+    # from the cross target.
+    cargo check --workspace --exclude autoware_sentinel_linux --exclude autoware_sentinel_core --exclude ivc-bridge --target thumbv7em-none-eabihf
     # Core no-controller (FreeRTOS profile).
     cargo check -p autoware_sentinel_core --no-default-features --features platform-zephyr --target thumbv7em-none-eabihf
     # Core with controller-node (Linux dev profile, but checked for thumb).

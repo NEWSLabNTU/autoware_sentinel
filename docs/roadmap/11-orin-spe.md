@@ -693,23 +693,65 @@ sentinel parity. Both are out of 11.3.C scope.
 - [ ] Add `just orin_spe-bloat-report` recipe once a build path
       successfully fits BTCM, so future regressions are caught.
 
-##### 11.3.D — SafetyIsland wiring + integration tests
+##### 11.3.D — SafetyIsland wiring + integration tests — PARTIAL, GATED BEHIND FEATURE
 
-Once 11.3.A / 11.3.B / 11.3.C are green, restore the body of
-`sentinel_spe_firmware::nros_app_rust_entry`:
+The full SafetyIsland wiring lives in `nros_app_rust_entry` (see
+`src/sentinel_spe_firmware/src/lib.rs`) under `#[cfg(feature =
+"safety-island")]`:
 
 ```rust
-let exec_config = ExecutorConfig::new(config.zenoh_locator)
-    .domain_id(config.domain_id)
-    .node_name("sentinel");
 let mut executor = Executor::open(&exec_config)?;
-let p = autoware_sentinel_core::params::default_params();
-autoware_sentinel_core::init_island(p);
-autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
+#[cfg(feature = "safety-island")]
+{
+    let p = autoware_sentinel_core::params::default_params();
+    autoware_sentinel_core::init_island(p);
+    autoware_sentinel_core::wire_executor(&mut executor, now_ms)?;
+}
 executor.spin(core::time::Duration::from_millis(10));
 ```
 
-**Tasks:**
+Two build modes:
+
+| Build                                        | Result                          |
+|----------------------------------------------|---------------------------------|
+| `just build-spe-image` (default)             | 213 KB text / 31 KB headroom — bootable `spe.bin` ✓ |
+| `SENTINEL_SPE_FEATURES=safety-island just build-spe-image` | overflows BTCM by 37 KB |
+
+The default build is what `just flash-spe` ships to hardware: it
+exercises the FSP boot path, IVC mailbox handshake, and `Executor::open
++ spin` over the live zenoh-pico session. SafetyIsland wiring is
+deferred to **Phase 11.3.E** (DRAM mapping via SPE AST) since the
+remaining 37 KB cannot be recovered through pure feature pruning —
+it lives in two monomorphizations (`app_task_entry` 8.5 KB,
+`timer_try_process` 5.5 KB) plus `libm::tanf` (2.3 KB, pulled by
+`vehicle_cmd_gate::filter`) plus ~25 KB of fixed BSP drivers
+(tegra-ast / hsp / uart).
+
+**Tasks moved to 11.3.E (DRAM mapping):**
+
+- [ ] Linker: split `MEMORY` → `btcm` (256 KB) + `sysram` (e.g. 0x40000000,
+      512 KB) regions, route `*(.text.cold) *(.rodata*)` to `> sysram`.
+- [ ] `boot.S`: extend the existing `relocate_memcpy_dma` to copy a
+      second range from DRAM staging (`0x70040000`+) into SYSRAM at
+      `0x40000000` after the BTCM copy completes.
+- [ ] R5 MPU: enable + program a region for SYSRAM with cacheable +
+      executable attributes; otherwise DRAM/SYSRAM access is
+      strongly-ordered + non-cacheable (~100× slower than BTCM).
+- [ ] `__attribute__((section(".btcm.text")))` on hot paths
+      (timer ISR, IVC dispatch, FreeRTOS `port_asm`) so they stay
+      in BTCM under tick-deadline pressure.
+- [ ] AST: confirm bootloader-mapped region 0 (SYSRAM 1:1) is usable,
+      or program a free region (2-7) via `tegra_ast_enable_region`
+      in `spe_late_init`.
+- [ ] Verify BPMP/MB1 loads >256 KB blob — possibly hard size limit
+      in firmware fragment table.
+
+All the above need an Orin AGX DevKit for runtime verification. Until
+hardware is available, the default-feature build is the working
+baseline.
+
+**Tasks for the SafetyIsland integration test suite (orthogonal to
+DRAM mapping; can run on POSIX sentinel today):**
 
 - [ ] Determine minimum viable sentinel feature set:
   - Heartbeat watchdog (subscribe `/autoware/state`, publish MRM state)

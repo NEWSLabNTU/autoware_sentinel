@@ -24,6 +24,19 @@ publish = false
 name = "sentinel_spe_firmware"
 crate-type = ["staticlib"]
 
+[features]
+# Default build is `Executor::open + spin` only — fits BTCM with ~10 KB
+# headroom, exercises the IVC + zenoh-pico boot path. `just
+# build-spe-image` produces a bootable `spe.bin` in this mode.
+default = []
+# Wire `autoware_sentinel_core::{init_island, wire_executor}` into the
+# application closure. Pulls all SafetyIsland algorithm crates + msg
+# codecs + 6 publishers / 3 subscribers / 1 service / 1 timer; currently
+# overflows BTCM by ~37 KB. Tracked under Phase 11.3.E (DRAM mapping
+# via SPE AST). To reproduce the overflow:
+#   cargo +nightly build --release --features safety-island
+safety-island = ["dep:autoware_sentinel_core"]
+
 # Workspace excluded → must declare git deps locally; the workspace's
 # `[patch.crates-io]` block is invisible from here. Pin matches the
 # rev in the parent workspace's Cargo.toml so a future bump touches
@@ -59,11 +72,12 @@ nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "d9a
 # nros umbrella — `Executor` / `ExecutorConfig` / `NodeError`.
 nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "d9af52be", default-features = false, features = ["rmw-zenoh", "platform-orin-spe", "ros-humble"] }
 
-# Shared sentinel core — pulls all algorithm crates transitively.
-# Default features only (`comp-*` off, `monitoring-topics` off):
-# minimal core baseline of 6 pubs / 3 subs / 1 service / 1 timer.
-# 11.3.D wires `init_island` + `wire_executor` in lib.rs.
-autoware_sentinel_core = { path = "../autoware_sentinel_core", default-features = false, features = ["platform-orin-spe"] }
+# Shared sentinel core — gated `optional = true` behind the
+# `safety-island` cargo feature so the default build doesn't drag the
+# 11 algorithm crates / 14 msg codecs / 6 pubs / 3 subs / 1 service /
+# 1 timer inline into the static linker pull. Enable via:
+#   cargo +nightly build --release --features safety-island
+autoware_sentinel_core = { path = "../autoware_sentinel_core", default-features = false, features = ["platform-orin-spe"], optional = true }
 
 # `panic-halt` is the simplest correct strategy for the SPE: an
 # uncaught panic blocks the FreeRTOS task forever via WFI. The MRM

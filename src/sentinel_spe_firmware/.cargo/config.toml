@@ -40,7 +40,7 @@ build-std = ["core", "alloc"]
 # no longer print location; a runtime panic looks like a halt —
 # acceptable since `panic-halt` is the configured handler anyway.
 rustflags = [
-    "-C", "target-feature=+vfp3,+d32",
+    "-C", "target-feature=+vfp3",
     "-Z", "unstable-options",
     "-C", "panic=immediate-abort",
 ]

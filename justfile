@@ -273,6 +273,19 @@ build-spe-firmware: orin_spe-bsp-stage
     TC="${ARM_TOOLCHAIN_DIR:-$(pwd)/scripts/spe/downloads/arm-gnu-toolchain-13.2.rel1}"
     [ -f "$PREFIX/lib/libtegra_aon_fsp.a" ] || \
         { echo "FSP not staged at $PREFIX — run 'just orin_spe-bsp-stage'"; exit 1; }
+    # `SENTINEL_SPE_FEATURES` selects between the default (Executor +
+    # spin only, fits BTCM) and `safety-island` (Executor + wire_executor,
+    # currently overflows by ~37 KB — see docs/roadmap/11-orin-spe.md
+    # §11.3.D). Override via `SENTINEL_SPE_FEATURES=safety-island just
+    # build-spe-firmware` to reproduce the overflow build.
+    FEATURES="${SENTINEL_SPE_FEATURES:-}"
+    if [ -n "$FEATURES" ]; then
+        FEATURE_FLAG="--features $FEATURES"
+        echo "==> building sentinel-spe-firmware with features: $FEATURES"
+    else
+        FEATURE_FLAG=""
+        echo "==> building sentinel-spe-firmware (default features)"
+    fi
     cd src/sentinel_spe_firmware
     # Slot counts sized to wire_executor's actual usage (Phase 11.3.D):
     # 6 publishers (core only) / 3 subscribers / 1 service / 1 timer /
@@ -290,7 +303,7 @@ build-spe-firmware: orin_spe-bsp-stage
         ZPICO_SERVICE_BUFFER_SIZE=256 \
         NROS_EXECUTOR_MAX_CBS=8 \
         NROS_SUBSCRIPTION_BUFFER_SIZE=256 \
-        cargo +nightly build --release
+        cargo +nightly build --release $FEATURE_FLAG
     OUT="$(pwd)/target/armv7r-none-eabi/release/libsentinel_spe_firmware.a"
     [ -f "$OUT" ] || { echo "expected staticlib not produced: $OUT"; exit 1; }
 
@@ -358,12 +371,17 @@ build-spe-image: build-spe-firmware orin_spe-bsp-patch
     # Once 11.3.D wires `wire_executor`, those get pulled in. Until
     # then, only check for the boot-path symbols that prove the C
     # shim resolved + the FreeRTOS port linked.
+    NM="$TC/bin/arm-none-eabi-nm"
+    # Collect symbol-name column upfront so the per-symbol check is a
+    # plain `case` glob match — avoids `pipefail` + `grep -q` SIGPIPE-ing
+    # the upstream `awk` and producing false `[MISS]` reports under
+    # `set -euo pipefail`.
+    SYM_LIST=$("$NM" build/spe.elf | awk '{print $3}')
     for sym in nros_app_rust_entry nros_app_init xPortStartScheduler; do
-        if "$TC/bin/arm-none-eabi-nm" build/spe.elf | grep -qE "[Tt] $sym\$"; then
-            echo "    [OK] $sym"
-        else
-            echo "    [MISS] $sym (linker may have garbage-collected it)"
-        fi
+        case $'\n'"$SYM_LIST"$'\n' in
+            *$'\n'"$sym"$'\n'*) echo "    [OK] $sym" ;;
+            *) echo "    [MISS] $sym (linker may have garbage-collected it)" ;;
+        esac
     done
 
 # Stage the built spe.bin into the L4T BSP's bootloader/ tree so

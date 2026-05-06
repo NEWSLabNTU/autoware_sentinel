@@ -389,6 +389,7 @@ linear.x.abs() < self.vx_threshold
 | 6 | Zephyr Application (single binary) | In progress |
 | 7 | Integration Testing (Autoware planning simulator) | In progress (7.1–7.3 complete) |
 | 8 | Topic Parity (match baseline Autoware topics) | Complete |
+| 11 | AGX Orin SPE (Cortex-R5F + NVIDIA FreeRTOS FSP) | Default-feature build fits BTCM; SafetyIsland gated behind `safety-island` (overflow 37 KB), tracked as 11.3.E |
 | 12 | Service & Topic Parity (services + parameter API) | Complete — see below |
 
 See `docs/roadmap/` for detailed phase docs. Roadmap docs use `- [ ]` / `- [x]` checkboxes
@@ -517,3 +518,92 @@ from the shell. Those env vars interfere with zenoh-pico's liveliness token setu
 service/node discovery by rmw_zenoh_cpp. The `just launch-autoware-sentinel` recipe handles this
 correctly (it starts the sentinel as a subprocess without those vars). When testing manually, unset
 them first: `env ZENOH_SESSION_CONFIG_URI= ZENOH_ROUTER_CONFIG_URI= sentinel`
+
+## Phase 11: AGX Orin SPE (Cortex-R5F + NVIDIA FreeRTOS FSP)
+
+Full roadmap: `docs/roadmap/11-orin-spe.md`
+
+The SPE (Sensor Processing Engine) is an always-on Cortex-R5F safety MCU on AGX Orin
+sharing a 256 KB BTCM with the FSP (NVIDIA's FreeRTOS V10.4.3 BSP). Sentinel ports as a
+`staticlib` (`src/sentinel_spe_firmware/`) NVIDIA's `rt-aux-cpu-demo-fsp/main_task` calls
+into via the `nros_app_init()` C shim.
+
+### Build
+
+```bash
+just orin_spe-bsp-download    # one-time: pull SPE FSP from NVIDIA SDK
+just orin_spe-bsp-stage        # extract + build FSP support libs into external/spe-fsp/install
+just build-spe-firmware        # cargo +nightly build → libsentinel_spe_firmware.a
+just build-spe-image           # patch BSP, link spe.elf + spe.bin (default features)
+just stage-spe-image           # cp spe.bin → $L4T_BSP_DIR/bootloader/spe_t234.bin
+just flash-spe                 # flash via L4T flash.sh (needs DevKit in recovery)
+just clean-spe                 # nuke staged BSP + downloads (force re-pull)
+```
+
+Required env: `NV_SPE_FSP_DIR` (defaults to `external/spe-fsp/install`),
+`ARM_TOOLCHAIN_DIR` (defaults to `scripts/spe/downloads/arm-gnu-toolchain-13.2.rel1` —
+auto-fetched by `orin_spe-bsp-stage`).
+
+`flash-spe` additionally needs `L4T_BSP_DIR` pointing at an SDK-Manager-installed
+`Linux_for_Tegra` tree.
+
+### Build modes
+
+| Build                                                              | text+data+bss | Result               |
+|--------------------------------------------------------------------|---------------|----------------------|
+| `just build-spe-image` (default)                                   | 224 KB        | fits, 31 KB headroom |
+| `SENTINEL_SPE_FEATURES=safety-island just build-spe-image`         | ~293 KB       | overflows by 37 KB   |
+
+Default ships a bootable `spe.bin` that exercises the FSP boot path, IVC mailbox, and
+`Executor::open + spin` over a live zenoh-pico session — no SafetyIsland wiring.
+The `safety-island` feature opts into `init_island` + `wire_executor` (full algorithm
+chain); fails the link until Phase 11.3.E lands.
+
+### Phase 11.3 status
+
+- 11.3.A — zero-copy `nvidia-ivc/fsp` API: **DONE** (nano-ros side, pin `d9af52be`).
+- 11.3.B — FreeRTOS-native condvar wait (`Z_FEATURE_MULTI_THREAD=1` + `ZENOH_ORIN_SPE`
+  zenoh-pico platform header): **DONE**.
+- 11.3.C — feature pruning + slot rightsizing: **DONE** (143 → 37 KB BTCM recovered,
+  ~106 KB total, six commits).
+- 11.3.D — SafetyIsland wiring: **partial** (gated behind `safety-island` feature;
+  default build skips it).
+- 11.3.E — DRAM mapping via SPE AST (relocate bulk `.text + .rodata` to SYSRAM /
+  DRAM carveout, pin hot paths in BTCM): **OPEN, blocked on Orin AGX DevKit hardware**.
+
+The recovery ledger lives in `docs/roadmap/11-orin-spe.md` §11.3.C.
+
+### What landed in nano-ros for SPE BTCM headroom
+
+The pin (`d9af52be`) carries SPE-specific changes that benefit any Cortex-R5F /
+softfp-newlib target:
+
+- `nros::sizes::__NROS_SIZE_*` markers gated behind `ffi-size-markers` cargo feature
+  (default ON for nros-c/nros-cpp, default OFF for pure-Rust SPE). Recovers 340 KB
+  BTCM that was otherwise pinned by `#[used]`.
+- `nros-board-orin-spe`: `printf` / `vsnprintf` / `vprintf` shims forwarding to
+  newlib's integer-only `vsniprintf` + `tcu_print_msg`. Drops the float-aware
+  vfprintf chain (`_dtoa_r`, `fmaf128`, `__divtf3`, …) saving ~25 KB BTCM.
+
+### Reproducing the slot/buffer right-sizing
+
+`build-spe-firmware` bakes these env vars into the cargo invocation (matches
+SafetyIsland's actual usage of 6 pubs / 3 subs / 1 srv / 1 timer):
+
+```
+ZPICO_MAX_PUBLISHERS=8 ZPICO_MAX_SUBSCRIBERS=4 ZPICO_MAX_QUERYABLES=2
+ZPICO_MAX_LIVELINESS=16 ZPICO_MAX_PENDING_GETS=2
+ZPICO_SUBSCRIBER_BUFFER_SIZE=256 ZPICO_SERVICE_BUFFER_SIZE=256
+NROS_EXECUTOR_MAX_CBS=8 NROS_SUBSCRIPTION_BUFFER_SIZE=256
+```
+
+Without these, defaults of 56/16/32/96 (set somewhere else in the workspace) cost ~70 KB
+BTCM in arena buffers — fatal on the 256 KB ceiling.
+
+### `.cargo/config.toml` hardening (`src/sentinel_spe_firmware/.cargo/config.toml`)
+
+- `target = "armv7r-none-eabi"` (NOT `eabihf` — FSP is `-mfloat-abi=softfp`).
+- `build-std = ["core", "alloc"]` — Tier-3 target.
+- `target-feature=+vfp3` — opt rustc into VFPv3-D16 for f64 ops; without it
+  rustc emits soft-emul calls into compiler_builtins (~10 KB BTCM).
+- `panic=immediate-abort` — drops panic-fmt formatter chain (~3 KB BTCM).

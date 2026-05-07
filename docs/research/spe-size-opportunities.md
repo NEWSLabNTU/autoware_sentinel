@@ -10,17 +10,16 @@ not already documented elsewhere. Companion to:
 
 Read-only audit performed 2026-05-06. Ordered by KB-per-effort.
 
-## Top 3 actionable
+## Status
 
-| # | Layer | Action | Est. saving | Confidence | Effort |
-|---|-------|--------|-------------|------------|--------|
-| 1 | zpico build flags | `Z_FEATURE_AUTO_RECONNECT 0` + `Z_FEATURE_ENCODING_VALUES 0` | 3–5 KB | medium | 1 h |
-| 2 | zpico build flags | `Z_FEATURE_LIVELINESS 0` (after verifying nros doesn't depend on it for service discovery) | 6–8 KB | medium | 4 h |
-| 3 | Algorithm crates | f32 sweep of `autoware_universe_utils` + `autoware_twist2accel` + `autoware_mrm_handler` behind `f32-math` cargo feature | 8–13 KB | high | 1 day |
+| # | Layer | Action | Est. saving | Status |
+|---|-------|--------|-------------|--------|
+| 1 | zpico build flags | `Z_FEATURE_AUTO_RECONNECT 0` + `Z_FEATURE_ENCODING_VALUES 0` (gated behind `CARGO_FEATURE_ORIN_SPE`) | 3–5 KB | **landed** in nano-ros `93a51cf8` |
+| 2 | zpico build flags | `Z_FEATURE_LIVELINESS 0` | 6–8 KB | **REFUTED** — zpico.c declares tokens for every handle (`packages/zpico/zpico-sys/c/zpico/zpico.c:1266`); rmw_zenoh_cpp uses them for ROS 2 entity discovery. Disabling breaks discovery. |
+| 3 | Algorithm crates | f32 sweep behind `f32-math` cargo feature | 0 KB | **REFUTED** — see §B-revised below |
 
-**Combined optimistic recovery: 17–26 KB.** Stacked with the documented
-9–12 KB closure-erasure work, closes most of the 35 KB gap. Residual
-fits DRAM relocation (Option A) cleanly.
+**Net new recovery: 3–5 KB landed.** The 17–26 KB earlier estimate
+collapsed to 3–5 KB once §A.3 and §B were source-audited.
 
 ## Detailed findings
 
@@ -38,13 +37,18 @@ of named-encoding constants (`text/plain`, `application/json`, …).
 ROS-over-Zenoh uses CDR; encoding-name strings are not consulted.
 **Save: 2–3 KB rodata + code.** Cross-cut: SPE-only.
 
-**A.3 — `Z_FEATURE_LIVELINESS 0`** (currently `1`). Drops
-`api/liveliness.c` (~150 LoC) + `session/liveliness.c` (404 LoC) +
-the liveliness branches in `session/interest.c`. **Save: 6–8 KB.**
-**Verify first:** `nros-rmw-zenoh/src/shim/session.rs` — does it call
-`z_liveliness_declare_token`? rmw_zenoh discovery uses liveliness
-tokens for node detection; if nros mirrors that, this is unsafe.
-Audit before flipping.
+**A.3 — `Z_FEATURE_LIVELINESS 0` — REFUTED.** Audit found
+`packages/zpico/zpico-sys/c/zpico/zpico.c:1266`:
+
+```c
+int lv_ret = z_liveliness_declare_token(z_session_loan(&g_session), ...)
+```
+
+Every handle (publisher / subscriber / service) declares a liveliness
+token at registration. **rmw_zenoh_cpp uses these tokens for ROS 2
+entity discovery** — without them, sentinel's publishers and services
+become invisible to the Autoware side. Cannot disable without rewriting
+zpico.c to skip token declarations + a parallel discovery scheme.
 
 **A.4 — `Z_FEATURE_QUERY_CLIENT 0` (new sub-feature, upstream patch)**.
 Sentinel issues zero `z_get` calls. Both the send path
@@ -58,40 +62,52 @@ REFUTED.** `add_service` (22 sites in sentinel) is implemented as
 `z_declare_queryable` in `nros-rmw-zenoh/src/shim/service.rs`;
 replies use `_z_reply_send`. Cannot disable.
 
-### B — f64 → f32 sweep across SPE-targeted algorithm crates
+### B-revised — f64 → f32 sweep — REFUTED for SPE
 
-233 `f64` / `libm::*` (non-`f`-suffixed) call sites across the SPE
-feature set. Concentrated in three crates:
+The original 6–10 KB estimate was wrong. Source audit:
 
-**B.1 — `autoware_universe_utils/src/lib.rs:24-196`.** Hosts
-`libm::sin / cos / asin / atan2 / sqrt / fabs` (lines 132, 141, 142,
-148–150, 165, 169, 172, 178). Used by every algorithm crate. Each
-unique double-libm symbol is ~700–1500 B; ~8 unique calls in the
-SPE-active surface. **Save: 6–10 KB** if entire crate switches to
-`f32` + `libm::sinf` / `cosf` / `asinf` / `atan2f` / `sqrtf` /
-`fabsf`. **Cross-cut: BREAKS Linux/Zephyr/NuttX builds** unless
-gated. Pivot via `#[cfg(feature = "f32-math")]` or a
-`pub type Real = f64;` alias the whole crate uses.
+**B.1 — `autoware_universe_utils` (host of `libm::sin / cos / asin /
+atan2 / sqrt / fabs`) is REFUTED.** Pulled only by
+`autoware_motion_utils`, `autoware_pid_longitudinal_controller`,
+`autoware_trajectory_follower_node` — all gated behind the
+`controller-node` cargo feature, **off in the SPE default build**
+(`autoware_sentinel_spe/Cargo.toml:58` activates `comp-mrm` +
+`comp-engagement` only). LTO + `--gc-sections` already drop the
+crate. **Save: 0 KB.**
 
-**B.2 — `autoware_twist2accel/src/lib.rs:8-17`.** `Lowpass` struct:
-`gain: f64`, `value: Option<f64>`, plus arithmetic at line 17.
-Active on SPE tick (called from cmd-gate path). **Save: 2–3 KB**
-(eliminates `__adddf3` / `__muldf3` on this hot path; FPU helpers
-exist for `f32` via `+vfp3,+d32`). Internal LPF can be `f32` while
-the public covariance field stays `[f64; 36]` (ROS message schema
-contract).
+**B.2 — `autoware_twist2accel/src/lib.rs:8-17` Lowpass — REFUTED.**
+The `gain: f64` + `value: Option<f64>` arithmetic looks like a
+candidate, but post-`+vfp3,+d32` Cortex-R5F has hardware double-
+precision FPU. `__adddf3` / `__muldf3` / `__divdf3` no longer link
+in (already eliminated by 11.3.D). Hardware `vadd.f64` / `vmul.f64`
+is one instruction — same code size as the f32 equivalent.
+**Save: 0 KB.**
 
-**B.3 — `autoware_mrm_handler/src/lib.rs:25,31,77,100`.**
-`STOPPED_VELOCITY_THRESHOLD`, `current_velocity` field. Compare-only
-(no inner-loop arithmetic). **Save: ~0.5 KB.**
+**B.3 — `autoware_mrm_handler/src/lib.rs:25,31,77,100` — REFUTED for
+the same reason as B.2.** Compare-only operations on f64 fields;
+hardware FPU does them in one cycle. **Save: 0 KB.**
 
-**B.4 — `autoware_motion_utils/src/lib.rs:35-308` — REFUTED for
-default SPE.** Pulled by `controller-node` only; gated off in
-`sentinel_spe_firmware` defaults. LTO + `--gc-sections` already
-drops it. Note for when the controller wires in.
+**B.4 — `autoware_motion_utils` — REFUTED.** Gated behind
+`controller-node`, off in default SPE build.
 
-**B.5 — `autoware_control_validator/*` — REFUTED.** Gated behind
-`comp-validator`, off in default SPE build. Doesn't link.
+**B.5 — `autoware_control_validator` — REFUTED.** Gated behind
+`comp-validator`, off in default SPE build.
+
+**Why the audit was wrong the first time.** The 8 unique double-libm
+symbols × 700–1500 B = 6–10 KB estimate was anchored on
+`autoware_universe_utils`'s libm calls — but `universe_utils` is dead
+code in the SPE binary. The active SPE crates (`twist2accel`,
+`stop_filter`, `vehicle_velocity_converter`, `mrm_*`,
+`heartbeat_watchdog`, `vehicle_cmd_gate`) collectively have **zero
+`libm::*` (non-`f`-suffixed) call sites**. The only libm calls in
+the SPE hot path are `libm::tanf` and `libm::atanf` in
+`vehicle_cmd_gate::filter::calc_lateral_accel` —  already replaced
+by Padé approximations under the `compact-trig` feature in
+Phase 11.3.C.
+
+The lesson: estimating size-cut levers from line counts on dead-coded
+crates produces phantom KBs. The correct measurement is `nm
+--size-sort` against a real link, gated on the actual feature surface.
 
 ### C — Message codec rodata duplication — MOSTLY REFUTED
 
@@ -170,30 +186,43 @@ Currently in the `use_orin_spe` branch
 | `Z_FEATURE_AUTO_RECONNECT`  | 1     | No    | **candidate cut (§A.1)** |
 | `Z_FEATURE_TCP_NODELAY`     | 1     | No (no TCP) | candidate cut, low priority |
 
-## What to land first
+## What landed
 
-1. **§A.1 + §A.2 — combined zpico flag flips.** Single PR against
-   `nano-ros-sentinel/packages/zpico/zpico-sys/build.rs`. Two
-   `cflag.define("Z_FEATURE_*", "0")` lines under the `use_orin_spe`
-   branch. **3–5 KB, no behavior change, ~1 h work.** Verify with a
-   relink + `arm-none-eabi-size build/spe.elf`.
+**§A.1 + §A.2 — zpico flag flips.** Landed in nano-ros `93a51cf8`.
+`Z_FEATURE_AUTO_RECONNECT 0` and `Z_FEATURE_ENCODING_VALUES 0` gated
+behind `CARGO_FEATURE_ORIN_SPE` (set by `nros-board-orin-spe`).
+Other platforms unchanged. E2E regression: `just orin_spe test`
+4/4 PASS, autoware_sentinel `sentinel_spe` 2/2 PASS (validated
+against local nano-ros-sentinel HEAD via path patches). **~3–5 KB
+BTCM on the SPE build** (source-reviewed; relink against FSP
+toolchain needed for exact delta).
 
-2. **§B (f32-math feature)** — invasive but reversible. Add cargo
-   feature on `autoware_universe_utils` (and propagate through
-   `autoware_twist2accel`, `autoware_mrm_handler`). Pivot via type
-   alias: `pub type Real = f64;` default, `f32` under feature. The
-   feature flips on automatically when
-   `autoware_sentinel_core/platform-orin-spe` is active (mirror the
-   `compact-trig` pattern from Phase 11.3.C). **8–13 KB.**
+**Pin bump pending.** The autoware_sentinel `[patch.crates-io]` block
+is currently pinned at `nros@682f1404` and `nros@cbd18a0e` (SPE
+crate). Upgrading to `93a51cf8` triggers a transitive
+`colcon-nano-ros` submodule fetch that fails on the current registry
+state — an unrelated upstream issue. Bump the pin in a follow-up
+once that's resolved; the zpico cut takes effect on SPE
+firmware builds at that point.
 
-3. **§A.3 — `Z_FEATURE_LIVELINESS 0`** only after auditing
-   `nros-rmw-zenoh/src/shim/session.rs` for `z_liveliness_declare_token`
-   uses. If safe, second-largest single cut available. **6–8 KB.**
+## What was refuted
 
-After all three: **17–26 KB recovered.** Combined with the documented
-9–12 KB closure-erasure work, total recoverable becomes 26–38 KB —
-fully closes the 35 KB overflow on the optimistic end, leaves
-~9–14 KB for DRAM relocation on the conservative end.
+§A.3 (LIVELINESS), §B (f32-math) — see above. The original
+"17–26 KB recoverable" headline was based on those; once audited,
+the realistic number drops to 3–5 KB landed.
+
+## Remaining levers
+
+| Source | Estimated | Status |
+|--------|-----------|--------|
+| nano-ros closure type-erasure (`app_task_entry` + timer + dyn-callbacks) | 9–12 KB | tracked in `nano-ros-spe-size-opportunities.md` |
+| `compact-trig` Padé `tan/atan` in cmd_gate | 2.3 KB | landed (Phase 11.3.C) |
+| zpico `AUTO_RECONNECT` + `ENCODING_VALUES` off | 3–5 KB | landed (this commit) |
+| **DRAM relocation (Phase 11.3.E Option A)** | ~14–18 KB BSP fixed cost | required to close residual |
+
+Total recoverable from feature-flag cuts: ~14–20 KB. Closes about
+half the 35 KB overflow; the BSP fixed cost (~14 KB) genuinely needs
+DRAM mapping.
 
 ## What's blocked / out of scope
 

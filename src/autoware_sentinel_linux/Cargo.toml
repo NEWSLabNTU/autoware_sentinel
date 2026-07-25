@@ -20,7 +20,14 @@ env_logger = "0.11"
 autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-posix", "controller-node", "monitoring-topics", "comp-all", "param-services"] }
 
 # nros — for `ExecutorConfig`, `Executor`, `SpinOptions`, `NodeError`.
-nros = { version = "*", default-features = false, features = ["std", "rmw-zenoh", "platform-posix", "ros-humble", "param-services"] }
+# Phase 14.1: platform + RMW moved out of nros (phase-248 C6a upstream).
+# The POSIX platform C port comes via nros-platform-cffi, the zenoh RMW
+# backend links via nros-rmw-zenoh and is registered at runtime by
+# `nros_board_native::register_linked_rmw()` in main.
+nros = { version = "*", default-features = false, features = ["std", "rmw-cffi", "ros-humble", "param-services"] }
+nros-platform-cffi = { version = "*", features = ["posix-c-port"] }
+nros-board-native = { version = "*", default-features = false, features = ["rmw-zenoh"] }
+nros-rmw-zenoh = { version = "*", default-features = false, features = ["std", "platform-posix", "ros-humble"] }
 
 # Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
 # autoware_adapi_v1_msgs at opt-level=0 for thumbv7em-none-eabihf.

@@ -461,8 +461,8 @@ mod tests {
 
             let y = x; // |y| ≤ π/4 < 1, hits the |x| ≤ 1 branch
             let y2 = y * y;
-            let approx_atan = y * (1.0 + 0.43157974 * y2)
-                / (1.0 + 0.76443945 * y2 + 0.05831938 * y2 * y2);
+            let approx_atan =
+                y * (1.0 + 0.43157974 * y2) / (1.0 + 0.76443945 * y2 + 0.05831938 * y2 * y2);
             let libm_atan = libm::atanf(y);
             assert!(
                 (approx_atan - libm_atan).abs() < 5e-4,

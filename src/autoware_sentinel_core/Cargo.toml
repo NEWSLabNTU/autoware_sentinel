@@ -58,20 +58,19 @@ controller-node = [
     "dep:libm",
 ]
 
-# Platform passthrough features. Each binary crate enables exactly one of
-# these so core's nros dep picks the right platform shim.
+# Platform passthrough features. Phase 14.1: nros no longer carries
+# platform-*/rmw-* features (phase-248 C6a upstream) — platform + RMW
+# selection moved to the binary crate (nros-platform / board crate /
+# nros-rmw-* deps). These names survive as markers the binaries still
+# reference; only `std` forwards anything.
 std = ["nros/std"]
-platform-posix = ["std", "nros/platform-posix"]
-platform-zephyr = ["nros/platform-zephyr"]
-platform-freertos = ["nros/platform-freertos"]
-platform-nuttx = ["std", "nros/platform-nuttx"]
-platform-bare-metal = ["nros/platform-bare-metal"]
+platform-posix = ["std"]
+platform-zephyr = []
+platform-freertos = []
+platform-nuttx = ["std"]
+platform-bare-metal = []
 # Phase 11 — AGX Orin SPE (Cortex-R5F + NVIDIA FreeRTOS FSP, IVC link).
-# Same `nros::Executor` shape as `platform-freertos`; the difference is
-# the underlying `PlatformClock` / `PlatformIvc` impls live in
-# `nros-platform-orin-spe` rather than the upstream FreeRTOS port.
 platform-orin-spe = [
-    "nros/platform-orin-spe",
     # Cortex-R5F builds are BTCM-bound. Drop libm::tanf/atanf in
     # vehicle_cmd_gate's lateral-acceleration math (Phase 11.3.C).
     "autoware_vehicle_cmd_gate/compact-trig",
@@ -90,7 +89,7 @@ log = { version = "0.4", default-features = false }
 # nros unified API — platform feature is selected by the binary crate.
 # `param-services` is feature-gated (see above) rather than always-on
 # because SafetyIsland's static `default_params()` doesn't need them.
-nros = { version = "*", default-features = false, features = ["rmw-zenoh", "ros-humble"] }
+nros = { version = "*", default-features = false, features = ["alloc", "rmw-cffi", "ros-humble"] }
 
 # Algorithm crates always compiled.
 autoware_stop_filter = { path = "../autoware_stop_filter" }

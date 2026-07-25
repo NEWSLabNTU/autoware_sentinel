@@ -41,50 +41,10 @@ members = [
 #   src/verification               — Verus proofs, standalone
 #   tests                          — nextest integration tests, standalone
 
-[patch.crates-io]
-# nano-ros — pinned to the rev that includes Phase 100 (Orin SPE
-# infrastructure: nvidia-ivc, nros-platform-orin-spe,
-# nros-board-orin-spe, Z_FEATURE_LINK_IVC, BSP recipes). Local
-# development against the sibling clone (`~/repos/nano-ros-sentinel`)
-# can override these patches via per-crate `.cargo/config.toml`
-# path entries.
-nros = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
-nros-core = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
-nros-serdes = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "682f1404" }
-
-# Generated message packages (from sentinel_linux — the superset of all packages)
-autoware_adapi_v1_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_v1_msgs" }
-autoware_adapi_version_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_adapi_version_msgs" }
-autoware_common_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_common_msgs" }
-autoware_control_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_control_msgs" }
-autoware_control_validator = { path = "src/autoware_sentinel_linux/generated/autoware_control_validator" }
-autoware_internal_debug_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_internal_debug_msgs" }
-autoware_internal_metric_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_internal_metric_msgs" }
-autoware_internal_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_internal_msgs" }
-autoware_internal_perception_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_internal_perception_msgs" }
-autoware_internal_planning_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_internal_planning_msgs" }
-autoware_operation_mode_transition_manager = { path = "src/autoware_sentinel_linux/generated/autoware_operation_mode_transition_manager" }
-autoware_perception_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_perception_msgs" }
-autoware_planning_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_planning_msgs" }
-autoware_system_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_system_msgs" }
-autoware_vehicle_cmd_gate = { path = "src/autoware_sentinel_linux/generated/autoware_vehicle_cmd_gate" }
-autoware_vehicle_msgs = { path = "src/autoware_sentinel_linux/generated/autoware_vehicle_msgs" }
-builtin_interfaces = { path = "src/autoware_sentinel_linux/generated/builtin_interfaces" }
-diagnostic_msgs = { path = "src/autoware_sentinel_linux/generated/diagnostic_msgs" }
-geographic_msgs = { path = "src/autoware_sentinel_linux/generated/geographic_msgs" }
-logging_demo = { path = "src/autoware_sentinel_linux/generated/logging_demo" }
-geometry_msgs = { path = "src/autoware_sentinel_linux/generated/geometry_msgs" }
-nav_msgs = { path = "src/autoware_sentinel_linux/generated/nav_msgs" }
-sensor_msgs = { path = "src/autoware_sentinel_linux/generated/sensor_msgs" }
-shape_msgs = { path = "src/autoware_sentinel_linux/generated/shape_msgs" }
-std_msgs = { path = "src/autoware_sentinel_linux/generated/std_msgs" }
-std_srvs = { path = "src/autoware_sentinel_linux/generated/std_srvs" }
-tier4_control_msgs = { path = "src/autoware_sentinel_linux/generated/tier4_control_msgs" }
-tier4_external_api_msgs = { path = "src/autoware_sentinel_linux/generated/tier4_external_api_msgs" }
-tier4_system_msgs = { path = "src/autoware_sentinel_linux/generated/tier4_system_msgs" }
-tier4_vehicle_msgs = { path = "src/autoware_sentinel_linux/generated/tier4_vehicle_msgs" }
-unique_identifier_msgs = { path = "src/autoware_sentinel_linux/generated/unique_identifier_msgs" }
-visualization_msgs = { path = "src/autoware_sentinel_linux/generated/visualization_msgs" }
+# nano-ros + message crates are patched via .cargo/config.toml, written by
+# `nros sync` (phase 14.1). The nros trio resolves through the central
+# ~/repos/nano-ros/nros-patch.toml include (local checkout, currently
+# 21a3a4248). Run `nros sync` after cloning or moving checkouts.
 
 # LLVM SIGSEGV workaround: autoware_adapi_v1_msgs crashes ARM register scavenger
 # at opt-level=0. See LLVM #64277.

@@ -150,11 +150,7 @@ fn run_unix_mock(cli: &Cli) -> std::io::Result<()> {
     Ok(())
 }
 
-fn ivc_to_tcp_loop(
-    ivc: UnixDatagram,
-    _path: PathBuf,
-    sink: mpsc::Sender<Vec<u8>>,
-) {
+fn ivc_to_tcp_loop(ivc: UnixDatagram, _path: PathBuf, sink: mpsc::Sender<Vec<u8>>) {
     let mut frame = [0u8; FRAME_SIZE];
     let mut rx_buf = vec![0u8; MAX_BATCH];
     let mut expected_total: u16 = 0;
@@ -195,9 +191,7 @@ fn ivc_to_tcp_loop(
             expected_total = total;
             bytes_received = 0;
         } else if total != expected_total {
-            log::warn!(
-                "Mid-batch total_len changed ({expected_total} → {total}); resetting"
-            );
+            log::warn!("Mid-batch total_len changed ({expected_total} → {total}); resetting");
             expected_total = total;
             bytes_received = 0;
         }
@@ -209,8 +203,7 @@ fn ivc_to_tcp_loop(
             bytes_received = 0;
             continue;
         }
-        rx_buf[off as usize..(off + payload_len) as usize]
-            .copy_from_slice(&frame[HEADER_SIZE..n]);
+        rx_buf[off as usize..(off + payload_len) as usize].copy_from_slice(&frame[HEADER_SIZE..n]);
         bytes_received += payload_len;
         if bytes_received == expected_total {
             let batch = rx_buf[..expected_total as usize].to_vec();
@@ -275,6 +268,10 @@ fn forward_batch_as_ivc_frames(ivc: &UnixDatagram, batch: &[u8]) -> std::io::Res
         ivc.send(&frame[..HEADER_SIZE + chunk])?;
         off += chunk;
     }
-    log::debug!("TCP → IVC: {} B batch in {} frames", batch.len(), off.div_ceil(MAX_PAYLOAD));
+    log::debug!(
+        "TCP → IVC: {} B batch in {} frames",
+        batch.len(),
+        off.div_ceil(MAX_PAYLOAD)
+    );
     Ok(())
 }

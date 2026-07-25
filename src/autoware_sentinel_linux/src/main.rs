@@ -47,9 +47,24 @@ fn main() {
     handle.join().expect("Main thread panicked");
 }
 
+/// Executor callback-slot budget. The Phase-13 monolith registers ~37
+/// callbacks (9 subscriptions + ~21 services + 1 timer + 6 parameter
+/// services); 64 is the executor's hard ready-set cap and leaves headroom.
+/// Sized explicitly (phase-271 `open_sized`) so the binary no longer
+/// depends on the `NROS_EXECUTOR_MAX_CBS` build-time env being set.
+const EXECUTOR_CBS: usize = 64;
+
 fn run() -> Result<(), NodeError> {
+    // Register the zenoh RMW backend the build linked (must precede open).
+    nros_board_native::register_linked_rmw();
+
     let config = ExecutorConfig::from_env().node_name("sentinel");
-    let mut executor = Executor::open(&config)?;
+    let sizing = nros::ExecutorSizing {
+        cbs: EXECUTOR_CBS,
+        arena: nros::arena_size_for(EXECUTOR_CBS),
+        ..nros::ExecutorSizing::DEFAULT
+    };
+    let mut executor = Executor::open_sized(&config, sizing)?;
 
     // Parameter services + declare + read.
     executor.register_parameter_services()?;

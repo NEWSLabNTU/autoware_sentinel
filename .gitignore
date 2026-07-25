@@ -45,3 +45,7 @@ scripts/spe/downloads/
 external/spe-fsp/
 src/sentinel_spe_firmware/target/
 src/sentinel_spe_firmware/Cargo.lock
+
+# nros sync outputs (machine-specific absolute include / regenerated)
+/generated/
+/.cargo/config.toml

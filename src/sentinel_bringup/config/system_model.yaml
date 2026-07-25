@@ -4,7 +4,7 @@ meta:
   - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/launch/system.launch.xml
     sha256: d4b08c70d1b6b543445d917a6fe71c6a1c51db1c942dc1fce7c3a5f32fd48aa2
   - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/system.toml
-    sha256: 0edf8b5e0afa89cf7619cb0f9cdcb3a00dc0a7deac78c4d94dd40a21f7e08e2a
+    sha256: fb5e7da34a4c1ac73617c896d15b406be9df19e033f8a3ac68f831e2f6f39f9d
   resolver:
     tool: play_launch
     version: 0.8.2
@@ -145,11 +145,6 @@ structure:
       exec: system_monitor
       node_name: system_monitor
 execution:
-  features:
-  # Hand-appended post-resolve: play_launch resolve does not yet propagate
-  # system.toml [param_services] into the model's capability axes (the
-  # nros::main! model arm gates apply_param_services on this list).
-  - param_services
   deploy:
     /adapi/default_adapi:
       target: linux

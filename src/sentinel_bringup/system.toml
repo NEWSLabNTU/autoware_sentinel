@@ -18,9 +18,11 @@ rmw = "zenoh"
 domain_id = 0
 default_launch = "system.launch.xml"
 
-# The 6 ROS 2 parameter services (/sentinel/*). Executor-FQN-scoped —
-# per-node parameter services are upstream-blocked (see roadmap §14.3).
+# The 6 ROS 2 parameter services. `node` names the executor identity they
+# hang off (/sentinel/* FQN + liveliness) — issue-0274 plumbing; per-NODE
+# parameter services remain upstream-blocked (see roadmap §14.3).
 [param_services]
+node = "sentinel"
 
 # ── /control ────────────────────────────────────────────────────────────
 [[component]]

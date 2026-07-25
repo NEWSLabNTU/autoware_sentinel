@@ -10,4 +10,7 @@
 //! macro reads the resolved SystemModel, emits one `register()` per launch
 //! `<node>`, opens the executor against the native board, and spins.
 
-nros::main!(model = "sentinel_bringup:config/system_model.yaml");
+nros::main!(
+    model = "sentinel_bringup:config/system_model.yaml",
+    spin = "forever"
+);

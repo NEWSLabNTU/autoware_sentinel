@@ -75,13 +75,7 @@ pub fn start_sentinel(binary: &Path, locator: &str) -> TestResult<ManagedProcess
     cmd.env("RUST_LOG", "info")
         .env("ZENOH_LOCATOR", locator)
         .env("NROS_LOCATOR", locator)
-        // Multi-node entries leave the executor node_name unset; the ROS 2
-        // parameter services derive their /sentinel/* FQN (and liveliness
-        // visibility) from it — RFC-0045 model A env rung.
-        .env("NROS_NODE_NAME", "sentinel")
-        // Hosted entries spin only for a bounded NROS_ENTRY_SPIN_MS (the
-        // macro's default is register-and-exit); ~1000 years = unbounded.
-        .env("NROS_ENTRY_SPIN_MS", "31536000000000");
+        ;
     let mut proc = ManagedProcess::spawn_command(cmd, "sentinel")?;
 
     // Wait for the sentinel to be ready

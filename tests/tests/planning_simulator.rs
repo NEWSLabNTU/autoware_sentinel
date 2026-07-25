@@ -269,11 +269,15 @@ fn test_record_filter(autoware_record: PathBuf) {
         "Filtered: {filt_nodes} nodes, {filt_containers} containers, {filt_load_nodes} load_nodes"
     );
 
-    // node[]: mrm_handler removed (1 node)
+    // node[]: 4 removals — mrm_handler + hazard_status_converter by name,
+    // plus the autoware_diagnostic_graph_aggregator package (2 nodes:
+    // aggregator + logging_diag_graph). play_launch 0.8.x classifies all of
+    // these as plain nodes; older dumps parked some in other arrays, which is
+    // where the stale "1 removed" expectation came from.
     assert_eq!(
         filt_nodes,
-        orig_nodes - 1,
-        "Expected 1 node removed (mrm_handler), got {} removed",
+        orig_nodes - 4,
+        "Expected 4 nodes removed (mrm_handler, hazard_status_converter, 2x diag aggregator), got {} removed",
         orig_nodes - filt_nodes
     );
 
@@ -285,11 +289,13 @@ fn test_record_filter(autoware_record: PathBuf) {
         orig_containers - filt_containers
     );
 
-    // load_node[]: 4 control nodes removed
+    // load_node[]: 8 removals — the 4 control packages (vehicle_cmd_gate,
+    // shift_decider, operation_mode_transition_manager, control_validator)
+    // plus the 4 ADAPI adaptor (package, node) pairs.
     assert_eq!(
         filt_load_nodes,
-        orig_load_nodes - 4,
-        "Expected 4 load_nodes removed (control nodes), got {} removed",
+        orig_load_nodes - 8,
+        "Expected 8 load_nodes removed (4 control pkgs + 4 adapi pairs), got {} removed",
         orig_load_nodes - filt_load_nodes
     );
 

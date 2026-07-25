@@ -193,7 +193,34 @@ Acceptance:
       from the ament index into root `generated/`.
 - [ ] 14.1 acceptance still holds after the move.
 
-### - [ ] 14.3 Node split (Linux-first)
+### - [ ] 14.3 Node split (Linux-first) — graph attribution LANDED 2026-07-25
+
+**Design decision (recorded):** not a topic-edge split. An in-process topic
+edge between sentinel nodes would round-trip through zenohd per hop — a
+command-path latency regression the safety chain cannot afford. The landed
+shape: 13 named executor nodes with baseline Autoware FQNs owning their
+entities (graph/`ros2 node info` contract), while the 30 Hz chain stays one
+synchronous pass over the shared `SafetyIsland`. Verified: 13 nodes in an
+isolated `ros2 node list`, engagement round-trip
+(`change_to_autonomous` → `mode: 2`) against the sentinel alone, 14/14
+transport smoke, freertos comp-all + NuttX boot-and-spin.
+
+**Per-node parameter services (the 84-service gap): still upstream-blocked**
+— `register_parameter_services()` is executor-FQN-scoped and even the
+upstream multi-node model path registers one set; needs a per-node upstream
+API. Declarative `Node`-trait wrappers move to 14.4 alongside the bringup.
+
+**Drive-parity gate: BLOCKED on shared machine** — the planning-sim replay
+tests (`test_sentinel_replaces_autoware_nodes`,
+`test_autoware_baseline_autonomous_drive`) time out while a second full
+Autoware session (the other agent's live run) occupies the box. Isolated
+sub-checks all pass; rerun the replay gate when the machine is quiet.
+
+Also: the transport/planning prerequisite gates silently skip-as-pass when
+`rmw_zenoh_cpp` is absent — the `external/rmw_zenoh_ws/install` overlay had
+vanished and was restored as a symlink to the nano-ros build; treat any
+suspiciously-fast green suite with suspicion.
+
 
 Dissolve `wire_executor` + `SafetyIsland` into per-node packages mirroring
 the replaced Autoware nodes.

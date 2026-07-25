@@ -46,7 +46,7 @@ nros-platform = { version = "*", default-features = false, features = ["platform
 nros-board-mps2-an385-freertos = { version = "*" }
 
 # Shared core wiring. Safety MCU build — no controller-node.
-autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos"] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos", "comp-all"] }
 
 # nros — for `ExecutorConfig`, `Executor`, `NodeError`. Phase 14.1: platform +
 # RMW features moved out of nros; the zenoh backend links via nros-rmw-zenoh

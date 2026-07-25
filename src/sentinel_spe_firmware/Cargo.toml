@@ -111,13 +111,13 @@ debug = false        # Strip; debug symbols inflate the rlib but are
 # generated/ tree (single source of truth for the msg superset, same
 # pattern as freertos / nuttx / zephyr siblings).
 [patch.crates-io]
-nros = { path = "../../../nano-ros/packages/core/nros" }
-nros-core = { path = "../../../nano-ros/packages/core/nros-core" }
-nros-serdes = { path = "../../../nano-ros/packages/core/nros-serdes" }
-nros-rmw-zenoh = { path = "../../../nano-ros/packages/zpico/nros-rmw-zenoh" }
-nros-platform = { path = "../../../nano-ros/packages/core/nros-platform" }
-nros-board-orin-spe = { path = "../../../nano-ros/packages/boards/nros-board-orin-spe" }
-zpico-sys = { path = "../../../nano-ros/packages/zpico/zpico-sys" }
+nros = { path = "../../../nano-ros-sentinel/packages/core/nros" }
+nros-core = { path = "../../../nano-ros-sentinel/packages/core/nros-core" }
+nros-serdes = { path = "../../../nano-ros-sentinel/packages/core/nros-serdes" }
+nros-rmw-zenoh = { path = "../../../nano-ros-sentinel/packages/zpico/nros-rmw-zenoh" }
+nros-platform = { path = "../../../nano-ros-sentinel/packages/core/nros-platform" }
+nros-board-orin-spe = { path = "../../../nano-ros-sentinel/packages/boards/nros-board-orin-spe" }
+zpico-sys = { path = "../../../nano-ros-sentinel/packages/zpico/zpico-sys" }
 
 autoware_adapi_v1_msgs = { path = "../../generated/autoware_adapi_v1_msgs" }
 autoware_adapi_version_msgs = { path = "../../generated/autoware_adapi_version_msgs" }

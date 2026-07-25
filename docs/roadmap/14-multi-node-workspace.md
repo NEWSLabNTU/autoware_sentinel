@@ -43,10 +43,14 @@ Bump nano-ros to a current pin and get all five targets green again WITHOUT
 restructuring — the renamed closure API is the escape hatch.
 
 Tasks:
-- [x] Pick and pin a current nano-ros rev (2026-07-25: local checkout at
-      `21a3a4248`, patched by path via `.cargo/config.toml` — stable cargo
-      ignores nros-patch.toml's `include =`, so the trio rows are
-      hand-maintained). Root + freertos + nuttx + spe-firmware done;
+- [x] Pick and pin a current nano-ros rev (2026-07-25: dedicated sibling
+      clone `~/repos/nano-ros-sentinel` at branch `fix-0269`
+      (origin/main f91f7155c + the wall-#1 fix), patched by path via
+      `.cargo/config.toml`. The live `~/repos/nano-ros` checkout is the
+      other agent's working tree and moves under us — path-patching it
+      proved unstable; the clone is the pin. Stable cargo ignores
+      nros-patch.toml's `include =`, so the trio rows are
+      hand-maintained. Root + freertos + nuttx + spe-firmware done;
       zephyr deferred (below).
 - [x] Mechanical API migration in `autoware_sentinel_core` and the target
       binaries (entities attach via `node_builder("sentinel")` + `node_mut`;
@@ -83,7 +87,19 @@ Tasks:
   **Wall log:** (append as found; filed upstream 2026-07-25 as nano-ros
   issues 0269–0273 via NEWSLabNTU/nano-ros#3, sentinel-side trackers
   NEWSLabNTU/autoware_sentinel#1–#3)
-  - Wall #1 (2026-07-25, freertos/MPS2, OPEN — nano-ros 0269, sentinel #1): comp-all wiring (37 pubs /
+  - Wall #1 (2026-07-25, freertos/MPS2, **FIXED** — nano-ros 0269 /
+    PR #4, sentinel #1): root cause was NOT zenoh-pico — nros-rmw-cffi's
+    `static_subscriber_storage` (the no-std home for subscription
+    handles behind the vtable) was hardcoded to **4 slots**; the 5th
+    `create_subscription` returned BAD_ALLOC and the executor's
+    `map_err(|_| SubscriberCreationFailed)` hid it. std targets Box the
+    handle — hence NuttX passing identically. Fix (nano-ros PR #4): pool
+    sized via `NROS_RMW_SUBSCRIBER_SLOTS` (default 8; sentinel sets 16),
+    the 12 executor sites preserve the transport error, plus a
+    defense-in-depth `_z_send_tcp` drain loop on the zenoh-pico fork
+    (write_all semantics on lwIP's tiny buffers) and TCP_SND_BUF 4→8 MSS
+    on the board. comp-all now boots + spins on MPS2 QEMU; the freertos
+    target's default is comp-all again. Original symptom record: comp-all wiring (37 pubs /
     21 services / 5 subs on one zenoh-pico session) fails `Executor` setup
     with `Transport(SubscriberCreationFailed)` once the entity total
     crosses a threshold — the 4-combo (mrm + cmd-gate-extra + validator +
@@ -140,7 +156,7 @@ Acceptance:
       simulator; `play_launch` 0.8.2 reinstalled, zenohd fallback to the
       nano-ros build).
 - [ ] Zephyr native_sim, FreeRTOS MPS2, NuttX QEMU targets build and boot.
-      FreeRTOS: boots + spins (core baseline; comp-all = wall #1).
+      FreeRTOS: boots + spins with full comp-all (wall #1 fixed).
       NuttX: boots + spins with full comp-all.
       Zephyr: DEFERRED to 14.5 — the west workspace was never provisioned
       on this machine and the old zephyr-lang-rust `rustapp` shape is

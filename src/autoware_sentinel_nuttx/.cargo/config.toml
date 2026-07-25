@@ -58,9 +58,9 @@ ZPICO_MAX_LIVELINESS = "160"
 
 [patch.crates-io]
 # nano-ros crates named by this crate's Cargo.toml.
-nros = { path = "../../../nano-ros/packages/core/nros" }
-nros-platform = { path = "../../../nano-ros/packages/core/nros-platform" }
-nros-board-nuttx-qemu-arm = { path = "../../../nano-ros/packages/boards/nros-board-nuttx-qemu-arm" }
+nros = { path = "../../../nano-ros-sentinel/packages/core/nros" }
+nros-platform = { path = "../../../nano-ros-sentinel/packages/core/nros-platform" }
+nros-board-nuttx-qemu-arm = { path = "../../../nano-ros-sentinel/packages/boards/nros-board-nuttx-qemu-arm" }
 # Patched libc with NuttX-specific symbols build-std's `std` needs.
 libc = { path = "../../../nano-ros/third-party/nuttx/libc" }
 

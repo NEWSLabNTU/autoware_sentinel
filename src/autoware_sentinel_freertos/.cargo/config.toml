@@ -19,10 +19,10 @@ rustflags = [
 [patch.crates-io]
 # nano-ros crates named by this crate's Cargo.toml (their internal deps are
 # path deps inside the checkout and need no patches here).
-nros = { path = "../../../nano-ros/packages/core/nros" }
-nros-platform = { path = "../../../nano-ros/packages/core/nros-platform" }
-nros-rmw-zenoh = { path = "../../../nano-ros/packages/zpico/nros-rmw-zenoh" }
-nros-board-mps2-an385-freertos = { path = "../../../nano-ros/packages/boards/nros-board-mps2-an385-freertos" }
+nros = { path = "../../../nano-ros-sentinel/packages/core/nros" }
+nros-platform = { path = "../../../nano-ros-sentinel/packages/core/nros-platform" }
+nros-rmw-zenoh = { path = "../../../nano-ros-sentinel/packages/zpico/nros-rmw-zenoh" }
+nros-board-mps2-an385-freertos = { path = "../../../nano-ros-sentinel/packages/boards/nros-board-mps2-an385-freertos" }
 
 # Generated message crates (root generated/ — superset for all targets).
 autoware_adapi_v1_msgs = { path = "../../generated/autoware_adapi_v1_msgs" }
@@ -64,10 +64,10 @@ visualization_msgs = { path = "../../generated/visualization_msgs" }
 FREERTOS_DIR = { value = "../../../nano-ros/third-party/freertos/kernel", relative = true }
 FREERTOS_PORT = "GCC/ARM_CM3"
 LWIP_DIR = { value = "../../../nano-ros/third-party/freertos/lwip", relative = true }
-FREERTOS_CONFIG_DIR = { value = "../../../nano-ros/packages/boards/nros-board-mps2-an385-freertos/config", relative = true }
-NROS_PLATFORM_FREERTOS_SRC = { value = "../../../nano-ros/packages/core/nros-platform-freertos/src", relative = true }
-NROS_PLATFORM_CFFI_INCLUDE = { value = "../../../nano-ros/packages/core/nros-platform-api/include", relative = true }
-NROS_LAN9118_LWIP_DIR = { value = "../../../nano-ros/packages/drivers/lan9118-lwip", relative = true }
+FREERTOS_CONFIG_DIR = { value = "../../../nano-ros-sentinel/packages/boards/nros-board-mps2-an385-freertos/config", relative = true }
+NROS_PLATFORM_FREERTOS_SRC = { value = "../../../nano-ros-sentinel/packages/core/nros-platform-freertos/src", relative = true }
+NROS_PLATFORM_CFFI_INCLUDE = { value = "../../../nano-ros-sentinel/packages/core/nros-platform-api/include", relative = true }
+NROS_LAN9118_LWIP_DIR = { value = "../../../nano-ros-sentinel/packages/drivers/lan9118-lwip", relative = true }
 # zpico capacity knobs (match root .env — 51 pubs / 9 subs with comp-all)
 ZPICO_MAX_PUBLISHERS = "56"
 ZPICO_MAX_SUBSCRIBERS = "64"
@@ -82,3 +82,7 @@ NROS_FREERTOS_HEAP_KB = "2560"
 # rx hint (> the 2048 small/large threshold), so they all land in the
 # large class — default cap 2 starves the 3rd subscription.
 ZPICO_MAX_LARGE_SUBSCRIBERS = "8"
+# Phase 14 wall #1 fix (nano-ros PR #4): embedded subscription-handle pool
+# size. Effective once the pin advances past the fix; 16 covers comp-all's
+# 5 subs with headroom (1 KiB static per slot).
+NROS_RMW_SUBSCRIBER_SLOTS = "16"

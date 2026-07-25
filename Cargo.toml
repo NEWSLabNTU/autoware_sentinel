@@ -3,6 +3,7 @@ resolver = "2"
 exclude = [
     "tests",
     "src/autoware_sentinel_zephyr",
+    "src/zephyr_entry",
     "src/autoware_sentinel_freertos",
     "src/freertos_entry",
     "src/autoware_sentinel_nuttx",

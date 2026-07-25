@@ -1,0 +1,188 @@
+meta:
+  version: 1
+  inputs:
+  - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/launch/mcu.launch.xml
+    sha256: 7f3439e360268fc333cb4d0017e4413425e235f5dd4014f8287c967b3817c2a5
+  - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/zephyr-system.toml
+    sha256: 90eaf1d64b649c419c64e92cf670b69243ed0979648a8ce122357edba7666f31
+  resolver:
+    tool: play_launch
+    version: 0.8.2
+structure:
+  scopes:
+    mcu.launch.xml:
+      file: mcu.launch.xml
+  nodes:
+    /adapi/default_adapi:
+      scope: mcu.launch.xml
+      pkg: sentinel_default_adapi_node
+      exec: default_adapi
+      node_name: default_adapi
+    /control/autoware_operation_mode_transition_manager:
+      scope: mcu.launch.xml
+      pkg: sentinel_operation_mode_node
+      exec: operation_mode
+      params:
+        op_mode.acc_threshold: 1.5
+        op_mode.allow_autonomous_in_stopped: 'True'
+        op_mode.enable_engage_on_driving: 'False'
+        op_mode.speed_lower_threshold: -10.0
+        op_mode.speed_upper_threshold: 10.0
+        op_mode.stable_check_duration: 0.1
+        op_mode.stopped_velocity_threshold: 0.01
+      node_name: autoware_operation_mode_transition_manager
+    /control/autoware_shift_decider:
+      scope: mcu.launch.xml
+      pkg: sentinel_shift_decider_node
+      exec: shift_decider
+      params:
+        shift_decider.park_on_goal: 'True'
+      node_name: autoware_shift_decider
+    /control/control_validator:
+      scope: mcu.launch.xml
+      pkg: sentinel_control_validator_node
+      exec: control_validator
+      params:
+        control_validator.acc_error_offset: 0.8
+        control_validator.acc_error_scale: 0.2
+        control_validator.acc_lpf_gain: 0.97
+        control_validator.jerk_lpf_gain: 0.8
+        control_validator.lateral_jerk_threshold: 10.0
+        control_validator.over_velocity_offset: 2.0
+        control_validator.over_velocity_ratio: 0.2
+        control_validator.rolling_back_velocity: 0.5
+        control_validator.vel_lpf_gain: 0.9
+      node_name: control_validator
+    /control/vehicle_cmd_gate:
+      scope: mcu.launch.xml
+      pkg: sentinel_vehicle_cmd_gate_node
+      exec: vehicle_cmd_gate
+      params:
+        vehicle_cmd_gate.emergency_accel: -2.4
+        vehicle_cmd_gate.heartbeat_timeout_ms: 5000
+        vehicle_cmd_gate.stop_hold_accel: -1.5
+        vehicle_cmd_gate.vel_lim: 25.0
+      node_name: vehicle_cmd_gate
+    /sensing/vehicle_velocity_converter:
+      scope: mcu.launch.xml
+      pkg: sentinel_velocity_converter_node
+      exec: velocity_converter
+      params:
+        stop_filter.vx_threshold: 0.1
+        stop_filter.wz_threshold: 0.02
+        twist2accel.accel_lowpass_gain: 0.9
+        velocity_converter.speed_scale_factor: 1.0
+        velocity_converter.stddev_vx: 0.2
+        velocity_converter.stddev_wz: 0.1
+      node_name: vehicle_velocity_converter
+    /system/mrm_comfortable_stop_operator:
+      scope: mcu.launch.xml
+      pkg: sentinel_mrm_comfortable_stop_node
+      exec: comfortable_stop_operator
+      params:
+        mrm_comfortable_stop.min_acceleration: -1.0
+        mrm_comfortable_stop.min_jerk: -0.3
+      node_name: mrm_comfortable_stop_operator
+    /system/mrm_emergency_stop_operator:
+      scope: mcu.launch.xml
+      pkg: sentinel_mrm_emergency_stop_node
+      exec: emergency_stop_operator
+      params:
+        mrm_emergency_stop.target_acceleration: -2.5
+        mrm_emergency_stop.target_jerk: -1.5
+      node_name: mrm_emergency_stop_operator
+    /system/mrm_handler:
+      scope: mcu.launch.xml
+      pkg: sentinel_mrm_handler_node
+      exec: mrm_handler
+      params:
+        heartbeat.timeout_ms: 60000
+        mrm_handler.stopped_velocity_threshold: 0.001
+      node_name: mrm_handler
+    /system/mrm_pull_over_manager:
+      scope: mcu.launch.xml
+      pkg: sentinel_mrm_pull_over_node
+      exec: pull_over_manager
+      node_name: mrm_pull_over_manager
+execution:
+  deploy:
+    /adapi/default_adapi:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /control/autoware_operation_mode_transition_manager:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /control/autoware_shift_decider:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /control/control_validator:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /control/vehicle_cmd_gate:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /sensing/vehicle_velocity_converter:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /system/mrm_comfortable_stop_operator:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /system/mrm_emergency_stop_operator:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /system/mrm_handler:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none
+    /system/mrm_pull_over_manager:
+      target: mcu:zephyr
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: zephyr
+        kind: embedded
+        target: x86_64-unknown-none

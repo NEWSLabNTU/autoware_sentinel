@@ -1,0 +1,64 @@
+# Phase 14.5 — Zephyr Entry pkg (west app). Replaces the retired
+# zephyr-lang-rust `rustapp` shim in src/autoware_sentinel_zephyr: same
+# declarative model-arm entry as the other targets, built by `west build`.
+#
+#   west build -b native_sim/native/64 src/zephyr_entry \
+#     -- -DCONF_FILE="prj.conf;prj-zenoh.conf"
+
+[package]
+name = "zephyr_entry"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Sentinel Entry pkg — boots the MCU subset on Zephyr (west app, zenoh RMW)."
+
+[lib]
+# zephyr-lang-rust's rust_cargo_application() links `librustapp.a`.
+name = "rustapp"
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = ["rmw-zenoh"]
+rmw-zenoh = ["dep:nros-rmw-zenoh"]
+
+[package.metadata.nros.entry]
+deploy = "zephyr"
+
+[package.metadata.nros.deploy.zephyr]
+board = "native_sim/native/64"
+rmw = "zenoh"
+domain_id = 0
+locator = "tcp/127.0.0.1:7447"
+
+[dependencies]
+zephyr = "0.1.0"
+log = "0.4"
+
+nros = { path = "/home/aeon/repos/nano-ros-sentinel/packages/core/nros", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+nros-board-zephyr = { path = "/home/aeon/repos/nano-ros-sentinel/packages/boards/nros-board-zephyr" }
+nros-platform = { path = "/home/aeon/repos/nano-ros-sentinel/packages/core/nros-platform", default-features = false, features = ["platform-zephyr"] }
+nros-rmw-zenoh = { path = "/home/aeon/repos/nano-ros-sentinel/packages/zpico/nros-rmw-zenoh", default-features = false, features = [
+    "platform-zephyr",
+    "ros-humble",
+], optional = true }
+
+# The 10 wrapper node rlibs the MCU launch names.
+sentinel_vehicle_cmd_gate_node = { path = "../sentinel_vehicle_cmd_gate_node" }
+sentinel_shift_decider_node = { path = "../sentinel_shift_decider_node" }
+sentinel_control_validator_node = { path = "../sentinel_control_validator_node" }
+sentinel_operation_mode_node = { path = "../sentinel_operation_mode_node" }
+sentinel_mrm_handler_node = { path = "../sentinel_mrm_handler_node" }
+sentinel_mrm_emergency_stop_node = { path = "../sentinel_mrm_emergency_stop_node" }
+sentinel_mrm_comfortable_stop_node = { path = "../sentinel_mrm_comfortable_stop_node" }
+sentinel_mrm_pull_over_node = { path = "../sentinel_mrm_pull_over_node" }
+sentinel_velocity_converter_node = { path = "../sentinel_velocity_converter_node" }
+sentinel_default_adapi_node = { path = "../sentinel_default_adapi_node" }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+
+[build-dependencies]
+zephyr-build = "0.1.0"
+nros-zephyr-build = { path = "/home/aeon/repos/nano-ros-sentinel/packages/core/nros-zephyr-build" }

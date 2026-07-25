@@ -362,10 +362,29 @@ Host-side graph visibility (2026-07-26):
   was always "boots + spins"), not a 14.5 regression. Suspect the
   lwIP/SLIRP ↔ zenohd liveliness path; needs its own investigation.
 
-Open in 14.5: FreeRTOS host visibility (above), Zephyr `zephyr_entry` (west workspace
-provisioning: SDK + checkout, hours + GBs — next session), SPE entry
-(BTCM wall, nano-ros 0271). Old per-target hand-rolled binaries stay
-until those close.
+**Zephyr (2026-07-26): entry BUILDS + BOOTS + RUNS** — `src/zephyr_entry`
+(west app, `librustapp.a`, `nros::main!(model = "sentinel_bringup:
+config/zephyr_model.yaml")`) links against the already-provisioned
+nano-ros zephyr-workspace (Zephyr 3.7.0 + SDK 0.16.8, 4 GB, no new
+downloads) and runs on native_sim: Rust glue, allocator, macro-emitted
+registration and the executor-open path all execute. Two knobs it
+needed vs the single-node examples: `CONFIG_COMMON_LIBC_MALLOC_ARENA_
+SIZE=8 MiB` (the Rust global allocator wraps picolibc malloc; the
+10-node executor arena asked for 1.16 MB against a 1 MiB arena) and a
+1 MiB kernel heap. **Blocked on privileges for the last step:**
+native_sim networking needs the `zeth` TAP interface, created by
+Zephyr's `net-setup.sh` as root (`Cannot create zeth (0)` →
+`Transport(ConnectionFailed)`), so no session/graph proof yet. Same
+class as the un-killable zombie: needs sudo, not code.
+
+**SPE: still blocked (nano-ros 0271).** The MINIMAL image (executor +
+spin, no nodes) already overflows the 256 KB BTCM by 164 KB on the
+current pin; a 10-node declarative entry cannot fit until the footprint
+regression or 11.3.E DRAM mapping lands. No entry attempted.
+
+Open in 14.5: FreeRTOS host visibility (above), Zephyr network privileges (zeth TAP), SPE
+(BTCM wall). Old per-target hand-rolled binaries stay until those
+close.
  (zephyr, freertos, nuttx, orin-spe)
 
 One Entry pkg per target, all hosting the full launch graph in one process.

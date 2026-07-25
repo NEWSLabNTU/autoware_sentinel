@@ -359,8 +359,25 @@ impl Drop for ManagedProcess {
 }
 
 /// Get the path to the locally-built zenohd binary.
+///
+/// Resolution order: `SENTINEL_ZENOHD` env override, the repo-local
+/// `external/zenoh` build, then the nano-ros checkout's build (version-
+/// matched to the zenoh-pico the sentinel links since the phase-14 pin).
 pub fn zenohd_binary_path() -> std::path::PathBuf {
-    project_root().join("external/zenoh/target/fast/zenohd")
+    if let Ok(p) = std::env::var("SENTINEL_ZENOHD") {
+        return std::path::PathBuf::from(p);
+    }
+    let local = project_root().join("external/zenoh/target/fast/zenohd");
+    if local.exists() {
+        return local;
+    }
+    if let Some(home) = std::env::home_dir() {
+        let nano_ros = home.join("repos/nano-ros/build/zenohd/zenohd");
+        if nano_ros.exists() {
+            return nano_ros;
+        }
+    }
+    local
 }
 
 /// Check if the locally-built zenohd is available.

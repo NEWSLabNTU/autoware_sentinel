@@ -30,7 +30,7 @@ pub fn build_sentinel() -> TestResult<&'static Path> {
                 .env("ZPICO_MAX_QUERYABLES", "32")
                 .env("ZPICO_MAX_LIVELINESS", "96")
                 .env("NROS_MAX_PARAMETERS", "64")
-                .env("NROS_EXECUTOR_MAX_CBS", "96")
+                .env("NROS_EXECUTOR_MAX_CBS", "64")
                 .env("NROS_PARAM_SERVICE_BUFFER_SIZE", "8192")
                 .current_dir(&root)
                 .output()

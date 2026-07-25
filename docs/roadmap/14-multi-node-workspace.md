@@ -149,21 +149,25 @@ Acceptance:
 - [ ] Zero hand-written message code; `generated/` reproducible from
       `nros sync`/`nros generate-rust` alone.
 
-### - [ ] 14.2 Workspace re-layout (colcon shape)
+### - [ ] 14.2 Workspace re-layout (colcon shape) — mostly landed via 14.1
 
 Move to the `src/<pkg>` colcon layout that `nros sync` colcon-mode detection
 and the pkg-index (which backs `nros::main!` and `$(find pkg)`) require.
 
 Tasks:
-- [ ] Algorithm crates stay at `src/autoware_*/` — verify each has a valid
-      `package.xml` (pkg-index collects every `package.xml` under the root).
-- [ ] Root `Cargo.toml` workspace members updated; `generated/` moves to
+- [x] Algorithm crates stay at `src/autoware_*/` — `nros sync` colcon-mode
+      already detects the layout (repo was `src/<pkg>` all along); the
+      three shadowing package.xml names carry `_algo` suffixes.
+- [x] Root `Cargo.toml` workspace members updated; `generated/` moves to
       workspace root (gitignored), patches auto-written to `.cargo/config.toml`
-      by `nros sync` — delete the hand-maintained per-target patch blocks
-      where superseded.
+      by `nros sync`; per-member patch blocks deleted (excluded cross
+      targets keep theirs, re-pointed at the checkout + root generated/).
 - [ ] Scaffold `src/sentinel_bringup/` (RFC-0025 Path A: `package.xml` +
       `system.toml` + `launch/` ONLY — no `Cargo.toml`, no `src/`).
-- [ ] Keep `just` recipes working (`generate-bindings` → `nros sync`).
+      Deferred to 14.4: `[[component]]` rows need the 14.3 node pkgs to
+      exist first.
+- [x] Keep `just` recipes working (`generate-bindings` → `nros sync`;
+      NuttX recipes re-pointed off the retired nano-ros-sentinel clone).
 
 Acceptance:
 - [ ] `nros sync` in colcon mode resolves every Autoware message dependency

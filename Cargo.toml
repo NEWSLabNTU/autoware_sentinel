@@ -33,6 +33,17 @@ members = [
     "src/autoware_vehicle_info_utils",
     "src/autoware_vehicle_velocity_converter",
     "src/sentinel_velocity_converter_node",
+    "src/sentinel_mrm_handler_node",
+    "src/sentinel_mrm_emergency_stop_node",
+    "src/sentinel_mrm_comfortable_stop_node",
+    "src/sentinel_mrm_pull_over_node",
+    "src/sentinel_shift_decider_node",
+    "src/sentinel_control_validator_node",
+    "src/sentinel_operation_mode_node",
+    "src/sentinel_default_adapi_node",
+    "src/sentinel_vehicle_cmd_gate_node",
+    "src/sentinel_system_monitor_node",
+    "src/sentinel_controller_node",
     "src/native_entry",
 ]
 # Excluded from workspace:
@@ -47,6 +58,20 @@ members = [
 # `nros sync` (phase 14.1). The nros trio resolves through the central
 # ~/repos/nano-ros/nros-patch.toml include (local checkout, currently
 # 21a3a4248). Run `nros sync` after cloning or moving checkouts.
+
+# Phase 14.4b — the nros::main! entry runs on the plain main thread (8 MB);
+# debug-build SafetyIsland construction (controller MPC/PID state + the
+# trajectory input arrays) overflows it without NRVO. Optimize the crossbar
+# + trajectory crates in dev so construction is elided in place (the old
+# hand-written linux main dodged this with a 64 MB thread instead).
+[profile.dev.package.autoware_sentinel_core]
+opt-level = 2
+[profile.dev.package.autoware_trajectory_follower_node]
+opt-level = 2
+[profile.dev.package.autoware_mpc_lateral_controller]
+opt-level = 2
+[profile.dev.package.autoware_trajectory_follower_base]
+opt-level = 2
 
 # LLVM SIGSEGV workaround: autoware_adapi_v1_msgs crashes ARM register scavenger
 # at opt-level=0. See LLVM #64277.

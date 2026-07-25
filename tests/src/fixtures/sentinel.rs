@@ -24,7 +24,7 @@ pub fn build_sentinel() -> TestResult<&'static Path> {
             eprintln!("Building sentinel binary in {:?}...", root);
 
             let output = Command::new("cargo")
-                .args(["build", "-p", "autoware_sentinel_linux"])
+                .args(["build", "-p", "native_entry"])
                 .env("ZPICO_MAX_PUBLISHERS", "56")
                 .env("ZPICO_MAX_SUBSCRIBERS", "16")
                 .env("ZPICO_MAX_QUERYABLES", "32")
@@ -45,7 +45,7 @@ pub fn build_sentinel() -> TestResult<&'static Path> {
                 )));
             }
 
-            let binary = root.join("target/debug/autoware_sentinel_linux");
+            let binary = root.join("target/debug/native_entry");
             if !binary.exists() {
                 return Err(TestError::BuildFailed(
                     "Binary not found after build".into(),
@@ -72,11 +72,20 @@ pub fn sentinel_binary() -> PathBuf {
 /// sentinel prints its "Executor ready" message (or timeout).
 pub fn start_sentinel(binary: &Path, locator: &str) -> TestResult<ManagedProcess> {
     let mut cmd = Command::new(binary);
-    cmd.env("RUST_LOG", "info").env("ZENOH_LOCATOR", locator);
+    cmd.env("RUST_LOG", "info")
+        .env("ZENOH_LOCATOR", locator)
+        .env("NROS_LOCATOR", locator)
+        // Multi-node entries leave the executor node_name unset; the ROS 2
+        // parameter services derive their /sentinel/* FQN (and liveliness
+        // visibility) from it — RFC-0045 model A env rung.
+        .env("NROS_NODE_NAME", "sentinel")
+        // Hosted entries spin only for a bounded NROS_ENTRY_SPIN_MS (the
+        // macro's default is register-and-exit); ~1000 years = unbounded.
+        .env("NROS_ENTRY_SPIN_MS", "31536000000000");
     let mut proc = ManagedProcess::spawn_command(cmd, "sentinel")?;
 
     // Wait for the sentinel to be ready
-    let output = proc.wait_for_output_pattern("Executor ready", Duration::from_secs(10))?;
+    let output = proc.wait_for_output_pattern("sentinel graph registered", Duration::from_secs(15))?;
     eprintln!("Sentinel started:\n{}", output);
 
     Ok(proc)

@@ -99,10 +99,12 @@ name = "default_adapi"
 namespace = "/adapi"
 
 # ── deploy targets ──────────────────────────────────────────────────────
-# Placement: with multiple [deploy.*] blocks every node needs a roster
-# entry. Linux runs everything; the QEMU MCUs drop the bundled controller
-# (main compute supplies control_cmd) and the monitoring stub; the SPE
-# core profile is the minimal chain (BTCM budget — roadmap wall #3).
+# ONE deploy per model: play_launch resolve assigns each node a single
+# placement (last roster wins), so multi-target rosters in one system.toml
+# silently clobber each other — the native slice ended up with 2 nodes
+# (found the hard way in 14.4b). This file carries the NATIVE deploy; the
+# MCU subset models get their own per-target system tomls + resolves
+# (phase-296 "one fully-resolved artifact per concrete arg-set").
 [deploy.native]
 kind = "self"
 target = "x86_64-unknown-linux-gnu"
@@ -120,50 +122,4 @@ nodes = [
     "/system/system_monitor",
     "/sensing/vehicle_velocity_converter",
     "/adapi/default_adapi",
-]
-
-[deploy.freertos]
-kind = "embedded"
-target = "thumbv7m-none-eabi"
-board = "mps2-an385-freertos"
-nodes = [
-    "/control/vehicle_cmd_gate",
-    "/control/autoware_shift_decider",
-    "/control/control_validator",
-    "/control/autoware_operation_mode_transition_manager",
-    "/system/mrm_handler",
-    "/system/mrm_emergency_stop_operator",
-    "/system/mrm_comfortable_stop_operator",
-    "/system/mrm_pull_over_manager",
-    "/sensing/vehicle_velocity_converter",
-    "/adapi/default_adapi",
-]
-
-[deploy.nuttx]
-kind = "embedded"
-target = "armv7a-nuttx-eabihf"
-board = "nuttx-qemu-arm"
-nodes = [
-    "/control/vehicle_cmd_gate",
-    "/control/autoware_shift_decider",
-    "/control/control_validator",
-    "/control/autoware_operation_mode_transition_manager",
-    "/system/mrm_handler",
-    "/system/mrm_emergency_stop_operator",
-    "/system/mrm_comfortable_stop_operator",
-    "/system/mrm_pull_over_manager",
-    "/sensing/vehicle_velocity_converter",
-    "/adapi/default_adapi",
-]
-
-[deploy.orin-spe]
-kind = "embedded"
-target = "armv7r-none-eabi"
-board = "orin-spe"
-nodes = [
-    "/control/vehicle_cmd_gate",
-    "/system/mrm_handler",
-    "/system/mrm_emergency_stop_operator",
-    "/system/mrm_comfortable_stop_operator",
-    "/sensing/vehicle_velocity_converter",
 ]

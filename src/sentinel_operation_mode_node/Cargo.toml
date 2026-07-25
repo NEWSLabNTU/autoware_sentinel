@@ -1,0 +1,30 @@
+# Phase 14.4b — declarative Node-trait wrapper.
+
+[package]
+name = "sentinel_operation_mode_node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[package.metadata.nros.node]
+class = "sentinel_operation_mode_node::OperationModeNode"
+name = "autoware_operation_mode_transition_manager"
+default_namespace = "/control"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+autoware_adapi_v1_msgs = { version = "*", default-features = false }
+autoware_internal_msgs = { version = "*", default-features = false }
+autoware_operation_mode_transition_manager_msgs = { package = "autoware_operation_mode_transition_manager", version = "0.48", default-features = false }
+autoware_system_msgs = { version = "*", default-features = false }
+autoware_vehicle_msgs = { version = "*", default-features = false }
+tier4_system_msgs = { version = "*", default-features = false }

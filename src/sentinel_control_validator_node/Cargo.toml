@@ -1,0 +1,26 @@
+# Phase 14.4b — declarative Node-trait wrapper (/control/control_validator).
+
+[package]
+name = "sentinel_control_validator_node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[package.metadata.nros.node]
+class = "sentinel_control_validator_node::ControlValidatorNode"
+name = "control_validator"
+default_namespace = "/control"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+autoware_control_validator_msgs = { package = "autoware_control_validator", version = "0.48", default-features = false }
+visualization_msgs = { version = "*", default-features = false }

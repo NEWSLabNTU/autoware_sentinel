@@ -4,7 +4,7 @@ meta:
   - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/launch/system.launch.xml
     sha256: d4b08c70d1b6b543445d917a6fe71c6a1c51db1c942dc1fce7c3a5f32fd48aa2
   - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/system.toml
-    sha256: b1e94306afc28887aeab95ebeea713dcc2a746c5de220c9eee08c464bcd02f72
+    sha256: 0edf8b5e0afa89cf7619cb0f9cdcb3a00dc0a7deac78c4d94dd40a21f7e08e2a
   resolver:
     tool: play_launch
     version: 0.8.2
@@ -145,39 +145,44 @@ structure:
       exec: system_monitor
       node_name: system_monitor
 execution:
+  features:
+  # Hand-appended post-resolve: play_launch resolve does not yet propagate
+  # system.toml [param_services] into the model's capability axes (the
+  # nros::main! model arm gates apply_param_services on this list).
+  - param_services
   deploy:
     /adapi/default_adapi:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /control/autoware_operation_mode_transition_manager:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /control/autoware_shift_decider:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /control/control_validator:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /control/trajectory_follower/controller_node_exe:
       target: linux
       domain: 0
@@ -187,53 +192,53 @@ execution:
         kind: self
         target: x86_64-unknown-linux-gnu
     /control/vehicle_cmd_gate:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /sensing/vehicle_velocity_converter:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /system/mrm_comfortable_stop_operator:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /system/mrm_emergency_stop_operator:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /system/mrm_handler:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /system/mrm_pull_over_manager:
-      target: mcu:mps2-an385-freertos
+      target: linux
       domain: 0
       rmw: zenoh
       extra:
-        deploy_name: freertos
-        kind: embedded
-        target: thumbv7m-none-eabi
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu
     /system/system_monitor:
       target: linux
       domain: 0

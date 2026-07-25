@@ -1,0 +1,29 @@
+# Phase 14.4b — declarative wrapper (/control/trajectory_follower/
+# controller_node_exe): bundled MPC+PID input subscriptions (Linux dev).
+
+[package]
+name = "sentinel_controller_node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[package.metadata.nros.node]
+class = "sentinel_controller_node::ControllerNode"
+name = "controller_node_exe"
+default_namespace = "/control/trajectory_follower"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["controller-node"] }
+autoware_planning_msgs = { version = "*", default-features = false }
+autoware_vehicle_msgs = { version = "*", default-features = false }
+geometry_msgs = { version = "*", default-features = false }
+nav_msgs = { version = "*", default-features = false }

@@ -834,6 +834,17 @@ dependencies = [
  "nros-board-native",
  "nros-platform-cffi",
  "nros-rmw-zenoh",
+ "sentinel_control_validator_node",
+ "sentinel_controller_node",
+ "sentinel_default_adapi_node",
+ "sentinel_mrm_comfortable_stop_node",
+ "sentinel_mrm_emergency_stop_node",
+ "sentinel_mrm_handler_node",
+ "sentinel_mrm_pull_over_node",
+ "sentinel_operation_mode_node",
+ "sentinel_shift_decider_node",
+ "sentinel_system_monitor_node",
+ "sentinel_vehicle_cmd_gate_node",
  "sentinel_velocity_converter_node",
 ]
 
@@ -1246,6 +1257,138 @@ dependencies = [
  "nros-core",
  "nros-serdes",
  "std_msgs",
+]
+
+[[package]]
+name = "sentinel_control_validator_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_control_validator 0.48.0",
+ "autoware_sentinel_core",
+ "nros",
+ "visualization_msgs",
+]
+
+[[package]]
+name = "sentinel_controller_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_planning_msgs",
+ "autoware_sentinel_core",
+ "autoware_vehicle_msgs",
+ "geometry_msgs",
+ "nav_msgs",
+ "nros",
+]
+
+[[package]]
+name = "sentinel_default_adapi_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_adapi_v1_msgs",
+ "autoware_adapi_version_msgs",
+ "autoware_sentinel_core",
+ "autoware_system_msgs",
+ "autoware_vehicle_msgs",
+ "nros",
+ "std_srvs",
+ "tier4_external_api_msgs",
+ "tier4_system_msgs",
+]
+
+[[package]]
+name = "sentinel_mrm_comfortable_stop_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_sentinel_core",
+ "nros",
+ "tier4_system_msgs",
+]
+
+[[package]]
+name = "sentinel_mrm_emergency_stop_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_sentinel_core",
+ "nros",
+ "tier4_system_msgs",
+]
+
+[[package]]
+name = "sentinel_mrm_handler_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_adapi_v1_msgs",
+ "autoware_sentinel_core",
+ "autoware_vehicle_msgs",
+ "nros",
+ "tier4_system_msgs",
+]
+
+[[package]]
+name = "sentinel_mrm_pull_over_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_sentinel_core",
+ "nros",
+ "tier4_system_msgs",
+]
+
+[[package]]
+name = "sentinel_operation_mode_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_adapi_v1_msgs",
+ "autoware_internal_msgs",
+ "autoware_operation_mode_transition_manager 0.48.0",
+ "autoware_sentinel_core",
+ "autoware_system_msgs",
+ "autoware_vehicle_msgs",
+ "nros",
+ "tier4_system_msgs",
+]
+
+[[package]]
+name = "sentinel_shift_decider_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_sentinel_core",
+ "autoware_system_msgs",
+ "autoware_vehicle_msgs",
+ "nros",
+]
+
+[[package]]
+name = "sentinel_system_monitor_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_adapi_v1_msgs",
+ "autoware_sentinel_core",
+ "autoware_system_msgs",
+ "builtin_interfaces",
+ "diagnostic_msgs",
+ "nros",
+ "nros-log",
+ "std_msgs",
+ "tier4_system_msgs",
+]
+
+[[package]]
+name = "sentinel_vehicle_cmd_gate_node"
+version = "0.1.0"
+dependencies = [
+ "autoware_control_msgs",
+ "autoware_internal_debug_msgs",
+ "autoware_internal_msgs",
+ "autoware_sentinel_core",
+ "autoware_vehicle_cmd_gate 0.48.0",
+ "autoware_vehicle_msgs",
+ "logging_demo",
+ "nros",
+ "std_srvs",
+ "tier4_control_msgs",
+ "tier4_vehicle_msgs",
+ "visualization_msgs",
 ]
 
 [[package]]

@@ -1,0 +1,28 @@
+# Phase 14.4b — declarative Node-trait wrapper (/system/mrm_handler).
+# Board/RMW-agnostic lib; registered by the Entry's nros::main! model arm.
+
+[package]
+name = "sentinel_mrm_handler_node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[package.metadata.nros.node]
+class = "sentinel_mrm_handler_node::MrmHandlerNode"
+name = "mrm_handler"
+default_namespace = "/system"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+autoware_adapi_v1_msgs = { version = "*", default-features = false }
+autoware_vehicle_msgs = { version = "*", default-features = false }
+tier4_system_msgs = { version = "*", default-features = false }

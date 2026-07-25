@@ -466,6 +466,10 @@ name = "nros-core"
 version = "0.5.0"
 
 [[patch.unused]]
+name = "nros-log"
+version = "0.5.0"
+
+[[patch.unused]]
 name = "nros-platform-cffi"
 version = "0.5.0"
 

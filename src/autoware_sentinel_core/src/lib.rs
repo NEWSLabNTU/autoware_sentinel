@@ -156,6 +156,9 @@ use nav_msgs::msg::Odometry;
 
 pub use params::SentinelParams;
 
+/// Re-export for wrapper nodes publishing the gate's operation-mode mirror.
+pub use autoware_adapi_v1_msgs::msg::OperationModeState as OpModeStateMsg;
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -260,6 +263,9 @@ pub struct SafetyIsland {
     autonomous_engaged: bool,
     /// True when external emergency stop is asserted.
     external_emergency_stop: bool,
+
+    /// Most recent chain snapshot (phase 14.4b — wrapper-node publishers).
+    last_outputs: ChainOutputs,
 }
 
 static ISLAND: SyncRefCell<Option<SafetyIsland>> = SyncRefCell(RefCell::new(None));
@@ -279,6 +285,16 @@ pub fn with_island<R>(f: impl FnOnce(&mut SafetyIsland) -> R) -> R {
 /// before any subscription/timer/service callback can fire.
 pub fn init_island(p: SentinelParams) {
     *ISLAND.0.borrow_mut() = Some(SafetyIsland::new(p));
+}
+
+/// Monotonic platform clock (ms) via the canonical `nros_platform_*` C ABI
+/// every nano-ros platform port provides. Phase 14.4b — the declarative
+/// node wrappers use this (the closure entry keeps its injected `now_ms`).
+pub fn platform_now_ms() -> u64 {
+    unsafe extern "C" {
+        fn nros_platform_time_now_ms() -> u64;
+    }
+    unsafe { nros_platform_time_now_ms() }
 }
 
 /// Initialize the island from compile-time defaults if it is not already
@@ -351,6 +367,7 @@ impl SafetyIsland {
             last_external_control_ms: 0,
             autonomous_engaged: false,
             external_emergency_stop: false,
+            last_outputs: ChainOutputs::default(),
         }
     }
 
@@ -384,7 +401,7 @@ impl SafetyIsland {
     }
 
     #[cfg(feature = "controller-node")]
-    fn on_trajectory(&mut self, msg: &Trajectory) {
+    pub fn on_trajectory(&mut self, msg: &Trajectory) {
         let n = msg
             .points
             .len()
@@ -413,7 +430,7 @@ impl SafetyIsland {
     }
 
     #[cfg(feature = "controller-node")]
-    fn on_odometry(&mut self, msg: &Odometry) {
+    pub fn on_odometry(&mut self, msg: &Odometry) {
         let pos = &msg.pose.pose.position;
         let q = &msg.pose.pose.orientation;
         let (pitch, yaw) = quaternion_to_pitch_yaw(q.x, q.y, q.z, q.w);
@@ -428,13 +445,13 @@ impl SafetyIsland {
     }
 
     #[cfg(feature = "controller-node")]
-    fn on_steering(&mut self, msg: &SteeringReport) {
+    pub fn on_steering(&mut self, msg: &SteeringReport) {
         self.input_data.current_steer = msg.steering_tire_angle as f64;
         self.has_steering = true;
     }
 
     #[cfg(feature = "controller-node")]
-    fn on_acceleration(&mut self, msg: &AccelWithCovarianceStamped) {
+    pub fn on_acceleration(&mut self, msg: &AccelWithCovarianceStamped) {
         self.input_data.current_accel = msg.accel.accel.linear.x;
     }
 
@@ -503,8 +520,26 @@ static DIAG_STRUCT_DEFAULT: DiagGraphStruct = DiagGraphStruct {
 /// need. Phase 14.4b: the chain is a method on [`SafetyIsland`] so both the
 /// closure entry (wire_executor's timer) and the declarative node wrappers
 /// drive the SAME pass and publish from the same snapshot.
+/// Control-validator status snapshot (plain copy for the validator node's
+/// publisher — avoids exposing the algorithm crate's internal type).
+#[derive(Clone, Copy, Default)]
+pub struct CvSnapshot {
+    pub is_valid_acc: bool,
+    pub is_rolling_back: bool,
+    pub is_over_velocity: bool,
+    pub is_valid_lateral_jerk: bool,
+    pub steering_rate: f64,
+    pub lateral_jerk: f64,
+    pub desired_acc: f64,
+    pub measured_acc: f64,
+    pub target_vel: f64,
+    pub vehicle_vel: f64,
+    pub invalid_count: u32,
+}
+
 #[derive(Clone, Default)]
 pub struct ChainOutputs {
+    pub cv: CvSnapshot,
     pub mrm_state: MrmState,
     pub mrm_hazard: HazardLightsCommand,
     pub mrm_gear: GearCommand,
@@ -658,7 +693,22 @@ impl SafetyIsland {
         let is_emergency =
             island.mrm_handler.state() == MRM_STATE_OPERATING || island.external_emergency_stop;
 
-        ChainOutputs {
+        let cv_status = island.control_validator.status();
+        let cv = CvSnapshot {
+            is_valid_acc: cv_status.is_valid_acc,
+            is_rolling_back: cv_status.is_rolling_back,
+            is_over_velocity: cv_status.is_over_velocity,
+            is_valid_lateral_jerk: cv_status.is_valid_lateral_jerk,
+            steering_rate: cv_status.steering_rate,
+            lateral_jerk: cv_status.lateral_jerk,
+            desired_acc: cv_status.desired_acc,
+            measured_acc: cv_status.measured_acc,
+            target_vel: cv_status.target_vel,
+            vehicle_vel: cv_status.vehicle_vel,
+            invalid_count: cv_status.invalid_count,
+        };
+        let outputs = ChainOutputs {
+            cv,
             mrm_state: mrm_output.mrm_state.clone(),
             mrm_hazard: mrm_output.hazard_lights.clone(),
             mrm_gear: mrm_output.gear.clone(),
@@ -673,7 +723,49 @@ impl SafetyIsland {
             comfy_operating: island.comfortable_stop.is_operating(),
             autonomous_engaged: island.autonomous_engaged,
             current_velocity: island.current_velocity,
-        }
+        };
+        island.last_outputs = outputs.clone();
+        outputs
+    }
+
+    /// Snapshot of the most recent [`chain_tick`](Self::chain_tick) pass.
+    /// Phase 14.4b — the non-gate node wrappers publish their status topics
+    /// from this on their own 33 ms timers (the gate's timer runs the chain
+    /// first: it registers first in the launch order).
+    pub fn last_outputs(&self) -> ChainOutputs {
+        self.last_outputs.clone()
+    }
+
+    /// Heartbeat from the main compute (`/api/system/heartbeat`).
+    pub fn on_heartbeat(&mut self, now_ms: u64) {
+        self.watchdog.on_heartbeat(now_ms);
+    }
+
+    /// External control command from the main compute.
+    pub fn on_external_control(&mut self, msg: &Control, now_ms: u64) {
+        self.auto_control = msg.clone();
+        self.has_external_control = true;
+        self.last_external_control_ms = now_ms;
+    }
+
+    /// AutowareState mirror (shift decider input).
+    pub fn on_autoware_state(&mut self, msg: &AutowareState) {
+        self.autoware_state = msg.clone();
+    }
+
+    /// GearReport mirror (shift decider input).
+    pub fn on_gear_report(&mut self, msg: &GearReport) {
+        self.gear_report = msg.clone();
+    }
+
+    /// Engagement flag (change_to_autonomous / set_engage services).
+    pub fn set_engaged(&mut self, engaged: bool) {
+        self.autonomous_engaged = engaged;
+    }
+
+    /// External emergency stop flag (gate + adapi services).
+    pub fn set_external_emergency(&mut self, on: bool) {
+        self.external_emergency_stop = on;
     }
 }
 

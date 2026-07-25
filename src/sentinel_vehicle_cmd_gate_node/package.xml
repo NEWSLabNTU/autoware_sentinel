@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sentinel_vehicle_cmd_gate_node</name>
+  <version>0.1.0</version>
+  <description>Sentinel vehicle_cmd_gate wrapper — safety-chain driver.</description>
+  <maintainer email="jerry73204@gmail.com">Autoware Sentinel contributors</maintainer>
+  <license>Apache-2.0</license>
+  <depend>autoware_control_msgs</depend>
+  <depend>autoware_internal_debug_msgs</depend>
+  <depend>autoware_internal_msgs</depend>
+  <depend>autoware_vehicle_cmd_gate</depend>
+  <depend>autoware_vehicle_msgs</depend>
+  <depend>logging_demo</depend>
+  <depend>std_srvs</depend>
+  <depend>tier4_control_msgs</depend>
+  <depend>tier4_vehicle_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <export>
+    <build_type>ament_cargo</build_type>
+  </export>
+</package>

@@ -25,11 +25,24 @@ nros = { version = "*", default-features = false, features = [
     "alloc",
     "rmw-cffi",
     "ros-humble",
+    # [param_services] in system.toml is silently inert without this.
+    "param-services",
 ] }
 # Board crate — supplies NativeBoard AND is the RMW/platform selection
 # point: rmw-zenoh self-links + registers the zenoh backend.
 nros-board-native = { version = "*", default-features = false, features = ["rmw-zenoh"] }
 nros-rmw-zenoh = { version = "*", default-features = false, features = ["std", "platform-posix", "ros-humble"] }
 nros-platform-cffi = { version = "*", features = ["posix-c-port"] }
-# Node pkg rlibs the pilot launch names.
+# Node pkg rlibs — one per <node> in the full system launch.
 sentinel_velocity_converter_node = { path = "../sentinel_velocity_converter_node" }
+sentinel_vehicle_cmd_gate_node = { path = "../sentinel_vehicle_cmd_gate_node" }
+sentinel_shift_decider_node = { path = "../sentinel_shift_decider_node" }
+sentinel_control_validator_node = { path = "../sentinel_control_validator_node" }
+sentinel_operation_mode_node = { path = "../sentinel_operation_mode_node" }
+sentinel_mrm_handler_node = { path = "../sentinel_mrm_handler_node" }
+sentinel_mrm_emergency_stop_node = { path = "../sentinel_mrm_emergency_stop_node" }
+sentinel_mrm_comfortable_stop_node = { path = "../sentinel_mrm_comfortable_stop_node" }
+sentinel_mrm_pull_over_node = { path = "../sentinel_mrm_pull_over_node" }
+sentinel_system_monitor_node = { path = "../sentinel_system_monitor_node" }
+sentinel_default_adapi_node = { path = "../sentinel_default_adapi_node" }
+sentinel_controller_node = { path = "../sentinel_controller_node" }

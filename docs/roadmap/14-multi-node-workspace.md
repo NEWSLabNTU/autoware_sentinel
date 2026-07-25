@@ -278,10 +278,27 @@ resolved by the SOURCE-built play_launch (`~/repos/play_launch` —
 `resolve` does not exist in pip 0.8.2) with sha-pinned inputs, 0
 warnings.
 
-Remaining (14.4b): declarative Node-trait wrapper pkgs consuming this
-bringup via `nros::main!(model = "sentinel_bringup")` + fixture
-re-point + `nros check`/`plan` in CI (the CLI's legacy bake path needs
-`play_launch_parser`; the model path needs the wrappers first).
+**14.4b LANDED 2026-07-25**: all 12 declarative Node-trait wrapper pkgs
+(`sentinel_*_node`) + `native_entry` (`nros::main!(model = ...)`,
+full system model). One shared chain: the gate node's 33 ms timer runs
+`SafetyIsland::chain_tick`; the other nodes publish status from the
+snapshot on their own timers. Transport suite (14/14) runs against the
+declarative binary; 62 launch-baked params served via
+`/sentinel/{list,get}_parameters`; 10 of 12 wrappers cross-compile to
+thumbv7em (sysmon + controller are Linux-profile).
+
+Consumer walls found + filed upstream as nano-ros 0274 (float-param
+lowering FIXED upstream same day as `bf5962853`-1): bounded
+`NROS_ENTRY_SPIN_MS` hosted spin (fixture sets ~1000 years),
+param-services node identity via `NROS_NODE_NAME=sentinel` (liveliness
+invisible otherwise), resolver not populating `execution.features`
+(model hand-carries the axis), one-placement-per-model deploy
+semantics (system.toml keeps the native roster only; MCU subset models
+are per-target artifacts, 14.5).
+
+The old `autoware_sentinel_linux` monolith binary stays until the
+drive-parity gate (machine-blocked) passes on the entry; the transport
+fixture already runs `native_entry`.
 
 
 Tasks:

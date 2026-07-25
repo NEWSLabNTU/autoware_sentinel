@@ -1,0 +1,31 @@
+# Phase 14.4b — declarative Node-trait wrapper.
+
+[package]
+name = "sentinel_default_adapi_node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[package.metadata.nros.node]
+class = "sentinel_default_adapi_node::DefaultAdapiNode"
+name = "default_adapi"
+default_namespace = "/adapi"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+autoware_adapi_v1_msgs = { version = "*", default-features = false }
+autoware_adapi_version_msgs = { version = "*", default-features = false }
+autoware_system_msgs = { version = "*", default-features = false }
+autoware_vehicle_msgs = { version = "*", default-features = false }
+std_srvs = { version = "*", default-features = false }
+tier4_external_api_msgs = { version = "*", default-features = false }
+tier4_system_msgs = { version = "*", default-features = false }

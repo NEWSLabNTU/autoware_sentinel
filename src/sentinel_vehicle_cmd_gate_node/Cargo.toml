@@ -1,0 +1,37 @@
+# Phase 14.4b — declarative Node-trait wrapper (/control/vehicle_cmd_gate).
+# THE CHAIN DRIVER: this node's 33 ms timer runs SafetyIsland::chain_tick
+# and publishes the command topics same-tick; it registers FIRST in the
+# launch order so every other node's status timer reads a fresh snapshot.
+
+[package]
+name = "sentinel_vehicle_cmd_gate_node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[package.metadata.nros.node]
+class = "sentinel_vehicle_cmd_gate_node::VehicleCmdGateNode"
+name = "vehicle_cmd_gate"
+default_namespace = "/control"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+autoware_control_msgs = { version = "*", default-features = false }
+autoware_internal_debug_msgs = { version = "*", default-features = false }
+autoware_internal_msgs = { version = "*", default-features = false }
+autoware_vehicle_cmd_gate_msgs = { package = "autoware_vehicle_cmd_gate", version = "0.48", default-features = false }
+autoware_vehicle_msgs = { version = "*", default-features = false }
+logging_demo = { version = "*", default-features = false }
+std_srvs = { version = "*", default-features = false }
+tier4_control_msgs = { version = "*", default-features = false }
+tier4_vehicle_msgs = { version = "*", default-features = false }
+visualization_msgs = { version = "*", default-features = false }

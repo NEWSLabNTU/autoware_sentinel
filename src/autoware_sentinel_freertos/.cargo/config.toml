@@ -86,3 +86,4 @@ ZPICO_MAX_LARGE_SUBSCRIBERS = "8"
 # size. Effective once the pin advances past the fix; 16 covers comp-all's
 # 5 subs with headroom (1 KiB static per slot).
 NROS_RMW_SUBSCRIBER_SLOTS = "16"
+NROS_EXECUTOR_MAX_NODES = "16"

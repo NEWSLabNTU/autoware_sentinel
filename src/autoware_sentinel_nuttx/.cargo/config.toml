@@ -55,6 +55,7 @@ ZPICO_MAX_PUBLISHERS = "56"
 ZPICO_MAX_SUBSCRIBERS = "64"
 ZPICO_MAX_QUERYABLES = "32"
 ZPICO_MAX_LIVELINESS = "160"
+NROS_EXECUTOR_MAX_NODES = "16"
 
 [patch.crates-io]
 # nano-ros crates named by this crate's Cargo.toml.

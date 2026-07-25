@@ -80,8 +80,10 @@ Tasks:
       identical bump surfaced 9; ours exercises zenoh-pico paths ASI's
       cyclone lane did not).
 
-  **Wall log:** (append as found)
-  - Wall #1 (2026-07-25, freertos/MPS2, OPEN): comp-all wiring (37 pubs /
+  **Wall log:** (append as found; filed upstream 2026-07-25 as nano-ros
+  issues 0269–0273 via NEWSLabNTU/nano-ros#3, sentinel-side trackers
+  NEWSLabNTU/autoware_sentinel#1–#3)
+  - Wall #1 (2026-07-25, freertos/MPS2, OPEN — nano-ros 0269, sentinel #1): comp-all wiring (37 pubs /
     21 services / 5 subs on one zenoh-pico session) fails `Executor` setup
     with `Transport(SubscriberCreationFailed)` once the entity total
     crosses a threshold — the 4-combo (mrm + cmd-gate-extra + validator +
@@ -93,7 +95,7 @@ Tasks:
     instead of a hang. Freertos target ships the core baseline (boots +
     spins, proven under QEMU); comp-all blocked on upstream diagnosis
     (needs zenoh-pico debug logging, hardcoded off in nros-zpico-build).
-  - Wall #2 (2026-07-25, orin-spe, worked around): `nros-rmw-zenoh` deps
+  - Wall #2 (2026-07-25, orin-spe, worked around — nano-ros 0270): `nros-rmw-zenoh` deps
     `zpico-sys` with DEFAULT features, so cargo feature-unification drags
     the `platform-aliases` TU into the SPE staticlib even though
     zpico-sys's `orin-spe` feature documents it OFF (the SPE system.c
@@ -102,7 +104,7 @@ Tasks:
     link. Worked around in `build-spe-firmware` (ar-strip the alias TU);
     upstream fix: `zpico-sys = { default-features = false, ... }` per
     platform feature in nros-rmw-zenoh.
-  - Wall #3 (2026-07-25, orin-spe, OPEN — SIZE): the default SPE build
+  - Wall #3 (2026-07-25, orin-spe, OPEN — SIZE — nano-ros 0271, sentinel #2): the default SPE build
     (Executor::open + spin, no SafetyIsland) now overflows the 256 KB
     BTCM by 164 KB (.data section named), where the d9af52be pin fit
     with 31 KB headroom — the new pin costs ~+195 KB. Staticlib pre-gc

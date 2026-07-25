@@ -391,6 +391,7 @@ linear.x.abs() < self.vx_threshold
 | 8 | Topic Parity (match baseline Autoware topics) | Complete |
 | 11 | AGX Orin SPE (Cortex-R5F + NVIDIA FreeRTOS FSP) | Default-feature build fits BTCM; SafetyIsland gated behind `safety-island` (overflow 37 KB), tracked as 11.3.E |
 | 12 | Service & Topic Parity (services + parameter API) | Complete — see below |
+| 14 | Multi-Node Workspace Migration (nano-ros pin bump + node split + launch files) | Planned — `docs/roadmap/14-multi-node-workspace.md` |
 
 See `docs/roadmap/` for detailed phase docs. Roadmap docs use `- [ ]` / `- [x]` checkboxes
 on subphase headers and acceptance criteria to track completion progress.

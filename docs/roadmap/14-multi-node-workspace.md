@@ -348,9 +348,21 @@ stubs, and `[param_services]` (heap luxury). Upstream follow-ups landed
 cascaded into stack-overflow/malloc-failed symptom soup before the
 real fix.
 
-Open in 14.5: host-side graph visibility from the QEMU lanes (boot+spin
-was the historical acceptance bar; topics were never verified from the
-host on these lanes — follow-up), Zephyr `zephyr_entry` (west workspace
+Host-side graph visibility (2026-07-26):
+- **NuttX: PROVEN** — all 10 nodes appear in `ros2 node list` from the
+  host through the QEMU SLIRP → zenohd path. Required baking
+  `NROS_LOCATOR` / `NROS_DOMAIN_ID` into the entry's
+  `.cargo/config.toml [env]`: the NuttX board reads them at BUILD time
+  (`option_env!`), and the Cargo `[package.metadata.nros.deploy.*]`
+  overlay only reaches boards that consume `BakedBootConfig`.
+- **FreeRTOS/MPS2: NOT visible, pre-existing** — the entry boots,
+  registers all 10 nodes and spins, but the host sees no graph. The OLD
+  hand-rolled `autoware_sentinel_freertos` binary behaves identically
+  under the same probe, so this is a lane gap (the MPS2 acceptance bar
+  was always "boots + spins"), not a 14.5 regression. Suspect the
+  lwIP/SLIRP ↔ zenohd liveliness path; needs its own investigation.
+
+Open in 14.5: FreeRTOS host visibility (above), Zephyr `zephyr_entry` (west workspace
 provisioning: SDK + checkout, hours + GBs — next session), SPE entry
 (BTCM wall, nano-ros 0271). Old per-target hand-rolled binaries stay
 until those close.

@@ -10,5 +10,5 @@
 /home/aeon/repos/nano-ros-sentinel/packages/boards/nros-board-freertos/src/error.rs:
 /home/aeon/repos/nano-ros-sentinel/packages/boards/nros-board-freertos/src/node.rs:
 
-# env-dep:NROS_DOMAIN_ID
+# env-dep:NROS_DOMAIN_ID=0
 # env-dep:NROS_FREERTOS_APP_STACK_KB=896

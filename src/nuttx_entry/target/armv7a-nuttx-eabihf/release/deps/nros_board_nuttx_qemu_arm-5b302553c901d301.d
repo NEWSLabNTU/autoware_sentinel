@@ -10,4 +10,4 @@
 /home/aeon/repos/nano-ros-sentinel/packages/boards/nros-board-nuttx-qemu-arm/src/entry_212n.rs:
 /home/aeon/repos/nano-ros-sentinel/packages/boards/nros-board-nuttx-qemu-arm/src/node.rs:
 
-# env-dep:NROS_DOMAIN_ID
+# env-dep:NROS_DOMAIN_ID=0

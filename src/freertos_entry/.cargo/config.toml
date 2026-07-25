@@ -89,4 +89,8 @@ NROS_RMW_SUBSCRIBER_SLOTS = "16"
 NROS_EXECUTOR_MAX_NODES = "16"
 NROS_FREERTOS_APP_STACK_KB = "896"
 NROS_EXECUTOR_MAX_CBS = "48"
+# The FreeRTOS board reads the locator at BUILD time (option_env!) like
+# NuttX; the Cargo deploy-overlay rows only reach BakedBootConfig boards.
+NROS_LOCATOR = "tcp/10.0.2.2:7447"
+NROS_DOMAIN_ID = "0"
 NROS_SUBSCRIPTION_BUFFER_SIZE = "512"

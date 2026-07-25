@@ -57,6 +57,11 @@ ZPICO_MAX_QUERYABLES = "32"
 ZPICO_MAX_LIVELINESS = "160"
 NROS_EXECUTOR_MAX_NODES = "16"
 NROS_EXECUTOR_MAX_CBS = "48"
+# The NuttX board reads the locator/domain at BUILD time (option_env!) —
+# the Cargo deploy-overlay rows only reach boards that consume
+# BakedBootConfig. QEMU SLIRP: host zenohd is 10.0.2.2 from the guest.
+NROS_LOCATOR = "tcp/10.0.2.2:7452"
+NROS_DOMAIN_ID = "0"
 
 [patch.crates-io]
 # nano-ros crates named by this crate's Cargo.toml.

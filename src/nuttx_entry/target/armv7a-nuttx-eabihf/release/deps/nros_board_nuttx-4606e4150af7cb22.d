@@ -6,5 +6,5 @@
 
 /home/aeon/repos/nano-ros-sentinel/packages/boards/nros-board-nuttx/src/lib.rs:
 
-# env-dep:NROS_DOMAIN_ID
-# env-dep:NROS_LOCATOR
+# env-dep:NROS_DOMAIN_ID=0
+# env-dep:NROS_LOCATOR=tcp/10.0.2.2:7452

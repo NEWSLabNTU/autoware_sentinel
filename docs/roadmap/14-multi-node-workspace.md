@@ -44,8 +44,9 @@ restructuring — the renamed closure API is the escape hatch.
 
 Tasks:
 - [x] Pick and pin a current nano-ros rev (2026-07-25: dedicated sibling
-      clone `~/repos/nano-ros-sentinel` at branch `fix-0269`
-      (origin/main f91f7155c + the wall-#1 fix), patched by path via
+      clone `~/repos/nano-ros-sentinel` at upstream main — the wall-#1
+      fix landed as `cf1c3c337`/`560e38f6c`, clone currently at
+      `cb37b71a1` — patched by path via
       `.cargo/config.toml`. The live `~/repos/nano-ros` checkout is the
       other agent's working tree and moves under us — path-patching it
       proved unstable; the clone is the pin. Stable cargo ignores

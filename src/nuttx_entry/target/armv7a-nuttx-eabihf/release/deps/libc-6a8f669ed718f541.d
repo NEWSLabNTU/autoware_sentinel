@@ -1,0 +1,18 @@
+/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/deps/libc-6a8f669ed718f541.d: /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/lib.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/macros.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/unistd.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/unistd.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/primitives.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/nuttx/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/types.rs
+
+/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/deps/liblibc-6a8f669ed718f541.rlib: /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/lib.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/macros.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/unistd.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/unistd.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/primitives.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/nuttx/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/types.rs
+
+/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/deps/liblibc-6a8f669ed718f541.rmeta: /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/lib.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/macros.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/unistd.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/unistd.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/primitives.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/nuttx/mod.rs /home/aeon/repos/nano-ros/third-party/nuttx/libc/src/types.rs
+
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/lib.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/macros.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/mod.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/mod.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/mod.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/common/posix/unistd.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/mod.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/new/nuttx/unistd.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/primitives.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/mod.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/unix/nuttx/mod.rs:
+/home/aeon/repos/nano-ros/third-party/nuttx/libc/src/types.rs:

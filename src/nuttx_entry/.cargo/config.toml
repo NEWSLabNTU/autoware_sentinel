@@ -1,0 +1,101 @@
+# Autoware Sentinel — NuttX Cargo configuration
+#
+# Excluded from the main workspace (cross-target build) so it carries its
+# own [patch.crates-io]. Phase 14.1: nros crates patch to the local
+# nano-ros checkout (pin baseline 21a3a4248); message crates point at the
+# root generated/ tree (run `nros sync` at the repo root first).
+
+[build]
+target = "armv7a-nuttx-eabihf"
+
+[unstable]
+# NuttX is Tier 3; build std + panic_abort from source. Requires nightly
+# (rust-toolchain.toml in this directory pins it).
+build-std = ["std", "panic_abort"]
+build-std-features = ["compiler-builtins-mem"]
+
+# #127 board-centric link convention: the board crate's build.rs propagates
+# dramboot.ld, the vectortab boot archive, and the -L search dirs; the
+# static image-link args live here (mirrors examples/workspaces
+# .cargo/config.toml). No crate build.rs.
+[target.armv7a-nuttx-eabihf]
+linker = "arm-none-eabi-gcc"
+rustflags = [
+    "-C", "link-arg=-mcpu=cortex-a7",
+    "-C", "link-arg=-mfloat-abi=hard",
+    "-C", "link-arg=-mfpu=neon-vfpv4",
+    "-C", "link-arg=-Tdramboot.ld",
+    "-C", "link-arg=--entry=__start",
+    "-C", "link-arg=-nostartfiles",
+    "-C", "link-arg=-nodefaultlibs",
+    "-C", "link-arg=-Wl,--start-group",
+    "-C", "link-arg=-lsched",
+    "-C", "link-arg=-ldrivers",
+    "-C", "link-arg=-lboards",
+    "-C", "link-arg=-lc",
+    "-C", "link-arg=-lmm",
+    "-C", "link-arg=-larch",
+    "-C", "link-arg=-lxx",
+    "-C", "link-arg=-lapps",
+    "-C", "link-arg=-lnet",
+    "-C", "link-arg=-lcrypto",
+    "-C", "link-arg=-lfs",
+    "-C", "link-arg=-lbinfmt",
+    "-C", "link-arg=-lopenamp",
+    "-C", "link-arg=-lboard",
+    "-C", "link-arg=-lgcc",
+    "-C", "link-arg=-Wl,--end-group",
+]
+
+[env]
+CC_armv7a_nuttx_eabihf = "arm-none-eabi-gcc"
+CFLAGS_armv7a_nuttx_eabihf = "-mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon-vfpv4"
+# zpico capacity knobs (NuttX profile — see justfile nuttx_env history)
+ZPICO_MAX_PUBLISHERS = "56"
+ZPICO_MAX_SUBSCRIBERS = "64"
+ZPICO_MAX_QUERYABLES = "32"
+ZPICO_MAX_LIVELINESS = "160"
+NROS_EXECUTOR_MAX_NODES = "16"
+NROS_EXECUTOR_MAX_CBS = "48"
+
+[patch.crates-io]
+# nano-ros crates named by this crate's Cargo.toml.
+nros = { path = "../../../nano-ros-sentinel/packages/core/nros" }
+nros-platform = { path = "../../../nano-ros-sentinel/packages/core/nros-platform" }
+nros-board-nuttx-qemu-arm = { path = "../../../nano-ros-sentinel/packages/boards/nros-board-nuttx-qemu-arm" }
+# Patched libc with NuttX-specific symbols build-std's `std` needs.
+libc = { path = "../../../nano-ros/third-party/nuttx/libc" }
+
+# Generated message crates (root generated/ — superset for all targets).
+autoware_adapi_v1_msgs = { path = "../../generated/autoware_adapi_v1_msgs" }
+autoware_adapi_version_msgs = { path = "../../generated/autoware_adapi_version_msgs" }
+autoware_common_msgs = { path = "../../generated/autoware_common_msgs" }
+autoware_control_msgs = { path = "../../generated/autoware_control_msgs" }
+autoware_control_validator = { path = "../../generated/autoware_control_validator" }
+autoware_internal_debug_msgs = { path = "../../generated/autoware_internal_debug_msgs" }
+autoware_internal_metric_msgs = { path = "../../generated/autoware_internal_metric_msgs" }
+autoware_internal_msgs = { path = "../../generated/autoware_internal_msgs" }
+autoware_internal_perception_msgs = { path = "../../generated/autoware_internal_perception_msgs" }
+autoware_internal_planning_msgs = { path = "../../generated/autoware_internal_planning_msgs" }
+autoware_operation_mode_transition_manager = { path = "../../generated/autoware_operation_mode_transition_manager" }
+autoware_perception_msgs = { path = "../../generated/autoware_perception_msgs" }
+autoware_planning_msgs = { path = "../../generated/autoware_planning_msgs" }
+autoware_system_msgs = { path = "../../generated/autoware_system_msgs" }
+autoware_vehicle_cmd_gate = { path = "../../generated/autoware_vehicle_cmd_gate" }
+autoware_vehicle_msgs = { path = "../../generated/autoware_vehicle_msgs" }
+builtin_interfaces = { path = "../../generated/builtin_interfaces" }
+diagnostic_msgs = { path = "../../generated/diagnostic_msgs" }
+geographic_msgs = { path = "../../generated/geographic_msgs" }
+geometry_msgs = { path = "../../generated/geometry_msgs" }
+logging_demo = { path = "../../generated/logging_demo" }
+nav_msgs = { path = "../../generated/nav_msgs" }
+sensor_msgs = { path = "../../generated/sensor_msgs" }
+shape_msgs = { path = "../../generated/shape_msgs" }
+std_msgs = { path = "../../generated/std_msgs" }
+std_srvs = { path = "../../generated/std_srvs" }
+tier4_control_msgs = { path = "../../generated/tier4_control_msgs" }
+tier4_external_api_msgs = { path = "../../generated/tier4_external_api_msgs" }
+tier4_system_msgs = { path = "../../generated/tier4_system_msgs" }
+tier4_vehicle_msgs = { path = "../../generated/tier4_vehicle_msgs" }
+unique_identifier_msgs = { path = "../../generated/unique_identifier_msgs" }
+visualization_msgs = { path = "../../generated/visualization_msgs" }

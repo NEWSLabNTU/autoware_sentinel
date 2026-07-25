@@ -1,0 +1,31 @@
+# Phase 14.5 — nuttx (QEMU virt cortex-a7) deploy descriptor. One deploy per
+# model (placement clobbering lesson from 14.4b); board key matches the
+# entry's `deploy = "nuttx"` for the macro's board slice.
+
+[system]
+name = "sentinel_nuttx"
+rmw = "zenoh"
+domain_id = 0
+default_launch = "mcu.launch.xml"
+
+# No [param_services] on the MCU profile: the six ROS 2 parameter services
+# + volatile store are a Linux luxury the 4 MB MPS2 heap cannot spare
+# (registration alone tipped the macro entry into MALLOC FAILED).
+
+[deploy.nuttx]
+kind = "embedded"
+target = "armv7a-nuttx-eabihf"
+board = "nuttx"
+launch = "mcu.launch.xml"
+nodes = [
+    "/control/vehicle_cmd_gate",
+    "/control/autoware_shift_decider",
+    "/control/control_validator",
+    "/control/autoware_operation_mode_transition_manager",
+    "/system/mrm_handler",
+    "/system/mrm_emergency_stop_operator",
+    "/system/mrm_comfortable_stop_operator",
+    "/system/mrm_pull_over_manager",
+    "/sensing/vehicle_velocity_converter",
+    "/adapi/default_adapi",
+]

@@ -1,0 +1,16 @@
+/home/aeon/repos/autoware_sentinel/src/freertos_entry/target/thumbv7m-none-eabi/release/deps/nros_core-07c62498cdeff2ad.d: /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lib.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/action.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/clock.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/error.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lifecycle.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/logger.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/message_info.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/service.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/time.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/types.rs
+
+/home/aeon/repos/autoware_sentinel/src/freertos_entry/target/thumbv7m-none-eabi/release/deps/libnros_core-07c62498cdeff2ad.rlib: /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lib.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/action.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/clock.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/error.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lifecycle.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/logger.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/message_info.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/service.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/time.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/types.rs
+
+/home/aeon/repos/autoware_sentinel/src/freertos_entry/target/thumbv7m-none-eabi/release/deps/libnros_core-07c62498cdeff2ad.rmeta: /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lib.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/action.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/clock.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/error.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lifecycle.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/logger.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/message_info.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/service.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/time.rs /home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/types.rs
+
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lib.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/action.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/clock.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/error.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/lifecycle.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/logger.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/message_info.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/service.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/time.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/core/nros-core/src/types.rs:

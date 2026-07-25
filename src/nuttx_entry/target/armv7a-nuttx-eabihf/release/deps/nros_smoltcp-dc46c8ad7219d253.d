@@ -1,0 +1,15 @@
+/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/deps/nros_smoltcp-dc46c8ad7219d253.d: /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/lib.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/bridge.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/config.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/network_state.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/platform_macro.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/util.rs /home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/build/nros-smoltcp-6329a517783d0d9d/out/nros_smoltcp_config.rs
+
+/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/deps/libnros_smoltcp-dc46c8ad7219d253.rlib: /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/lib.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/bridge.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/config.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/network_state.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/platform_macro.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/util.rs /home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/build/nros-smoltcp-6329a517783d0d9d/out/nros_smoltcp_config.rs
+
+/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/deps/libnros_smoltcp-dc46c8ad7219d253.rmeta: /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/lib.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/bridge.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/config.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/network_state.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/platform_macro.rs /home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/util.rs /home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/build/nros-smoltcp-6329a517783d0d9d/out/nros_smoltcp_config.rs
+
+/home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/lib.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/bridge.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/config.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/network_state.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/platform_macro.rs:
+/home/aeon/repos/nano-ros-sentinel/packages/drivers/nros-smoltcp/src/util.rs:
+/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/build/nros-smoltcp-6329a517783d0d9d/out/nros_smoltcp_config.rs:
+
+# env-dep:OUT_DIR=/home/aeon/repos/autoware_sentinel/src/nuttx_entry/target/armv7a-nuttx-eabihf/release/build/nros-smoltcp-6329a517783d0d9d/out

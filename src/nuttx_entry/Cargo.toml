@@ -1,0 +1,56 @@
+# Phase 14.5 — NuttX (QEMU virt cortex-a7) Entry pkg: declarative
+# counterpart of autoware_sentinel_nuttx. std board; the board crate's
+# rmw-zenoh feature registers the backend from its run_entry.
+
+[package]
+name = "nuttx_entry"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "nuttx_entry"
+test = false
+bench = false
+
+[package.metadata.nros.entry]
+deploy = "nuttx"
+
+[package.metadata.nros.deploy.nuttx]
+rmw = "zenoh"
+domain_id = 0
+locator = "tcp/10.0.2.2:7452"
+ip = "10.0.2.30"
+gateway = "10.0.2.2"
+netmask = "255.255.255.0"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "std",
+    "rmw-cffi",
+    "ros-humble",
+    "param-services",
+] }
+nros-platform = { version = "*", default-features = false, features = ["platform-nuttx"] }
+nros-board-nuttx-qemu-arm = { version = "*", features = ["rmw-zenoh"] }
+
+sentinel_vehicle_cmd_gate_node = { path = "../sentinel_vehicle_cmd_gate_node" }
+sentinel_shift_decider_node = { path = "../sentinel_shift_decider_node" }
+sentinel_control_validator_node = { path = "../sentinel_control_validator_node" }
+sentinel_operation_mode_node = { path = "../sentinel_operation_mode_node" }
+sentinel_mrm_handler_node = { path = "../sentinel_mrm_handler_node" }
+sentinel_mrm_emergency_stop_node = { path = "../sentinel_mrm_emergency_stop_node" }
+sentinel_mrm_comfortable_stop_node = { path = "../sentinel_mrm_comfortable_stop_node" }
+sentinel_mrm_pull_over_node = { path = "../sentinel_mrm_pull_over_node" }
+sentinel_velocity_converter_node = { path = "../sentinel_velocity_converter_node" }
+sentinel_default_adapi_node = { path = "../sentinel_default_adapi_node" }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+
+[profile.dev.package.autoware_adapi_v1_msgs]
+opt-level = 1
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false

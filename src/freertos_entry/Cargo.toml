@@ -1,0 +1,61 @@
+# Phase 14.5 — FreeRTOS (QEMU MPS2-AN385) Entry pkg: the declarative
+# counterpart of autoware_sentinel_freertos. One-line nros::main! over the
+# freertos subset model; the board crate owns boot, lwIP, and the spin.
+
+[package]
+name = "freertos_entry"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "freertos_entry"
+test = false
+bench = false
+
+[package.metadata.nros.entry]
+deploy = "freertos"
+
+# Deploy overlay: QEMU SLIRP net + host zenohd locator (issue #48 plumbing —
+# the macro threads these into the board's boot config).
+[package.metadata.nros.deploy.freertos]
+rmw = "zenoh"
+domain_id = 0
+locator = "tcp/10.0.2.2:7447"
+ip = "10.0.2.20"
+gateway = "10.0.2.2"
+netmask = "255.255.255.0"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+    "param-services",
+] }
+nros-platform = { version = "*", default-features = false, features = ["platform-freertos", "global-allocator"] }
+nros-rmw-zenoh = { version = "*", default-features = false, features = ["platform-freertos"] }
+nros-board-mps2-an385-freertos = { version = "*" }
+panic-semihosting = { version = "0.6", features = ["exit"] }
+
+# The 10 wrapper node rlibs the MCU launch names.
+sentinel_vehicle_cmd_gate_node = { path = "../sentinel_vehicle_cmd_gate_node" }
+sentinel_shift_decider_node = { path = "../sentinel_shift_decider_node" }
+sentinel_control_validator_node = { path = "../sentinel_control_validator_node" }
+sentinel_operation_mode_node = { path = "../sentinel_operation_mode_node" }
+sentinel_mrm_handler_node = { path = "../sentinel_mrm_handler_node" }
+sentinel_mrm_emergency_stop_node = { path = "../sentinel_mrm_emergency_stop_node" }
+sentinel_mrm_comfortable_stop_node = { path = "../sentinel_mrm_comfortable_stop_node" }
+sentinel_mrm_pull_over_node = { path = "../sentinel_mrm_pull_over_node" }
+sentinel_velocity_converter_node = { path = "../sentinel_velocity_converter_node" }
+sentinel_default_adapi_node = { path = "../sentinel_default_adapi_node" }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+
+[profile.dev.package.autoware_adapi_v1_msgs]
+opt-level = 1
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false

@@ -331,7 +331,30 @@ Acceptance:
 - [ ] All integration tests pass via the new fixture.
 - [ ] `nros check` reports 0 unresolved components.
 
-### - [ ] 14.5 Embedded entries (zephyr, freertos, nuttx, orin-spe)
+### - [ ] 14.5 Embedded entries — freertos + nuttx LANDED 2026-07-26
+
+`src/freertos_entry` (MPS2, no_std) + `src/nuttx_entry` (QEMU virt, std):
+one-line `nros::main!` over the 10-node MCU subset model
+(`launch/mcu.launch.xml` + per-target system tomls + resolved
+`config/{freertos,nuttx}_model.yaml`). Both boot + spin in QEMU against
+a host zenohd. MCU profile drops the bundled controller, the monitoring
+stubs, and `[param_services]` (heap luxury). Upstream follow-ups landed
+(nano-ros a60b80da3-1): the macro now reads the system.toml recorded in
+`model.meta.inputs` (per-target profiles compose; the native
+[param_services] no longer leaks into MCU entries), and
+`NROS_FREERTOS_APP_STACK_KB` sizes the app task (896 KiB here — the
+10-node register pass overflows the 384 KiB default). The recurring
+0257 trap struck again: `NROS_EXECUTOR_MAX_CBS` left at default-4
+cascaded into stack-overflow/malloc-failed symptom soup before the
+real fix.
+
+Open in 14.5: host-side graph visibility from the QEMU lanes (boot+spin
+was the historical acceptance bar; topics were never verified from the
+host on these lanes — follow-up), Zephyr `zephyr_entry` (west workspace
+provisioning: SDK + checkout, hours + GBs — next session), SPE entry
+(BTCM wall, nano-ros 0271). Old per-target hand-rolled binaries stay
+until those close.
+ (zephyr, freertos, nuttx, orin-spe)
 
 One Entry pkg per target, all hosting the full launch graph in one process.
 Exemplars: `examples/workspaces/ws-realtime-rust/src/{zephyr,nuttx}_entry`,

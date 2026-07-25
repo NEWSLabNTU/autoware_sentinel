@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<!--
+  Autoware Sentinel — system launch (phase 14.4).
+
+  One <node> per sentinel executor node (phase 14.3 graph attribution),
+  carrying that node's parameter defaults. The dotted parameter names match
+  autoware_sentinel_core::params::declare_parameters — this file is the
+  declarative mirror today and becomes the single source once the 14.4b
+  Node-trait wrappers consume it through `nros::main!`.
+
+  Topic names are resolved in source, not remapped here: nano-ros parses
+  <remap> but does not route it yet (nano-ros issue 0255), and the sentinel
+  publishes/subscribes on the exact baseline Autoware topic names anyway.
+-->
+<launch>
+  <!-- ── /control ─────────────────────────────────────────────────── -->
+  <node pkg="sentinel_vehicle_cmd_gate_node" exec="vehicle_cmd_gate" name="vehicle_cmd_gate" namespace="/control">
+    <param name="vehicle_cmd_gate.heartbeat_timeout_ms" value="5000"/>
+    <param name="vehicle_cmd_gate.stop_hold_accel" value="-1.5"/>
+    <param name="vehicle_cmd_gate.emergency_accel" value="-2.4"/>
+    <param name="vehicle_cmd_gate.vel_lim" value="25.0"/>
+  </node>
+
+  <node pkg="sentinel_shift_decider_node" exec="shift_decider" name="autoware_shift_decider" namespace="/control">
+    <param name="shift_decider.park_on_goal" value="true"/>
+  </node>
+
+  <node pkg="sentinel_control_validator_node" exec="control_validator" name="control_validator" namespace="/control">
+    <param name="control_validator.acc_error_offset" value="0.8"/>
+    <param name="control_validator.acc_error_scale" value="0.2"/>
+    <param name="control_validator.acc_lpf_gain" value="0.97"/>
+    <param name="control_validator.rolling_back_velocity" value="0.5"/>
+    <param name="control_validator.over_velocity_ratio" value="0.2"/>
+    <param name="control_validator.over_velocity_offset" value="2.0"/>
+    <param name="control_validator.vel_lpf_gain" value="0.9"/>
+    <param name="control_validator.lateral_jerk_threshold" value="10.0"/>
+    <param name="control_validator.jerk_lpf_gain" value="0.8"/>
+  </node>
+
+  <node pkg="sentinel_operation_mode_node" exec="operation_mode" name="autoware_operation_mode_transition_manager" namespace="/control">
+    <param name="op_mode.allow_autonomous_in_stopped" value="true"/>
+    <param name="op_mode.stopped_velocity_threshold" value="0.01"/>
+    <param name="op_mode.enable_engage_on_driving" value="false"/>
+    <param name="op_mode.acc_threshold" value="1.5"/>
+    <param name="op_mode.speed_upper_threshold" value="10.0"/>
+    <param name="op_mode.speed_lower_threshold" value="-10.0"/>
+    <param name="op_mode.stable_check_duration" value="0.1"/>
+  </node>
+
+  <node pkg="sentinel_controller_node" exec="controller_node_exe" name="controller_node_exe" namespace="/control/trajectory_follower">
+    <param name="controller.ctrl_period" value="0.033"/>
+    <param name="controller.ego_nearest_dist_threshold" value="3.0"/>
+    <param name="controller.ego_nearest_yaw_threshold" value="1.57"/>
+    <param name="pid.kp" value="1.0"/>
+    <param name="pid.ki" value="0.1"/>
+    <param name="pid.kd" value="0.0"/>
+    <param name="pid.max_acc" value="3.0"/>
+    <param name="pid.min_acc" value="-5.0"/>
+    <param name="pid.max_jerk" value="2.0"/>
+    <param name="pid.min_jerk" value="-5.0"/>
+    <param name="pid.delay_compensation_time" value="0.17"/>
+    <param name="pid.stopped_acc" value="-3.4"/>
+    <param name="pid.emergency_acc" value="-5.0"/>
+    <param name="mpc.prediction_horizon" value="50"/>
+    <param name="mpc.prediction_dt" value="0.1"/>
+    <param name="mpc.steer_tau" value="0.27"/>
+    <param name="mpc.steering_lpf_gain" value="0.8"/>
+    <param name="mpc.input_delay" value="0.0"/>
+    <param name="mpc.steer_rate_lim" value="1.7321"/>
+    <param name="vehicle_info.wheel_base" value="2.79"/>
+    <param name="vehicle_info.max_steer_angle" value="0.70"/>
+    <param name="vehicle_info.wheel_radius" value="0.383"/>
+    <param name="vehicle_info.wheel_width" value="0.235"/>
+    <param name="vehicle_info.wheel_tread" value="1.64"/>
+    <param name="vehicle_info.front_overhang" value="1.0"/>
+    <param name="vehicle_info.rear_overhang" value="1.1"/>
+    <param name="vehicle_info.left_overhang" value="0.128"/>
+    <param name="vehicle_info.right_overhang" value="0.128"/>
+    <param name="vehicle_info.vehicle_height" value="2.5"/>
+  </node>
+
+  <!-- ── /system ──────────────────────────────────────────────────── -->
+  <node pkg="sentinel_mrm_handler_node" exec="mrm_handler" name="mrm_handler" namespace="/system">
+    <param name="heartbeat.timeout_ms" value="60000"/>
+    <param name="mrm_handler.stopped_velocity_threshold" value="0.001"/>
+  </node>
+
+  <node pkg="sentinel_mrm_emergency_stop_node" exec="emergency_stop_operator" name="mrm_emergency_stop_operator" namespace="/system">
+    <param name="mrm_emergency_stop.target_acceleration" value="-2.5"/>
+    <param name="mrm_emergency_stop.target_jerk" value="-1.5"/>
+  </node>
+
+  <node pkg="sentinel_mrm_comfortable_stop_node" exec="comfortable_stop_operator" name="mrm_comfortable_stop_operator" namespace="/system">
+    <param name="mrm_comfortable_stop.min_acceleration" value="-1.0"/>
+    <param name="mrm_comfortable_stop.min_jerk" value="-0.3"/>
+  </node>
+
+  <node pkg="sentinel_mrm_pull_over_node" exec="pull_over_manager" name="mrm_pull_over_manager" namespace="/system"/>
+
+  <node pkg="sentinel_system_monitor_node" exec="system_monitor" name="system_monitor" namespace="/system"/>
+
+  <!-- ── /sensing ─────────────────────────────────────────────────── -->
+  <node pkg="sentinel_velocity_converter_node" exec="velocity_converter" name="vehicle_velocity_converter" namespace="/sensing">
+    <param name="velocity_converter.speed_scale_factor" value="1.0"/>
+    <param name="velocity_converter.stddev_vx" value="0.2"/>
+    <param name="velocity_converter.stddev_wz" value="0.1"/>
+    <param name="stop_filter.vx_threshold" value="0.1"/>
+    <param name="stop_filter.wz_threshold" value="0.02"/>
+    <param name="twist2accel.accel_lowpass_gain" value="0.9"/>
+  </node>
+
+  <!-- ── /adapi ───────────────────────────────────────────────────── -->
+  <node pkg="sentinel_default_adapi_node" exec="default_adapi" name="default_adapi" namespace="/adapi"/>
+</launch>

@@ -265,7 +265,24 @@ Acceptance:
       escalation, gate arbitration, validator flags) vs the monolith.
 - [ ] `ros2 node list` shows the N per-algorithm nodes.
 
-### - [ ] 14.4 Bringup, launch, params, native entry
+### - [ ] 14.4 Bringup, launch, params, native entry — foundation landed 2026-07-25
+
+Landed: `src/sentinel_bringup/` (RFC-0025 Path A — package.xml +
+system.toml + launch/system.launch.xml + config/system_model.yaml). The
+launch file carries all 62 parameter defaults per owning node, gated
+against `params.rs` by the `bringup_consistency` test (numeric-aware,
+runs in the plain test suite). `system.toml` catalogs the 12 launchable
+components + per-target `[deploy.*]` rosters (native full; QEMU MCUs
+drop controller+monitoring; SPE minimal chain). The SystemModel is
+resolved by the SOURCE-built play_launch (`~/repos/play_launch` —
+`resolve` does not exist in pip 0.8.2) with sha-pinned inputs, 0
+warnings.
+
+Remaining (14.4b): declarative Node-trait wrapper pkgs consuming this
+bringup via `nros::main!(model = "sentinel_bringup")` + fixture
+re-point + `nros check`/`plan` in CI (the CLI's legacy bake path needs
+`play_launch_parser`; the model path needs the wrappers first).
+
 
 Tasks:
 - [ ] `sentinel_bringup/system.toml`: `[system] rmw = "zenoh"`,

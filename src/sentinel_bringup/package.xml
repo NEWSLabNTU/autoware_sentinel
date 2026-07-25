@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>sentinel_bringup</name>
+  <version>0.1.0</version>
+  <description>
+    Autoware Sentinel bringup — declarative topology for the safety island.
+    RFC-0025 Path A package: package.xml + system.toml + launch/ only, no
+    build file. The launch file is the single source of truth for the
+    per-node parameter defaults (mirrored today by
+    autoware_sentinel_core::params::declare_parameters; the 14.4b
+    declarative node wrappers will consume it directly).
+  </description>
+  <maintainer email="jerry73204@gmail.com">Autoware Sentinel contributors</maintainer>
+  <license>Apache-2.0</license>
+
+  <export>
+    <build_type>ament_nros</build_type>
+  </export>
+</package>

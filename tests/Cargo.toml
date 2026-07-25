@@ -29,6 +29,10 @@ path = "src/lib.rs"
 
 # Integration tests
 [[test]]
+name = "bringup_consistency"
+path = "tests/bringup_consistency.rs"
+
+[[test]]
 name = "transport_smoke"
 path = "tests/transport_smoke.rs"
 

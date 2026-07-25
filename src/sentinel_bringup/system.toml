@@ -1,0 +1,169 @@
+# Autoware Sentinel — system descriptor (phase 14.4).
+#
+# Declarative catalog of the sentinel's node topology. The 13 components
+# below are the executor nodes `autoware_sentinel_core::wire_executor`
+# registers today (phase 14.3 graph attribution); the `pkg`/`class` rows
+# name the planned 14.4b declarative Node-trait wrapper packages. Until
+# those land, this file + launch/system.launch.xml are the authoritative
+# topology/parameter documentation, and the entries drive review + the
+# eventual `nros check` gate.
+#
+# NOT a topic-edge system: all components share one executor + one 30 Hz
+# safety chain over the shared SafetyIsland state (see
+# docs/roadmap/14-multi-node-workspace.md §14.3 for the rationale).
+
+[system]
+name = "sentinel"
+rmw = "zenoh"
+domain_id = 0
+default_launch = "system.launch.xml"
+
+# The 6 ROS 2 parameter services (/sentinel/*). Executor-FQN-scoped —
+# per-node parameter services are upstream-blocked (see roadmap §14.3).
+[param_services]
+
+# ── /control ────────────────────────────────────────────────────────────
+[[component]]
+pkg = "sentinel_vehicle_cmd_gate_node"
+class = "sentinel_vehicle_cmd_gate_node::VehicleCmdGateNode"
+name = "vehicle_cmd_gate"
+namespace = "/control"
+
+[[component]]
+pkg = "sentinel_shift_decider_node"
+class = "sentinel_shift_decider_node::ShiftDeciderNode"
+name = "autoware_shift_decider"
+namespace = "/control"
+
+[[component]]
+pkg = "sentinel_control_validator_node"
+class = "sentinel_control_validator_node::ControlValidatorNode"
+name = "control_validator"
+namespace = "/control"
+
+[[component]]
+pkg = "sentinel_operation_mode_node"
+class = "sentinel_operation_mode_node::OperationModeNode"
+name = "autoware_operation_mode_transition_manager"
+namespace = "/control"
+
+[[component]]
+pkg = "sentinel_controller_node"
+class = "sentinel_controller_node::ControllerNode"
+name = "controller_node_exe"
+namespace = "/control/trajectory_follower"
+
+# ── /system ─────────────────────────────────────────────────────────────
+[[component]]
+pkg = "sentinel_mrm_handler_node"
+class = "sentinel_mrm_handler_node::MrmHandlerNode"
+name = "mrm_handler"
+namespace = "/system"
+
+[[component]]
+pkg = "sentinel_mrm_emergency_stop_node"
+class = "sentinel_mrm_emergency_stop_node::EmergencyStopOperatorNode"
+name = "mrm_emergency_stop_operator"
+namespace = "/system"
+
+[[component]]
+pkg = "sentinel_mrm_comfortable_stop_node"
+class = "sentinel_mrm_comfortable_stop_node::ComfortableStopOperatorNode"
+name = "mrm_comfortable_stop_operator"
+namespace = "/system"
+
+[[component]]
+pkg = "sentinel_mrm_pull_over_node"
+class = "sentinel_mrm_pull_over_node::PullOverManagerNode"
+name = "mrm_pull_over_manager"
+namespace = "/system"
+
+[[component]]
+pkg = "sentinel_system_monitor_node"
+class = "sentinel_system_monitor_node::SystemMonitorNode"
+name = "system_monitor"
+namespace = "/system"
+
+# ── /sensing ────────────────────────────────────────────────────────────
+[[component]]
+pkg = "sentinel_velocity_converter_node"
+class = "sentinel_velocity_converter_node::VelocityConverterNode"
+name = "vehicle_velocity_converter"
+namespace = "/sensing"
+
+# ── /adapi ──────────────────────────────────────────────────────────────
+[[component]]
+pkg = "sentinel_default_adapi_node"
+class = "sentinel_default_adapi_node::DefaultAdapiNode"
+name = "default_adapi"
+namespace = "/adapi"
+
+# ── deploy targets ──────────────────────────────────────────────────────
+# Placement: with multiple [deploy.*] blocks every node needs a roster
+# entry. Linux runs everything; the QEMU MCUs drop the bundled controller
+# (main compute supplies control_cmd) and the monitoring stub; the SPE
+# core profile is the minimal chain (BTCM budget — roadmap wall #3).
+[deploy.native]
+kind = "self"
+target = "x86_64-unknown-linux-gnu"
+launch = "system.launch.xml"
+nodes = [
+    "/control/vehicle_cmd_gate",
+    "/control/autoware_shift_decider",
+    "/control/control_validator",
+    "/control/autoware_operation_mode_transition_manager",
+    "/control/trajectory_follower/controller_node_exe",
+    "/system/mrm_handler",
+    "/system/mrm_emergency_stop_operator",
+    "/system/mrm_comfortable_stop_operator",
+    "/system/mrm_pull_over_manager",
+    "/system/system_monitor",
+    "/sensing/vehicle_velocity_converter",
+    "/adapi/default_adapi",
+]
+
+[deploy.freertos]
+kind = "embedded"
+target = "thumbv7m-none-eabi"
+board = "mps2-an385-freertos"
+nodes = [
+    "/control/vehicle_cmd_gate",
+    "/control/autoware_shift_decider",
+    "/control/control_validator",
+    "/control/autoware_operation_mode_transition_manager",
+    "/system/mrm_handler",
+    "/system/mrm_emergency_stop_operator",
+    "/system/mrm_comfortable_stop_operator",
+    "/system/mrm_pull_over_manager",
+    "/sensing/vehicle_velocity_converter",
+    "/adapi/default_adapi",
+]
+
+[deploy.nuttx]
+kind = "embedded"
+target = "armv7a-nuttx-eabihf"
+board = "nuttx-qemu-arm"
+nodes = [
+    "/control/vehicle_cmd_gate",
+    "/control/autoware_shift_decider",
+    "/control/control_validator",
+    "/control/autoware_operation_mode_transition_manager",
+    "/system/mrm_handler",
+    "/system/mrm_emergency_stop_operator",
+    "/system/mrm_comfortable_stop_operator",
+    "/system/mrm_pull_over_manager",
+    "/sensing/vehicle_velocity_converter",
+    "/adapi/default_adapi",
+]
+
+[deploy.orin-spe]
+kind = "embedded"
+target = "armv7r-none-eabi"
+board = "orin-spe"
+nodes = [
+    "/control/vehicle_cmd_gate",
+    "/system/mrm_handler",
+    "/system/mrm_emergency_stop_operator",
+    "/system/mrm_comfortable_stop_operator",
+    "/sensing/vehicle_velocity_converter",
+]

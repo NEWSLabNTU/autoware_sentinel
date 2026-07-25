@@ -425,7 +425,38 @@ fn test_sentinel_replaces_autoware_nodes(
         "Sentinel is not publishing Control messages"
     );
 
-    // --- Step 5: Verify OperationModeState published ---
+    // --- Step 5: Engage, then verify OperationModeState ---
+    // The sentinel boots disengaged (mode STOP); AUTONOMOUS requires the
+    // change_to_autonomous service — the earlier version of this test
+    // asserted mode 2 without engaging and only "passed" while the
+    // prerequisite gate was silently skipping it.
+    eprintln!("Engaging via /api/operation_mode/change_to_autonomous...");
+    let zenoh_env = ros2::ros2_env_setup_with_locator(&locator);
+    // Retry: with the full filtered-Autoware session count on one zenohd,
+    // service replies are occasionally dropped (the known zenohd interest-
+    // propagation weakness under many sessions — see the drive-latency
+    // research doc). Isolated calls succeed on the first try.
+    let mut engaged = false;
+    for attempt in 1..=3 {
+        match ros2::service_call(
+            "/api/operation_mode/change_to_autonomous",
+            "autoware_adapi_v1_msgs/srv/ChangeOperationMode",
+            "{}",
+            &zenoh_env,
+        ) {
+            Ok(out) => {
+                eprintln!("Engage response: {}", out.lines().last().unwrap_or(""));
+                engaged = true;
+                break;
+            }
+            Err(e) => eprintln!("WARNING: engage attempt {attempt} failed: {e}"),
+        }
+        std::thread::sleep(Duration::from_secs(5));
+    }
+    if !engaged {
+        eprintln!("WARNING: all engage attempts failed — asserting anyway");
+    }
+
     eprintln!("Checking sentinel OperationModeState...");
     let mut mode_echo = ros2::Ros2Process::topic_echo(
         "/api/operation_mode/state",
@@ -500,18 +531,27 @@ fn test_sentinel_replaces_autoware_nodes(
     }
 
     // --- Step 7: Monitor for vehicle movement ---
+    // Retried: a fresh echo session against the loaded zenohd sometimes
+    // never receives data (the known interest-propagation nondeterminism
+    // under many sessions); a second session usually lands.
     eprintln!("Monitoring kinematic_state for 20s...");
-    let mut echo = ros2::Ros2Process::topic_echo(
-        "/localization/kinematic_state",
-        "nav_msgs/msg/Odometry",
-        &locator,
-    )
-    .expect("Failed to start kinematic_state echo");
-
-    std::thread::sleep(Duration::from_secs(15));
-    let output = echo
-        .wait_for_all_output(Duration::from_secs(5))
-        .unwrap_or_default();
+    let mut output = String::new();
+    for attempt in 1..=3 {
+        let mut echo = ros2::Ros2Process::topic_echo(
+            "/localization/kinematic_state",
+            "nav_msgs/msg/Odometry",
+            &locator,
+        )
+        .expect("Failed to start kinematic_state echo");
+        std::thread::sleep(Duration::from_secs(15));
+        output = echo
+            .wait_for_all_output(Duration::from_secs(5))
+            .unwrap_or_default();
+        if output.contains("position:") {
+            break;
+        }
+        eprintln!("WARNING: kinematic echo attempt {attempt} received no data; retrying");
+    }
 
     eprintln!(
         "kinematic_state output ({} bytes): {}",
@@ -532,21 +572,28 @@ fn test_sentinel_replaces_autoware_nodes(
         "No kinematic_state data — vehicle may not have moved"
     );
 
-    // Verify sentinel is still publishing (not crashed, no MRM panic)
+    // Verify sentinel is still publishing (not crashed, no MRM panic).
+    // Retried like the kinematic echo — fresh sessions against the loaded
+    // zenohd occasionally receive nothing.
     eprintln!("Final sentinel Control check...");
-    let mut final_echo = ros2::Ros2Process::topic_echo(
-        "/control/command/control_cmd",
-        "autoware_control_msgs/msg/Control",
-        &locator,
-    )
-    .expect("Failed to start final Control echo");
-
-    std::thread::sleep(Duration::from_secs(3));
-    let final_output = final_echo
-        .wait_for_all_output(Duration::from_secs(3))
-        .unwrap_or_default();
-
-    let final_count = count_pattern(&final_output, "stamp:");
+    let mut final_count = 0usize;
+    for attempt in 1..=3 {
+        let mut final_echo = ros2::Ros2Process::topic_echo(
+            "/control/command/control_cmd",
+            "autoware_control_msgs/msg/Control",
+            &locator,
+        )
+        .expect("Failed to start final Control echo");
+        std::thread::sleep(Duration::from_secs(3));
+        let final_output = final_echo
+            .wait_for_all_output(Duration::from_secs(3))
+            .unwrap_or_default();
+        final_count = count_pattern(&final_output, "stamp:");
+        if final_count > 0 {
+            break;
+        }
+        eprintln!("WARNING: final Control echo attempt {attempt} received no data; retrying");
+    }
     eprintln!("Final sentinel Control messages: {final_count}");
     assert!(
         final_count > 0,

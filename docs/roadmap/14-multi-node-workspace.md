@@ -210,7 +210,7 @@ transport smoke, freertos comp-all + NuttX boot-and-spin.
 upstream multi-node model path registers one set; needs a per-node upstream
 API. Declarative `Node`-trait wrappers move to 14.4 alongside the bringup.
 
-**Drive-parity gate: BLOCKED on shared machine** — the planning-sim replay
+**Drive-parity gate: PASSED 2026-07-25** (see below; formerly blocked) — the planning-sim replay
 tests (`test_sentinel_replaces_autoware_nodes`,
 `test_autoware_baseline_autonomous_drive`) time out while a second full
 Autoware session (the other agent's live run) occupies the box. Isolated

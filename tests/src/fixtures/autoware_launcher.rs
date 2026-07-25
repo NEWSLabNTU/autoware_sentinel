@@ -42,14 +42,20 @@ pub fn dump_autoware_record() -> TestResult<&'static Path> {
             // play_launch dump needs the ROS 2 environment sourced.
             // Note: --output is a `play_launch dump` option and must come
             // before the `launch` subcommand.
+            // Domain-shift the dump too: `play_launch dump` EXECUTES the
+            // launch briefly to record it, so it must not join a
+            // default-domain session sharing the machine.
             let env_setup = format!(
                 "source /opt/ros/humble/setup.bash && \
                  source /opt/autoware/1.5.0/local_setup.bash 2>/dev/null && \
+                 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ROS_DOMAIN_ID={domain} && \
+                 unset ZENOH_CONFIG_OVERRIDE ZENOH_SESSION_CONFIG_URI ZENOH_ROUTER_CONFIG_URI && \
                  {} dump --output {} launch autoware_launch planning_simulator.launch.xml \
                  {}",
                 play_launch.display(),
                 output_file.display(),
                 map_arg,
+                domain = crate::ros2::TEST_DDS_DOMAIN,
             );
 
             let output = Command::new("bash")
@@ -213,7 +219,18 @@ pub fn filter_record(
 /// Returns a `ManagedProcess` that owns the replayed process tree.
 /// The process is killed on drop.
 pub fn replay_record(record_path: &Path) -> TestResult<ManagedProcess> {
-    replay_record_with_env(record_path, "")
+    // Phase 14 drive gate — the DDS (baseline) replay moves off domain 0 so a
+    // concurrently-running Autoware session on this machine (default domain)
+    // cannot cross-discover our replayed stack. The zenoh replay variant is
+    // already isolated by its ephemeral router and stays on the default.
+    replay_record_with_env(
+        record_path,
+        &format!(
+            "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ROS_DOMAIN_ID={} && \
+             unset ZENOH_CONFIG_OVERRIDE ZENOH_SESSION_CONFIG_URI ZENOH_ROUTER_CONFIG_URI ROS_LOCALHOST_ONLY",
+            crate::ros2::TEST_DDS_DOMAIN
+        ),
+    )
 }
 
 /// Replay a record.json file with additional environment setup.
@@ -248,7 +265,18 @@ pub fn replay_record_with_env(record_path: &Path, extra_env: &str) -> TestResult
 /// Replays the record (default DDS) and waits for the "All processes started"
 /// pattern in the output, indicating Autoware has finished launching.
 pub fn start_autoware(record_path: &Path) -> TestResult<ManagedProcess> {
-    start_autoware_impl(record_path, "")
+    // Phase 14 drive gate — pin the RMW (the harness env may carry
+    // rmw_zenoh_cpp) and shift the DDS replay off domain 0 so a
+    // concurrently-running default-domain Autoware session cannot
+    // cross-discover our stack. Matches `ros2_env_setup_dds()`.
+    start_autoware_impl(
+        record_path,
+        &format!(
+            "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ROS_DOMAIN_ID={} && \
+             unset ZENOH_CONFIG_OVERRIDE ZENOH_SESSION_CONFIG_URI ZENOH_ROUTER_CONFIG_URI ROS_LOCALHOST_ONLY",
+            crate::ros2::TEST_DDS_DOMAIN
+        ),
+    )
 }
 
 /// Start Autoware with rmw_zenoh_cpp transport.

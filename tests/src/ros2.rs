@@ -80,14 +80,24 @@ pub fn ros2_env_setup_with_locator(locator: &str) -> String {
     )
 }
 
+/// Phase 14 drive gate — DDS-side test domain. Keeps the baseline replay +
+/// its CLI probes discoverable to each other while invisible to any
+/// default-domain Autoware session sharing the machine.
+pub const TEST_DDS_DOMAIN: u32 = 42;
+
 /// Get ROS 2 + Autoware environment setup command with default DDS transport.
 ///
 /// Used for interacting with Autoware processes that use default CycloneDDS.
 pub fn ros2_env_setup_dds() -> String {
+    // Pin the RMW explicitly: the harness environment may carry
+    // RMW_IMPLEMENTATION=rmw_zenoh_cpp (direnv), which would silently turn
+    // every "DDS" probe into a zenoh client pointed at the default router.
     format!(
         "source /opt/ros/{}/setup.bash && \
-         source /opt/autoware/1.5.0/local_setup.bash 2>/dev/null",
-        DEFAULT_ROS_DISTRO,
+         source /opt/autoware/1.5.0/local_setup.bash 2>/dev/null && \
+         export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ROS_DOMAIN_ID={} && \
+         unset ZENOH_CONFIG_OVERRIDE ZENOH_SESSION_CONFIG_URI ZENOH_ROUTER_CONFIG_URI ROS_LOCALHOST_ONLY",
+        DEFAULT_ROS_DISTRO, TEST_DDS_DOMAIN,
     )
 }
 

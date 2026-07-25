@@ -145,19 +145,30 @@ the sentinel binary during integration tests. Keep them in sync.
 
 ## Message Generation
 
-**Never hand-write message types.** Each package has a `package.xml` declaring message
-dependencies and a `justfile` with a `generate` recipe.
+**Never hand-write message types.** Phase 14.1: the old per-package
+`cargo nano-ros generate` verb no longer exists upstream. One workspace-level
+command replaces it:
 
 ```bash
-cd src/autoware_stop_filter
-just generate        # runs: cargo nano-ros generate --force
+just generate-bindings   # sources ROS env, runs: nros sync
 ```
 
-The generate command:
-1. Reads `package.xml` for `<depend>` entries
-2. Resolves transitive dependencies from the ROS 2 ament index
-3. Generates Rust crates into `generated/`
-4. Creates `.cargo/config.toml` with `[patch.crates-io]` entries
+`nros sync` (from the nano-ros checkout's CLI, `packages/cli/target/release/nros`):
+1. Scans every `package.xml` in the repo (colcon mode)
+2. Resolves external `<depend>` rows through the ament index (`AMENT_PREFIX_PATH`)
+3. Generates Rust crates into root `generated/` (gitignored)
+4. Writes the `[patch.crates-io]` block into root `.cargo/config.toml`
+   (the nros/nros-core/nros-serdes rows are hand-maintained there — path
+   patches to `~/repos/nano-ros`, pin baseline `21a3a4248` — because stable
+   cargo ignores the `include = [nros-patch.toml]` mechanism)
+
+Excluded cross targets (`src/autoware_sentinel_{freertos,nuttx}`,
+`src/sentinel_spe_firmware`) carry their own `.cargo/config.toml` patch
+blocks pointing at the same checkout + root `generated/`.
+
+Note: the three algorithm packages whose names collide with upstream
+msg-bearing ament packages carry `_algo`-suffixed `package.xml` names so
+`nros sync` does not shadow the real msg packages.
 
 ### Prerequisites
 
@@ -187,14 +198,11 @@ local code generation. The API derives the node FQN from the executor's namespac
 (e.g. node_name `"sentinel"` → services at `/sentinel/list_parameters`).
 The types are `pub(crate)` — not exposed in the public nros API.
 
-### Post-generation fix: `[f64; 36]` Default
+### `[f64; 36]` Default — handled by codegen
 
-Generated `geometry_msgs` has types with `[f64; 36]` covariance arrays that fail to compile
-because `Default` is not implemented for `[T; N]` where N > 32. After generation, run:
-
-```bash
-python3 tmp/fix_covariance_default.py src/autoware_*/generated/geometry_msgs src/autoware_*/generated/geographic_msgs
-```
+Phase 14.1: the codegen template now emits a manual `impl Default` for
+structs with arrays > 32 elements; the old `tmp/fix_covariance_default.py`
+post-processing step is retired.
 
 Generated crates are `#![no_std]`, use `heapless::String<N>` / `heapless::Vec<T, N>`,
 and implement `Serialize`, `Deserialize`, `RosMessage` traits.
@@ -281,9 +289,6 @@ application code. Always use the `Executor`/`Node` layer.
 
 ## Known Issues
 
-- **`[f64; 36]` Default**: `Default` is not implemented for `[T; N]` where N > 32. Types
-  like `PoseWithCovariance` and `GeoPoseWithCovariance` need manual `Default` impls.
-  Fix with `tmp/fix_covariance_default.py` (scans geometry_msgs and geographic_msgs).
 - **f32→f64 precision**: `VelocityReport` fields are `f32`. In tests, compare against
   `value_f32 as f64`, not `value_f64`.
 - **Generated crate edition**: Message crates use edition 2021; algorithm crates use 2024.
@@ -391,7 +396,7 @@ linear.x.abs() < self.vx_threshold
 | 8 | Topic Parity (match baseline Autoware topics) | Complete |
 | 11 | AGX Orin SPE (Cortex-R5F + NVIDIA FreeRTOS FSP) | Default-feature build fits BTCM; SafetyIsland gated behind `safety-island` (overflow 37 KB), tracked as 11.3.E |
 | 12 | Service & Topic Parity (services + parameter API) | Complete — see below |
-| 14 | Multi-Node Workspace Migration (nano-ros pin bump + node split + launch files) | Planned — `docs/roadmap/14-multi-node-workspace.md` |
+| 14 | Multi-Node Workspace Migration (nano-ros pin bump + node split + launch files) | In progress — 14.1 mostly done (Linux + freertos + nuttx green; zephyr/SPE deferred). `docs/roadmap/14-multi-node-workspace.md` |
 
 See `docs/roadmap/` for detailed phase docs. Roadmap docs use `- [ ]` / `- [x]` checkboxes
 on subphase headers and acceptance criteria to track completion progress.

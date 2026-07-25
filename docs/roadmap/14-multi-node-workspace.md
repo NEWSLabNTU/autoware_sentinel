@@ -43,11 +43,16 @@ Bump nano-ros to a current pin and get all five targets green again WITHOUT
 restructuring — the renamed closure API is the escape hatch.
 
 Tasks:
-- [ ] Pick and pin a current nano-ros rev; update root `Cargo.toml`,
-      the excluded targets' `.cargo/config.toml` patch blocks, and the SPE
-      firmware pin.
-- [ ] Mechanical API migration in `autoware_sentinel_core` and the target
-      binaries:
+- [x] Pick and pin a current nano-ros rev (2026-07-25: local checkout at
+      `21a3a4248`, patched by path via `.cargo/config.toml` — stable cargo
+      ignores nros-patch.toml's `include =`, so the trio rows are
+      hand-maintained). Root + freertos + nuttx + spe-firmware done;
+      zephyr deferred (below).
+- [x] Mechanical API migration in `autoware_sentinel_core` and the target
+      binaries (entities attach via `node_builder("sentinel")` + `node_mut`;
+      `create_subscription`/`create_service`/`register_timer`;
+      `open_sized(cbs=64, arena_size_for(64))` — the new executor hard-caps
+      callback slots at 64 and publishers no longer consume entry slots):
   - `Executor::<_, N, M>::open(cfg)` → `Executor::open_sized(cfg,
     ExecutorSizing { .. })` sized for our 83 callbacks
     (`nros::arena_size_for`).
@@ -57,13 +62,16 @@ Tasks:
   - `client.call(&req).wait(&mut executor, ms)` → `Promise` polling.
   - `register_parameter_services()` and `spin_blocking(SpinOptions)` are
     unchanged — keep.
-- [ ] Switch message generation: delete the per-package
+- [x] Switch message generation: delete the per-package
       `cargo nano-ros generate` flow, per-package `generated/` trees, and
       `tmp/fix_covariance_default.py`; adopt `nros sync` (colcon-mode needs
       14.2's layout — until then use `nros generate-rust` per package or a
       temporary flat-mode invocation) with the Autoware ament index sourced.
       Confirm the template-emitted manual `Default` for `[f64; 36]` compiles.
-- [ ] Re-derive capacity env knobs: `NROS_EXECUTOR_MAX_CBS`,
+- [x] Re-derive capacity env knobs (`.env` + fixture MAX_CBS 96→64; zpico
+      knobs baked per-target in `.cargo/config.toml [env]`; new knobs found:
+      `ZPICO_MAX_LARGE_SUBSCRIBERS`, `ZPICO_SUBSCRIBER_SIZE_THRESHOLD`,
+      `NROS_FREERTOS_HEAP_KB`): `NROS_EXECUTOR_MAX_CBS`,
       `NROS_PARAM_SERVICE_BUFFER_SIZE`, `ZPICO_*` — names/defaults may have
       moved in 4804 commits; re-sync `.env`, the test fixture, and
       `build-spe-firmware`.
@@ -94,14 +102,24 @@ Tasks:
     FREERTOS_CONFIG_DIR/NROS_PLATFORM_FREERTOS_SRC/NROS_PLATFORM_CFFI_
     INCLUDE/NROS_LAN9118_LWIP_DIR` baked in `.cargo/config.toml [env]`.
 
-- [ ] SPE size checkpoint: rebuild `spe.bin` on the new pin, record
+- [ ] SPE size checkpoint (blocked: FSP BSP not staged on this machine;
+      download in progress): rebuild `spe.bin` on the new pin, record
       text+data+bss against the 224 KB / 31 KB-headroom baseline in the
       11.3.C ledger before any multi-node machinery lands.
 
 Acceptance:
-- [ ] `just ci` green (format, cross-check `thumbv7em-none-eabihf`, tests).
-- [ ] All 15 integration tests pass (transport smoke + planning simulator).
+- [x] `just ci` green (format, cross-check `thumbv7em-none-eabihf`, tests).
+- [x] All 20 integration tests pass (14 transport smoke + 6 planning
+      simulator; `play_launch` 0.8.2 reinstalled, zenohd fallback to the
+      nano-ros build).
 - [ ] Zephyr native_sim, FreeRTOS MPS2, NuttX QEMU targets build and boot.
+      FreeRTOS: boots + spins (core baseline; comp-all = wall #1).
+      NuttX: boots + spins with full comp-all.
+      Zephyr: DEFERRED to 14.5 — the west workspace was never provisioned
+      on this machine and the old zephyr-lang-rust `rustapp` shape is
+      replaced by the workspace `zephyr_entry` (west module + Kconfig RMW)
+      anyway. The SPE POSIX-sim lane (`autoware_sentinel_spe`) is likewise
+      deferred: it rides the old `nros/link-ivc` feature plumbing.
 - [ ] `just build-spe-image` fits BTCM; size delta recorded.
 - [ ] Zero hand-written message code; `generated/` reproducible from
       `nros sync`/`nros generate-rust` alone.

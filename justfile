@@ -20,14 +20,16 @@ default:
 # ════════════════════════════════════════════════════════════════════
 
 # Generate message bindings (sentinel_linux is the superset; workspace patches share its generated/)
+# Phase 14.1: `cargo nano-ros generate` no longer exists upstream. `nros sync`
+# scans every package.xml, resolves the ament index, writes root generated/
+# and the [patch.crates-io] block in .cargo/config.toml. The nros CLI comes
+# from the local nano-ros checkout (just setup-cli there / activate.sh).
 generate-bindings:
     #!/usr/bin/env bash
     set -eo pipefail
     source scripts/activate_autoware.sh
-    echo "=== autoware_sentinel_linux ==="
-    (cd "src/autoware_sentinel_linux" && cargo nano-ros generate-rust --force)
-    echo "=== autoware_sentinel_zephyr ==="
-    (cd "src/autoware_sentinel_zephyr" && cargo nano-ros generate-rust --force)
+    export PATH="$HOME/repos/nano-ros/packages/cli/target/release:$PATH"
+    nros sync
 
 # Build all packages + every platform target. Cross-target sentinels
 # (Zephyr / FreeRTOS / NuttX) are built last so their cross-toolchain

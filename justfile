@@ -84,9 +84,9 @@ run-sentinel-freertos: build-sentinel-freertos
 # Defaults reuse the nano-ros sibling clone, matching freertos_env. Override
 # NUTTX_DIR / NUTTX_APPS_DIR before running `just` if you keep a separate
 # NuttX checkout.
-nuttx_dir := env_var_or_default("NUTTX_DIR", justfile_directory() / "../nano-ros-sentinel/third-party/nuttx/nuttx")
-nuttx_apps_dir := env_var_or_default("NUTTX_APPS_DIR", justfile_directory() / "../nano-ros-sentinel/third-party/nuttx/nuttx-apps")
-nuttx_build_script := justfile_directory() / "../nano-ros-sentinel/packages/boards/nros-board-nuttx-qemu-arm/scripts/build-nuttx.sh"
+nuttx_dir := env_var_or_default("NUTTX_DIR", justfile_directory() / "../nano-ros/third-party/nuttx/nuttx")
+nuttx_apps_dir := env_var_or_default("NUTTX_APPS_DIR", justfile_directory() / "../nano-ros/third-party/nuttx/nuttx-apps")
+nuttx_build_script := justfile_directory() / "../nano-ros/scripts/nuttx/build-nuttx.sh"
 
 # Override `.env`'s NROS_EXECUTOR_MAX_CBS=96 for NuttX. Same root cause as
 # the FreeRTOS-side fix: nros::Executor's inline arena ([MaybeUninit<u8>;

@@ -1,17 +1,15 @@
 # NuttX QEMU ARM virt — network configuration
-# Used by nros-board-nuttx-qemu-arm board crate (Config::from_toml)
+# Used by nros-board-nuttx-qemu-arm (Config::from_toml).
 #
-# QEMU user-mode networking (SLIRP) bridges 10.0.2.0/24 to host. Host
-# zenohd listens at 10.0.2.2:7452 (10.0.2.2 == host loopback inside the
-# guest); sentinel connects from 10.0.2.30. Port 7452 is reserved for
-# the NuttX sentinel to avoid collision with the FreeRTOS sentinel on
-# 7451 (and the Linux integration tests that use ephemeral ports).
+# Phase 14.1: direct-mode [[transport]]/[node] schema (legacy
+# [network]/[zenoh] dropped upstream, 172.K.6). QEMU SLIRP bridges
+# 10.0.2.0/24 to the host; zenohd listens on host :7452 (kept distinct
+# from the FreeRTOS sentinel's 7447/7451 lane).
 
-[network]
-ip = "10.0.2.30"
+[[transport]]
+ip = "10.0.2.30/24"
 gateway = "10.0.2.2"
-prefix = 24
-
-[zenoh]
 locator = "tcp/10.0.2.2:7452"
+
+[node]
 domain_id = 0

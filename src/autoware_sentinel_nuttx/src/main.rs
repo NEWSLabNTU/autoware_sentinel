@@ -36,7 +36,14 @@ fn main() {
         let exec_config = ExecutorConfig::new(config.zenoh_locator)
             .domain_id(config.domain_id)
             .node_name("sentinel");
-        let mut executor = Executor::open(&exec_config)?;
+        // Sized explicitly (phase-271): ~31 callbacks with comp-all; 64 is
+        // the executor's ready-set cap.
+        let sizing = nros::ExecutorSizing {
+            cbs: 64,
+            arena: nros::arena_size_for(64),
+            ..nros::ExecutorSizing::DEFAULT
+        };
+        let mut executor = Executor::open_sized(&exec_config, sizing)?;
 
         // NuttX profile: skip parameter services to keep the binary
         // size manageable inside the NuttX flat-build kernel image.

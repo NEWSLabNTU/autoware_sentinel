@@ -33,15 +33,18 @@ default = []
 log = { version = "0.4", default-features = false }
 
 # NuttX QEMU board crate (provides run() + Config + println!).
-nros-board-nuttx-qemu-arm = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
+nros-board-nuttx-qemu-arm = { version = "*", features = ["rmw-zenoh"] }
 
 # Shared core wiring. comp-all enables full Phase 12 topology; the NuttX
 # build runs in std mode (NuttX provides POSIX) so the heavy publishers
 # fit just like the Linux build.
 autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-nuttx", "comp-all"] }
 
-# nros — match Zephyr/Linux feature set with platform-nuttx.
-nros = { version = "*", default-features = false, features = ["std", "rmw-zenoh", "platform-nuttx", "link-tcp", "ros-humble", "param-services"] }
+# nros — Phase 14.1: platform + RMW moved out of nros. The board crate's
+# rmw-zenoh feature makes its run_entry register the zenoh backend; the
+# NuttX platform port is compiled by the board family's build helper.
+nros = { version = "*", default-features = false, features = ["std", "rmw-cffi", "ros-humble", "param-services"] }
+nros-platform = { version = "*", default-features = false, features = ["platform-nuttx"] }
 
 # Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
 # autoware_adapi_v1_msgs at opt-level=0 for thumbv7-class targets. NuttX

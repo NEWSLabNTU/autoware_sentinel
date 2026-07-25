@@ -73,6 +73,26 @@ Tasks:
       cyclone lane did not).
 
   **Wall log:** (append as found)
+  - Wall #1 (2026-07-25, freertos/MPS2, OPEN): comp-all wiring (37 pubs /
+    21 services / 5 subs on one zenoh-pico session) fails `Executor` setup
+    with `Transport(SubscriberCreationFailed)` once the entity total
+    crosses a threshold — the 4-combo (mrm + cmd-gate-extra + validator +
+    op-mode-mgr) boots, adding comp-engagement (4 pubs / 2 subs / 2 svcs)
+    tips it over. Not slot caps: reproduced with ZPICO_MAX_SUBSCRIBERS=64,
+    ZPICO_MAX_LIVELINESS=160, 8 large-class blocks, 2.5 MiB heap. Every
+    comp-* feature passes alone. Same class as the Phase-13.K1
+    "declare-storm" the bisection gates were built for — now a hard error
+    instead of a hang. Freertos target ships the core baseline (boots +
+    spins, proven under QEMU); comp-all blocked on upstream diagnosis
+    (needs zenoh-pico debug logging, hardcoded off in nros-zpico-build).
+  - Fixed en route (freertos, consumer-side): board C `Reset_Handler` now
+    calls `main` not `_start`; config schema flipped to direct-mode
+    `[[transport]]`/`[node]` (legacy `[network]`/`[zenoh]`/`[scheduling]`
+    dropped, 172.K.6); `[scheduling] app_stack_bytes` replaced by
+    `Config::with_app_stack_bytes` (384 KiB default overflows at ~20 pubs;
+    set 768 KiB); build now needs `FREERTOS_DIR/FREERTOS_PORT/LWIP_DIR/
+    FREERTOS_CONFIG_DIR/NROS_PLATFORM_FREERTOS_SRC/NROS_PLATFORM_CFFI_
+    INCLUDE/NROS_LAN9118_LWIP_DIR` baked in `.cargo/config.toml [env]`.
 
 - [ ] SPE size checkpoint: rebuild `spe.bin` on the new pin, record
       text+data+bss against the 224 KB / 31 KB-headroom baseline in the

@@ -1,9 +1,10 @@
 # Autoware Sentinel — FreeRTOS Cargo configuration
 #
 # This crate is excluded from the main workspace (cross-target build), so it
-# needs its own [patch.crates-io] entries. nros crates point at the local
-# nano-ros checkout; generated message crates re-use sentinel_linux/generated/
-# (single source of truth for the msg superset).
+# needs its own [patch.crates-io] entries. Phase 14.1: nros crates patch to
+# the local nano-ros checkout (pin baseline 21a3a4248, same as the root
+# .cargo/config.toml written by `nros sync`); message crates point at the
+# root `generated/` tree (run `nros sync` at the repo root first).
 
 [build]
 target = "thumbv7m-none-eabi"
@@ -15,123 +16,69 @@ rustflags = [
     "-C", "link-arg=--nmagic",
 ]
 
-# --- nros crates (local path matches workspace git pin content) -------------
+[patch.crates-io]
+# nano-ros crates named by this crate's Cargo.toml (their internal deps are
+# path deps inside the checkout and need no patches here).
+nros = { path = "../../../nano-ros/packages/core/nros" }
+nros-platform = { path = "../../../nano-ros/packages/core/nros-platform" }
+nros-rmw-zenoh = { path = "../../../nano-ros/packages/zpico/nros-rmw-zenoh" }
+nros-board-mps2-an385-freertos = { path = "../../../nano-ros/packages/boards/nros-board-mps2-an385-freertos" }
 
-[patch.crates-io.nros]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
+# Generated message crates (root generated/ — superset for all targets).
+autoware_adapi_v1_msgs = { path = "../../generated/autoware_adapi_v1_msgs" }
+autoware_adapi_version_msgs = { path = "../../generated/autoware_adapi_version_msgs" }
+autoware_common_msgs = { path = "../../generated/autoware_common_msgs" }
+autoware_control_msgs = { path = "../../generated/autoware_control_msgs" }
+autoware_control_validator = { path = "../../generated/autoware_control_validator" }
+autoware_internal_debug_msgs = { path = "../../generated/autoware_internal_debug_msgs" }
+autoware_internal_metric_msgs = { path = "../../generated/autoware_internal_metric_msgs" }
+autoware_internal_msgs = { path = "../../generated/autoware_internal_msgs" }
+autoware_internal_perception_msgs = { path = "../../generated/autoware_internal_perception_msgs" }
+autoware_internal_planning_msgs = { path = "../../generated/autoware_internal_planning_msgs" }
+autoware_operation_mode_transition_manager = { path = "../../generated/autoware_operation_mode_transition_manager" }
+autoware_perception_msgs = { path = "../../generated/autoware_perception_msgs" }
+autoware_planning_msgs = { path = "../../generated/autoware_planning_msgs" }
+autoware_system_msgs = { path = "../../generated/autoware_system_msgs" }
+autoware_vehicle_cmd_gate = { path = "../../generated/autoware_vehicle_cmd_gate" }
+autoware_vehicle_msgs = { path = "../../generated/autoware_vehicle_msgs" }
+builtin_interfaces = { path = "../../generated/builtin_interfaces" }
+diagnostic_msgs = { path = "../../generated/diagnostic_msgs" }
+geographic_msgs = { path = "../../generated/geographic_msgs" }
+geometry_msgs = { path = "../../generated/geometry_msgs" }
+logging_demo = { path = "../../generated/logging_demo" }
+nav_msgs = { path = "../../generated/nav_msgs" }
+sensor_msgs = { path = "../../generated/sensor_msgs" }
+shape_msgs = { path = "../../generated/shape_msgs" }
+std_msgs = { path = "../../generated/std_msgs" }
+std_srvs = { path = "../../generated/std_srvs" }
+tier4_control_msgs = { path = "../../generated/tier4_control_msgs" }
+tier4_external_api_msgs = { path = "../../generated/tier4_external_api_msgs" }
+tier4_system_msgs = { path = "../../generated/tier4_system_msgs" }
+tier4_vehicle_msgs = { path = "../../generated/tier4_vehicle_msgs" }
+unique_identifier_msgs = { path = "../../generated/unique_identifier_msgs" }
+visualization_msgs = { path = "../../generated/visualization_msgs" }
 
-[patch.crates-io.nros-core]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-[patch.crates-io.nros-serdes]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-[patch.crates-io.nros-node]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-[patch.crates-io.nros-rmw]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-[patch.crates-io.nros-params]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-[patch.crates-io.nros-macros]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-[patch.crates-io.nros-rmw-zenoh]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-[patch.crates-io.zpico-sys]
-git = "https://github.com/NEWSLabNTU/nano-ros.git"
-rev = "036057ff"
-
-# --- Generated message crates (shared with sentinel_linux) ------------------
-
-[patch.crates-io.autoware_adapi_v1_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_adapi_v1_msgs"
-
-[patch.crates-io.autoware_adapi_version_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_adapi_version_msgs"
-
-[patch.crates-io.autoware_common_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_common_msgs"
-
-[patch.crates-io.autoware_control_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_control_msgs"
-
-[patch.crates-io.autoware_control_validator]
-path = "../autoware_sentinel_linux/generated/autoware_control_validator"
-
-[patch.crates-io.autoware_internal_debug_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_internal_debug_msgs"
-
-[patch.crates-io.autoware_internal_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_internal_msgs"
-
-[patch.crates-io.autoware_operation_mode_transition_manager]
-path = "../autoware_sentinel_linux/generated/autoware_operation_mode_transition_manager"
-
-[patch.crates-io.autoware_planning_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_planning_msgs"
-
-[patch.crates-io.autoware_system_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_system_msgs"
-
-[patch.crates-io.autoware_vehicle_cmd_gate]
-path = "../autoware_sentinel_linux/generated/autoware_vehicle_cmd_gate"
-
-[patch.crates-io.autoware_vehicle_msgs]
-path = "../autoware_sentinel_linux/generated/autoware_vehicle_msgs"
-
-[patch.crates-io.builtin_interfaces]
-path = "../autoware_sentinel_linux/generated/builtin_interfaces"
-
-[patch.crates-io.diagnostic_msgs]
-path = "../autoware_sentinel_linux/generated/diagnostic_msgs"
-
-[patch.crates-io.geographic_msgs]
-path = "../autoware_sentinel_linux/generated/geographic_msgs"
-
-[patch.crates-io.geometry_msgs]
-path = "../autoware_sentinel_linux/generated/geometry_msgs"
-
-[patch.crates-io.logging_demo]
-path = "../autoware_sentinel_linux/generated/logging_demo"
-
-[patch.crates-io.nav_msgs]
-path = "../autoware_sentinel_linux/generated/nav_msgs"
-
-[patch.crates-io.shape_msgs]
-path = "../autoware_sentinel_linux/generated/shape_msgs"
-
-[patch.crates-io.std_msgs]
-path = "../autoware_sentinel_linux/generated/std_msgs"
-
-[patch.crates-io.std_srvs]
-path = "../autoware_sentinel_linux/generated/std_srvs"
-
-[patch.crates-io.tier4_control_msgs]
-path = "../autoware_sentinel_linux/generated/tier4_control_msgs"
-
-[patch.crates-io.tier4_external_api_msgs]
-path = "../autoware_sentinel_linux/generated/tier4_external_api_msgs"
-
-[patch.crates-io.tier4_system_msgs]
-path = "../autoware_sentinel_linux/generated/tier4_system_msgs"
-
-[patch.crates-io.tier4_vehicle_msgs]
-path = "../autoware_sentinel_linux/generated/tier4_vehicle_msgs"
-
-[patch.crates-io.unique_identifier_msgs]
-path = "../autoware_sentinel_linux/generated/unique_identifier_msgs"
-
-[patch.crates-io.visualization_msgs]
-path = "../autoware_sentinel_linux/generated/visualization_msgs"
+[env]
+# FreeRTOS kernel + lwIP sources for zpico-sys/nros-platform build scripts
+# (provisioned in the nano-ros checkout by `just freertos setup`).
+FREERTOS_DIR = { value = "../../../nano-ros/third-party/freertos/kernel", relative = true }
+FREERTOS_PORT = "GCC/ARM_CM3"
+LWIP_DIR = { value = "../../../nano-ros/third-party/freertos/lwip", relative = true }
+FREERTOS_CONFIG_DIR = { value = "../../../nano-ros/packages/boards/nros-board-mps2-an385-freertos/config", relative = true }
+NROS_PLATFORM_FREERTOS_SRC = { value = "../../../nano-ros/packages/core/nros-platform-freertos/src", relative = true }
+NROS_PLATFORM_CFFI_INCLUDE = { value = "../../../nano-ros/packages/core/nros-platform-api/include", relative = true }
+NROS_LAN9118_LWIP_DIR = { value = "../../../nano-ros/packages/drivers/lan9118-lwip", relative = true }
+# zpico capacity knobs (match root .env — 51 pubs / 9 subs with comp-all)
+ZPICO_MAX_PUBLISHERS = "56"
+ZPICO_MAX_SUBSCRIBERS = "64"
+ZPICO_MAX_QUERYABLES = "32"
+ZPICO_MAX_LIVELINESS = "160"
+NROS_MAX_PARAMETERS = "64"
+NROS_PARAM_SERVICE_BUFFER_SIZE = "8192"
+# 51 pubs + executor arena (~0.5 MiB) + zenoh session outgrow the 2 MiB
+# rmw-zenoh default heap; MPS2-AN385 PSRAM is 16 MiB.
+NROS_FREERTOS_HEAP_KB = "2560"
+# RFC-0038 size-class payload pools: every sentinel sub uses the default
+# rx hint (> the 2048 small/large threshold), so they all land in the
+# large class — default cap 2 starves the 3rd subscription.
+ZPICO_MAX_LARGE_SUBSCRIBERS = "8"

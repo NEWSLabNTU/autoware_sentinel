@@ -40,17 +40,19 @@ panic-semihosting = { version = "0.6", features = ["exit"] }
 # Provide the GlobalAlloc impl. Sentinel pulls alloc-using paths in nros-core
 # (String/Vec used internally) so we need a registered allocator. Routes
 # Rust allocs through pvPortMalloc/free via nros-platform-freertos.
-nros-platform = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff", default-features = false, features = ["platform-freertos", "global-allocator"] }
+nros-platform = { version = "*", default-features = false, features = ["platform-freertos", "global-allocator"] }
 
 # FreeRTOS QEMU MPS2-AN385 board crate (provides run() + Config + println!).
-nros-board-mps2-an385-freertos = { git = "https://github.com/NEWSLabNTU/nano-ros.git", rev = "036057ff" }
+nros-board-mps2-an385-freertos = { version = "*" }
 
 # Shared core wiring. Safety MCU build — no controller-node.
-autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos", "comp-all"] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core", features = ["platform-freertos"] }
 
-# nros — for `ExecutorConfig`, `Executor`, `NodeError`. Match Zephyr feature set
-# (rmw-zenoh + ros-humble + param-services), no std.
-nros = { version = "*", default-features = false, features = ["rmw-zenoh", "platform-freertos", "link-tcp", "link-udp-unicast", "ros-humble"] }
+# nros — for `ExecutorConfig`, `Executor`, `NodeError`. Phase 14.1: platform +
+# RMW features moved out of nros; the zenoh backend links via nros-rmw-zenoh
+# (registered in main) and the FreeRTOS platform via nros-platform above.
+nros = { version = "*", default-features = false, features = ["alloc", "rmw-cffi", "ros-humble"] }
+nros-rmw-zenoh = { version = "*", default-features = false, features = ["platform-freertos"] }
 
 # Workaround: LLVM SIGSEGV in ARM register scavenger when compiling
 # autoware_adapi_v1_msgs at opt-level=0 for thumbv7m-none-eabi.

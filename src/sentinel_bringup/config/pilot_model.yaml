@@ -1,0 +1,37 @@
+meta:
+  version: 1
+  inputs:
+  - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/launch/pilot.launch.xml
+    sha256: 0d1c0d17a38cd1a8c3b22efccd52af2877550da206490bc7095b146ca25d9da7
+  - path: /home/aeon/repos/autoware_sentinel/src/sentinel_bringup/pilot-system.toml
+    sha256: f6a63a605b30dacf44f78380b230da4cb695d84afaa363cb5b85dd89db12ac0b
+  resolver:
+    tool: play_launch
+    version: 0.8.2
+structure:
+  scopes:
+    pilot.launch.xml:
+      file: pilot.launch.xml
+  nodes:
+    /sensing/vehicle_velocity_converter:
+      scope: pilot.launch.xml
+      pkg: sentinel_velocity_converter_node
+      exec: velocity_converter
+      params:
+        stop_filter.vx_threshold: 0.1
+        stop_filter.wz_threshold: 0.02
+        twist2accel.accel_lowpass_gain: 0.9
+        velocity_converter.speed_scale_factor: 1.0
+        velocity_converter.stddev_vx: 0.2
+        velocity_converter.stddev_wz: 0.1
+      node_name: vehicle_velocity_converter
+execution:
+  deploy:
+    /sensing/vehicle_velocity_converter:
+      target: linux
+      domain: 0
+      rmw: zenoh
+      extra:
+        deploy_name: native
+        kind: self
+        target: x86_64-unknown-linux-gnu

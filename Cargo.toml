@@ -32,6 +32,8 @@ members = [
     "src/autoware_vehicle_cmd_gate",
     "src/autoware_vehicle_info_utils",
     "src/autoware_vehicle_velocity_converter",
+    "src/sentinel_velocity_converter_node",
+    "src/native_entry",
 ]
 # Excluded from workspace:
 #   src/autoware_sentinel_zephyr   — Zephyr target, built via west

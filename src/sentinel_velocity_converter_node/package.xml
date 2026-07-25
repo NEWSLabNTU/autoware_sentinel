@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sentinel_velocity_converter_node</name>
+  <version>0.1.0</version>
+  <description>Sentinel fused velocity pipeline node (velocity converter + stop filter + twist2accel over the shared safety-chain crossbar).</description>
+  <maintainer email="jerry73204@gmail.com">Autoware Sentinel contributors</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>autoware_vehicle_msgs</depend>
+
+  <export>
+    <build_type>ament_cargo</build_type>
+  </export>
+</package>

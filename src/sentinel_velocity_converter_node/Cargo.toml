@@ -1,0 +1,29 @@
+# Phase 14.4b — declarative Node-trait wrapper for the sentinel's fused
+# velocity pipeline (/sensing/vehicle_velocity_converter). Board/RMW-agnostic
+# lib; the sibling Entry pkg wires it onto a board via
+# `nros::main!(model = "sentinel_bringup:...")`, which emits one
+# `register()` call per matching launch <node>.
+
+[package]
+name = "sentinel_velocity_converter_node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[package.metadata.nros.node]
+class = "sentinel_velocity_converter_node::VelocityConverterNode"
+name = "vehicle_velocity_converter"
+default_namespace = "/sensing"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+autoware_sentinel_core = { path = "../autoware_sentinel_core" }
+autoware_vehicle_msgs = { version = "*", default-features = false }

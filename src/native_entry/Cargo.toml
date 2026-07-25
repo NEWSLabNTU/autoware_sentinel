@@ -1,0 +1,35 @@
+# Phase 14.4b — native Entry pkg. Boots the sentinel bringup topology on
+# the native board via `nros::main!(model = ...)`. Currently consumes the
+# PILOT model (one wrapper node); flips to config/system_model.yaml once
+# the full 12-node wrapper set exists, at which point this replaces
+# autoware_sentinel_linux as the Linux binary.
+
+[package]
+name = "native_entry"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "native_entry"
+path = "src/main.rs"
+
+# `deploy = "native"` routes the nros::main! proc-macro onto the native
+# board emit branch (NativeBoard as BoardEntry).
+[package.metadata.nros.entry]
+deploy = "native"
+
+[dependencies]
+nros = { version = "*", default-features = false, features = [
+    "alloc",
+    "rmw-cffi",
+    "ros-humble",
+] }
+# Board crate — supplies NativeBoard AND is the RMW/platform selection
+# point: rmw-zenoh self-links + registers the zenoh backend.
+nros-board-native = { version = "*", default-features = false, features = ["rmw-zenoh"] }
+nros-rmw-zenoh = { version = "*", default-features = false, features = ["std", "platform-posix", "ros-humble"] }
+nros-platform-cffi = { version = "*", features = ["posix-c-port"] }
+# Node pkg rlibs the pilot launch names.
+sentinel_velocity_converter_node = { path = "../sentinel_velocity_converter_node" }

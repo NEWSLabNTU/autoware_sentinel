@@ -1,0 +1,21 @@
+# Phase 14.4b pilot system descriptor — one node, one deploy target.
+# Exists so the resolved pilot model carries an execution.deploy placement
+# (the nros::main! board slice keeps only nodes placed on its deploy).
+
+[system]
+name = "sentinel_pilot"
+rmw = "zenoh"
+domain_id = 0
+default_launch = "pilot.launch.xml"
+
+[[component]]
+pkg = "sentinel_velocity_converter_node"
+class = "sentinel_velocity_converter_node::VelocityConverterNode"
+name = "vehicle_velocity_converter"
+namespace = "/sensing"
+
+[deploy.native]
+kind = "self"
+target = "x86_64-unknown-linux-gnu"
+launch = "pilot.launch.xml"
+nodes = ["/sensing/vehicle_velocity_converter"]

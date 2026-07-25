@@ -270,7 +270,7 @@ static ISLAND: SyncRefCell<Option<SafetyIsland>> = SyncRefCell(RefCell::new(None
 ///
 /// Panics if [`init_island`] has not been called yet.
 #[inline]
-fn with_island<R>(f: impl FnOnce(&mut SafetyIsland) -> R) -> R {
+pub fn with_island<R>(f: impl FnOnce(&mut SafetyIsland) -> R) -> R {
     let mut guard = ISLAND.0.borrow_mut();
     f(guard.as_mut().expect("SafetyIsland not initialized"))
 }
@@ -279,6 +279,17 @@ fn with_island<R>(f: impl FnOnce(&mut SafetyIsland) -> R) -> R {
 /// before any subscription/timer/service callback can fire.
 pub fn init_island(p: SentinelParams) {
     *ISLAND.0.borrow_mut() = Some(SafetyIsland::new(p));
+}
+
+/// Initialize the island from compile-time defaults if it is not already
+/// initialized. Phase 14.4b — the declarative node wrappers each call this
+/// from `register()` (whichever registers first wins; launch-param
+/// overrides land with the full wrapper set).
+pub fn ensure_island_default() {
+    let mut guard = ISLAND.0.borrow_mut();
+    if guard.is_none() {
+        *guard = Some(SafetyIsland::new(params::default_params()));
+    }
 }
 
 impl SafetyIsland {
@@ -344,7 +355,7 @@ impl SafetyIsland {
     }
 
     /// VelocityReport → VehicleVelocityConverter → StopFilter → Twist2Accel.
-    fn on_velocity_report(&mut self, msg: &VelocityReport) {
+    pub fn on_velocity_report(&mut self, msg: &VelocityReport) {
         let twist_cov = self.velocity_converter.convert(msg);
         let twist = &twist_cov.twist.twist;
         let filtered = self.stop_filter.apply(&twist.linear, &twist.angular);
@@ -487,6 +498,184 @@ static DIAG_STRUCT_DEFAULT: DiagGraphStruct = DiagGraphStruct {
     diags: nros::heapless::Vec::new(),
     links: nros::heapless::Vec::new(),
 };
+
+/// Snapshot of one safety-chain pass — everything the per-node publishers
+/// need. Phase 14.4b: the chain is a method on [`SafetyIsland`] so both the
+/// closure entry (wire_executor's timer) and the declarative node wrappers
+/// drive the SAME pass and publish from the same snapshot.
+#[derive(Clone, Default)]
+pub struct ChainOutputs {
+    pub mrm_state: MrmState,
+    pub mrm_hazard: HazardLightsCommand,
+    pub mrm_gear: GearCommand,
+    pub gate_control: Control,
+    pub gate_gear: GearCommand,
+    pub gate_turn: TurnIndicatorsCommand,
+    pub op_mode_state: OperationModeState,
+    pub auto_gear: u8,
+    pub is_emergency: bool,
+    pub is_stopped: bool,
+    pub estop_operating: bool,
+    pub comfy_operating: bool,
+    pub autonomous_engaged: bool,
+    pub current_velocity: f64,
+}
+
+impl SafetyIsland {
+    /// Run one 30 Hz pass of the safety chain: controller (gated) →
+    /// staleness guard → watchdog → MRM handler → stop operators → command
+    /// gate → validator → operation-mode manager. Pure state transition —
+    /// publishing happens from the returned snapshot at the caller.
+    pub fn chain_tick(&mut self, now: u64) -> ChainOutputs {
+        let island = self;
+        // ── Trajectory follower (gated) ─────────────────────────
+        #[cfg(feature = "controller-node")]
+        if !island.has_external_control {
+            island.run_controller(now as f64 / 1000.0);
+        }
+
+        // ── Staleness guard ─────────────────────────────────────
+        let auto_control_timestamp_ms = if island.has_external_control {
+            let age_ms = now.saturating_sub(island.last_external_control_ms);
+            if age_ms > EXTERNAL_CONTROL_STALE_MS {
+                island.auto_control.longitudinal.velocity = island.current_velocity as f32;
+                island.auto_control.longitudinal.acceleration = -1.5;
+            }
+            island.last_external_control_ms
+        } else {
+            now
+        };
+
+        // ── MRM chain ──────────────────────────────────────────
+        let watchdog_update = island.watchdog.check(now);
+
+        island.mrm_handler.update_velocity(island.current_velocity);
+        if let Some(ref availability) = watchdog_update {
+            island.mrm_handler.update_availability(availability);
+        }
+
+        let mrm_output = island.mrm_handler.update();
+
+        if let Some(activate) = mrm_output.emergency_stop_operate {
+            if activate {
+                island
+                    .emergency_stop
+                    .set_initial_velocity(island.current_velocity as f32);
+            }
+            island.emergency_stop.operate(activate);
+        }
+        if let Some(activate) = mrm_output.comfortable_stop_operate {
+            if activate {
+                island
+                    .comfortable_stop
+                    .set_initial_velocity(island.current_velocity as f32);
+            }
+            island.comfortable_stop.operate(activate);
+        }
+
+        let emergency_control = island.emergency_stop.update(DT);
+        let comfortable_control = island.comfortable_stop.update(DT);
+
+        let mrm_control = if island.emergency_stop.is_operating() {
+            emergency_control
+        } else if island.comfortable_stop.is_operating() {
+            comfortable_control
+        } else {
+            Control::default()
+        };
+
+        // ── Command output ─────────────────────────────────────
+        island.cmd_gate.set_system_emergency(
+            island.mrm_handler.state() == MRM_STATE_OPERATING || island.external_emergency_stop,
+        );
+        island
+            .cmd_gate
+            .set_current_speed(island.current_velocity as f32);
+        island.cmd_gate.set_engaged(island.autonomous_engaged);
+
+        let auto_gear = island.shift_decider.decide(
+            &island.autoware_state,
+            &island.auto_control,
+            &island.gear_report,
+        );
+        island.cmd_gate.set_autonomous_commands(
+            SourceCommands {
+                control: island.auto_control.clone(),
+                gear: GearCommand {
+                    command: auto_gear,
+                    ..Default::default()
+                },
+                turn_indicators: TurnIndicatorsCommand::default(),
+                hazard_lights: HazardLightsCommand::default(),
+            },
+            auto_control_timestamp_ms,
+        );
+
+        island.cmd_gate.set_emergency_commands(SourceCommands {
+            control: mrm_control,
+            gear: mrm_output.gear.clone(),
+            turn_indicators: TurnIndicatorsCommand::default(),
+            hazard_lights: mrm_output.hazard_lights.clone(),
+        });
+
+        let gate_output = island.cmd_gate.update(now);
+
+        // ── Validation ─────────────────────────────────────────
+        let target_vel = gate_output.control.longitudinal.velocity as f64;
+        island.control_validator.validate(
+            &gate_output.control,
+            island.current_velocity,
+            island.accel.linear.x,
+            target_vel,
+            0.0,
+            DT as f64,
+        );
+
+        island.op_mode_mgr.update_velocity(island.current_velocity);
+        island.op_mode_mgr.update_control_cmd(&gate_output.control);
+        island.op_mode_mgr.update(DT as f64);
+
+        if island.control_validator.status().invalid_count >= VALIDATION_FAILURE_THRESHOLD {
+            island
+                .mrm_handler
+                .update_availability(&OperationModeAvailability::default());
+        }
+        let current_mode = if island.autonomous_engaged {
+            OP_MODE_AUTONOMOUS
+        } else {
+            OP_MODE_STOP
+        };
+        let op_mode_state = OperationModeState {
+            stamp: Default::default(),
+            mode: current_mode,
+            is_autoware_control_enabled: island.autonomous_engaged,
+            is_in_transition: false,
+            is_stop_mode_available: true,
+            is_autonomous_mode_available: true,
+            is_local_mode_available: true,
+            is_remote_mode_available: true,
+        };
+        let is_emergency =
+            island.mrm_handler.state() == MRM_STATE_OPERATING || island.external_emergency_stop;
+
+        ChainOutputs {
+            mrm_state: mrm_output.mrm_state.clone(),
+            mrm_hazard: mrm_output.hazard_lights.clone(),
+            mrm_gear: mrm_output.gear.clone(),
+            gate_control: gate_output.control.clone(),
+            gate_gear: gate_output.gear.clone(),
+            gate_turn: gate_output.turn_indicators.clone(),
+            op_mode_state,
+            auto_gear,
+            is_emergency,
+            is_stopped: island.is_stopped,
+            estop_operating: island.emergency_stop.is_operating(),
+            comfy_operating: island.comfortable_stop.is_operating(),
+            autonomous_engaged: island.autonomous_engaged,
+            current_velocity: island.current_velocity,
+        }
+    }
+}
 
 // ============================================================================
 // Public entry point
@@ -1217,154 +1406,23 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
     executor.register_timer(TimerDuration::from_millis(33), move || {
         with_island(|island| {
             let now = now_ms_timer();
-
-            // ── Trajectory follower (gated) ─────────────────────────
-            #[cfg(feature = "controller-node")]
-            if !island.has_external_control {
-                island.run_controller(now as f64 / 1000.0);
-            }
-
-            // ── Staleness guard ─────────────────────────────────────
-            let auto_control_timestamp_ms = if island.has_external_control {
-                let age_ms = now.saturating_sub(island.last_external_control_ms);
-                if age_ms > EXTERNAL_CONTROL_STALE_MS {
-                    island.auto_control.longitudinal.velocity = island.current_velocity as f32;
-                    island.auto_control.longitudinal.acceleration = -1.5;
-                }
-                island.last_external_control_ms
-            } else {
-                now
-            };
-
-            // ── MRM chain ──────────────────────────────────────────
-            let watchdog_update = island.watchdog.check(now);
-
-            island.mrm_handler.update_velocity(island.current_velocity);
-            if let Some(ref availability) = watchdog_update {
-                island.mrm_handler.update_availability(availability);
-            }
-
-            let mrm_output = island.mrm_handler.update();
-
-            if let Some(activate) = mrm_output.emergency_stop_operate {
-                if activate {
-                    island
-                        .emergency_stop
-                        .set_initial_velocity(island.current_velocity as f32);
-                }
-                island.emergency_stop.operate(activate);
-            }
-            if let Some(activate) = mrm_output.comfortable_stop_operate {
-                if activate {
-                    island
-                        .comfortable_stop
-                        .set_initial_velocity(island.current_velocity as f32);
-                }
-                island.comfortable_stop.operate(activate);
-            }
-
-            let emergency_control = island.emergency_stop.update(DT);
-            let comfortable_control = island.comfortable_stop.update(DT);
-
-            let mrm_control = if island.emergency_stop.is_operating() {
-                emergency_control
-            } else if island.comfortable_stop.is_operating() {
-                comfortable_control
-            } else {
-                Control::default()
-            };
-
-            // ── Command output ─────────────────────────────────────
-            island.cmd_gate.set_system_emergency(
-                island.mrm_handler.state() == MRM_STATE_OPERATING || island.external_emergency_stop,
-            );
-            island
-                .cmd_gate
-                .set_current_speed(island.current_velocity as f32);
-            island.cmd_gate.set_engaged(island.autonomous_engaged);
-
-            let auto_gear = island.shift_decider.decide(
-                &island.autoware_state,
-                &island.auto_control,
-                &island.gear_report,
-            );
-            island.cmd_gate.set_autonomous_commands(
-                SourceCommands {
-                    control: island.auto_control.clone(),
-                    gear: GearCommand {
-                        command: auto_gear,
-                        ..Default::default()
-                    },
-                    turn_indicators: TurnIndicatorsCommand::default(),
-                    hazard_lights: HazardLightsCommand::default(),
-                },
-                auto_control_timestamp_ms,
-            );
-
-            island.cmd_gate.set_emergency_commands(SourceCommands {
-                control: mrm_control,
-                gear: mrm_output.gear.clone(),
-                turn_indicators: TurnIndicatorsCommand::default(),
-                hazard_lights: mrm_output.hazard_lights.clone(),
-            });
-
-            let gate_output = island.cmd_gate.update(now);
-
-            // ── Validation ─────────────────────────────────────────
-            let target_vel = gate_output.control.longitudinal.velocity as f64;
-            island.control_validator.validate(
-                &gate_output.control,
-                island.current_velocity,
-                island.accel.linear.x,
-                target_vel,
-                0.0,
-                DT as f64,
-            );
-
-            island.op_mode_mgr.update_velocity(island.current_velocity);
-            island.op_mode_mgr.update_control_cmd(&gate_output.control);
-            island.op_mode_mgr.update(DT as f64);
-
-            if island.control_validator.status().invalid_count >= VALIDATION_FAILURE_THRESHOLD {
-                island
-                    .mrm_handler
-                    .update_availability(&OperationModeAvailability::default());
-            }
+            let out = island.chain_tick(now);
 
             // ── Publish ────────────────────────────────────────────
-            mrm_state_pub.publish(&mrm_output.mrm_state).ok();
-            hazard_pub.publish(&mrm_output.hazard_lights).ok();
-            gear_pub.publish(&gate_output.gear).ok();
-            control_pub.publish(&gate_output.control).ok();
-            turn_pub.publish(&gate_output.turn_indicators).ok();
+            mrm_state_pub.publish(&out.mrm_state).ok();
+            hazard_pub.publish(&out.mrm_hazard).ok();
+            gear_pub.publish(&out.gate_gear).ok();
+            control_pub.publish(&out.gate_control).ok();
+            turn_pub.publish(&out.gate_turn).ok();
 
-            let current_mode = if island.autonomous_engaged {
-                OP_MODE_AUTONOMOUS
-            } else {
-                OP_MODE_STOP
-            };
-            let op_mode_state = OperationModeState {
-                stamp: Default::default(),
-                mode: current_mode,
-                is_autoware_control_enabled: island.autonomous_engaged,
-                is_in_transition: false,
-                is_stop_mode_available: true,
-                is_autonomous_mode_available: true,
-                is_local_mode_available: true,
-                is_remote_mode_available: true,
-            };
-            op_mode_pub.publish(&op_mode_state).ok();
-
-            #[allow(unused_variables)]
-            let is_emergency =
-                island.mrm_handler.state() == MRM_STATE_OPERATING || island.external_emergency_stop;
+            op_mode_pub.publish(&out.op_mode_state).ok();
 
             #[cfg(feature = "comp-mrm")]
             {
                 mrm_estop_status_pub
                     .publish(&MrmBehaviorStatus {
                         stamp: Default::default(),
-                        state: if island.emergency_stop.is_operating() {
+                        state: if out.estop_operating {
                             MRM_BEHAVIOR_OPERATING
                         } else {
                             MRM_BEHAVIOR_AVAILABLE
@@ -1374,7 +1432,7 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
                 mrm_comfy_status_pub
                     .publish(&MrmBehaviorStatus {
                         stamp: Default::default(),
-                        state: if island.comfortable_stop.is_operating() {
+                        state: if out.comfy_operating {
                             MRM_BEHAVIOR_OPERATING
                         } else {
                             MRM_BEHAVIOR_AVAILABLE
@@ -1387,8 +1445,8 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
                         state: MRM_BEHAVIOR_AVAILABLE,
                     })
                     .ok();
-                emergency_gear_pub.publish(&mrm_output.gear).ok();
-                emergency_hazard_pub.publish(&mrm_output.hazard_lights).ok();
+                emergency_gear_pub.publish(&out.mrm_gear).ok();
+                emergency_hazard_pub.publish(&out.mrm_hazard).ok();
                 emergency_turn_pub
                     .publish(&TurnIndicatorsCommand::default())
                     .ok();
@@ -1405,7 +1463,7 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
                 emergency_cmd_pub
                     .publish(&VehicleEmergencyStamped {
                         stamp: Default::default(),
-                        emergency: is_emergency,
+                        emergency: out.is_emergency,
                     })
                     .ok();
                 gate_mode_pub
@@ -1415,19 +1473,19 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
                     .ok();
                 shift_decider_gear_pub
                     .publish(&GearCommand {
-                        command: auto_gear,
+                        command: out.auto_gear,
                         ..Default::default()
                     })
                     .ok();
                 is_stopped_pub
                     .publish(&IsStopped {
                         stamp: Default::default(),
-                        data: island.is_stopped,
+                        data: out.is_stopped,
                         requested_sources: Default::default(),
                     })
                     .ok();
-                gate_op_mode_pub.publish(&op_mode_state).ok();
-                system_op_mode_pub.publish(&op_mode_state).ok();
+                gate_op_mode_pub.publish(&out.op_mode_state).ok();
+                system_op_mode_pub.publish(&out.op_mode_state).ok();
                 is_paused_pub
                     .publish(&IsPaused {
                         stamp: Default::default(),
@@ -1492,7 +1550,7 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
                 emergency_api_pub
                     .publish(&Emergency {
                         stamp: Default::default(),
-                        emergency: is_emergency,
+                        emergency: out.is_emergency,
                     })
                     .ok();
             }

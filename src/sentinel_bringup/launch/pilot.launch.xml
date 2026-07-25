@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+  Phase 14.4b pilot — single-node launch proving the declarative pipeline
+  (launch → SystemModel → nros::main! → wrapper register) end-to-end before
+  the full 12-node wrapper set lands. Resolve with:
+
+    play_launch resolve src/sentinel_bringup/launch/pilot.launch.xml \
+      -o src/sentinel_bringup/config/pilot_model.yaml
+-->
+<launch>
+  <node pkg="sentinel_velocity_converter_node" exec="velocity_converter" name="vehicle_velocity_converter" namespace="/sensing">
+    <param name="velocity_converter.speed_scale_factor" value="1.0"/>
+    <param name="velocity_converter.stddev_vx" value="0.2"/>
+    <param name="velocity_converter.stddev_wz" value="0.1"/>
+    <param name="stop_filter.vx_threshold" value="0.1"/>
+    <param name="stop_filter.wz_threshold" value="0.02"/>
+    <param name="twist2accel.accel_lowpass_gain" value="0.9"/>
+  </node>
+</launch>

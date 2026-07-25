@@ -93,6 +93,29 @@ Tasks:
     instead of a hang. Freertos target ships the core baseline (boots +
     spins, proven under QEMU); comp-all blocked on upstream diagnosis
     (needs zenoh-pico debug logging, hardcoded off in nros-zpico-build).
+  - Wall #2 (2026-07-25, orin-spe, worked around): `nros-rmw-zenoh` deps
+    `zpico-sys` with DEFAULT features, so cargo feature-unification drags
+    the `platform-aliases` TU into the SPE staticlib even though
+    zpico-sys's `orin-spe` feature documents it OFF (the SPE system.c
+    implements the `_z_*` surface natively) — double-defines
+    `z_time_elapsed_ms/_s` + `_z_get_time_since_epoch` at the spe.elf
+    link. Worked around in `build-spe-firmware` (ar-strip the alias TU);
+    upstream fix: `zpico-sys = { default-features = false, ... }` per
+    platform feature in nros-rmw-zenoh.
+  - Wall #3 (2026-07-25, orin-spe, OPEN — SIZE): the default SPE build
+    (Executor::open + spin, no SafetyIsland) now overflows the 256 KB
+    BTCM by 164 KB (.data section named), where the d9af52be pin fit
+    with 31 KB headroom — the new pin costs ~+195 KB. Staticlib pre-gc
+    totals: text 464 KB / bss 158 KB (compiler_builtins alone 118 KB
+    text). Same knobs applied as the 11.3.C campaign (slot rightsizing,
+    NROS_EXECUTOR_MAX_CBS=8). Needs an 11.3.C-style size audit round on
+    the new pin, or the 11.3.E DRAM/AST mapping. Consumer-side fixes
+    that got the link this far: build.rs compiling the
+    nros-platform-freertos C port against FSP headers (the old
+    nros-platform-orin-spe crate that did this was retired upstream),
+    `nros_rmw_zenoh::register()` in the firmware entry, and a newlib
+    `clock_gettime` shim in nros-app.c (zpico.c's session-seed path
+    calls it; newlib has no syscall backend).
   - Fixed en route (freertos, consumer-side): board C `Reset_Handler` now
     calls `main` not `_start`; config schema flipped to direct-mode
     `[[transport]]`/`[node]` (legacy `[network]`/`[zenoh]`/`[scheduling]`
@@ -102,8 +125,10 @@ Tasks:
     FREERTOS_CONFIG_DIR/NROS_PLATFORM_FREERTOS_SRC/NROS_PLATFORM_CFFI_
     INCLUDE/NROS_LAN9118_LWIP_DIR` baked in `.cargo/config.toml [env]`.
 
-- [ ] SPE size checkpoint (blocked: FSP BSP not staged on this machine;
-      download in progress): rebuild `spe.bin` on the new pin, record
+- [x] SPE size checkpoint: **default build no longer fits BTCM** — see
+      wall #3 (overflow 164 KB vs 31 KB headroom on the old pin). spe.bin
+      link blocked until a size round or 11.3.E lands; staticlib +
+      firmware sources fully build on the new pin.: rebuild `spe.bin` on the new pin, record
       text+data+bss against the 224 KB / 31 KB-headroom baseline in the
       11.3.C ledger before any multi-node machinery lands.
 

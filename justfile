@@ -359,7 +359,18 @@ build-spe-firmware: orin_spe-bsp-stage
         done
     done < /tmp/fsp_objs.list
     rm -f /tmp/fsp_objs.list
-    echo "==> built: $OUT ($(du -h "$OUT" | cut -f1)); stripped $cnt FSP/newlib duplicates"
+    # Phase 14.1 wall #2: nros-rmw-zenoh deps zpico-sys with DEFAULT
+    # features, so cargo feature-unification drags the `platform-aliases`
+    # TU in even though zpico-sys's `orin-spe` feature documents it OFF
+    # (the SPE's own system.c implements the _z_* surface natively via the
+    # FSP FreeRTOS API). The alias TU double-defines z_time_elapsed_ms/_s
+    # + _z_get_time_since_epoch at the spe.elf link — drop it from the
+    # archive; every symbol it forwards exists in the orin-spe system.c.
+    for obj in $("$AR" t "$OUT" | grep "platform_aliases.o" || true); do
+        "$AR" d "$OUT" "$obj"
+        cnt=$((cnt + 1))
+    done
+    echo "==> built: $OUT ($(du -h "$OUT" | cut -f1)); stripped $cnt FSP/newlib/alias duplicates"
 
 # End-to-end image build: cargo staticlib → patch BSP → upstream Make
 # → spe.bin staged into build/. Phase 11.5.d.

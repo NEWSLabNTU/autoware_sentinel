@@ -89,6 +89,10 @@ pub extern "C" fn nros_app_rust_entry() {
         // which collectively cost ~2.5 KB BTCM.
         println!("Autoware Sentinel - Safety Island (Orin SPE)");
 
+        // Phase 14.1: the zenoh RMW backend must be registered before the
+        // executor opens (registration moved out of nros core upstream).
+        nros_rmw_zenoh::register().map_err(|_| NodeError::BackendMismatch)?;
+
         let exec_config = ExecutorConfig::new(config.zenoh_locator)
             .domain_id(config.domain_id)
             .node_name("sentinel");

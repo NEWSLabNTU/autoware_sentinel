@@ -146,3 +146,7 @@ tier4_system_msgs = { path = "../../generated/tier4_system_msgs" }
 tier4_vehicle_msgs = { path = "../../generated/tier4_vehicle_msgs" }
 unique_identifier_msgs = { path = "../../generated/unique_identifier_msgs" }
 visualization_msgs = { path = "../../generated/visualization_msgs" }
+
+[build-dependencies]
+# Phase 14.1: compiles nros-platform-freertos C port (see build.rs).
+cc = "1"

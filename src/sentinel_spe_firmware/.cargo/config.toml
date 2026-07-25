@@ -44,3 +44,8 @@ rustflags = [
     "-Z", "unstable-options",
     "-C", "panic=immediate-abort",
 ]
+
+[env]
+# ARM toolchain gcc for the cc crate (platform C port compile). Path is
+# the orin_spe-bsp-stage default; override with CC_armv7r_none_eabi.
+CC_armv7r_none_eabi = { value = "../../scripts/spe/downloads/arm-gnu-toolchain-13.2.rel1/bin/arm-none-eabi-gcc", relative = true }

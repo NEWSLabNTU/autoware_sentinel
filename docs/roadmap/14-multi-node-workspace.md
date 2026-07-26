@@ -371,11 +371,21 @@ registration and the executor-open path all execute. Two knobs it
 needed vs the single-node examples: `CONFIG_COMMON_LIBC_MALLOC_ARENA_
 SIZE=8 MiB` (the Rust global allocator wraps picolibc malloc; the
 10-node executor arena asked for 1.16 MB against a 1 MiB arena) and a
-1 MiB kernel heap. **Blocked on privileges for the last step:**
-native_sim networking needs the `zeth` TAP interface, created by
-Zephyr's `net-setup.sh` as root (`Cannot create zeth (0)` →
-`Transport(ConnectionFailed)`), so no session/graph proof yet. Same
-class as the un-killable zombie: needs sudo, not code.
+1 MiB kernel heap. Networking needs NO root: the nano-ros examples run native_sim on
+**NSOS** (native offloaded sockets — `CONFIG_NET_DRIVERS=y` +
+`CONFIG_NET_SOCKETS_OFFLOAD=y` + `CONFIG_NET_NATIVE_OFFLOADED_SOCKETS=y`),
+which hands zenoh-pico the HOST's BSD sockets instead of the zeth TAP
+`net-setup.sh` must create as root. With those rows plus
+`CONFIG_NROS_ZENOH_LOCATOR="tcp/127.0.0.1:7447"` (Kconfig → the
+nros-zephyr-build `NROS_LOCATOR` bake) the guest logs
+`Network ready (NSOS — host kernel sockets)` and the executor opens —
+the earlier `Transport(ConnectionFailed)` is gone.
+
+**Current Zephyr state:** boots, net-ready, session opens, then the
+guest goes SILENT — no registration marker, no error, no host-visible
+graph. Next step is instrumenting the register pass (the 10-node graph
+is ~3× the largest in-tree Zephyr example; suspect a resource cap that
+fails quietly rather than a privilege issue).
 
 **SPE: still blocked (nano-ros 0271).** The MINIMAL image (executor +
 spin, no nodes) already overflows the 256 KB BTCM by 164 KB on the

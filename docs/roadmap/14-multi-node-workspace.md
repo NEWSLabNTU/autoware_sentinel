@@ -391,15 +391,27 @@ error. Bisection: 1 node OK → gate-only hung → gate-only OK after
 raising the caps to 56/32/32/160. That fix is in
 `src/zephyr_entry/prj-zenoh.conf`.
 
-**Residual (open):** with the full 10-node model exactly ONE declare
-fails — `z_declare_publisher: -1` for the gate's
-`is_filter_activated/marker` MarkerArray publisher (~38 pubs total,
-well under the 56 cap; raising the kernel heap to 8 MiB, the picolibc
-arena to 8 MiB, and `NROS_BATCH_UNICAST_SIZE`/`FRAG_MAX_SIZE` did not
-move it). The failure is inside zenoh-pico's own declare path, not the
-shim's slot table. Next probes: whether the same topic declares fine in
-isolation (name/type-specific vs position-in-sequence), and
-zenoh-pico's session-side declaration limits.
+**Residual FIXED (2026-07-26): the pthread mutex pool.** Bisection
+showed the failure was POSITIONAL, not topic-specific: the 8-node
+subset died on `mrm_handler`'s `turn_indicators_cmd` and the 10-node
+model on the gate's `is_filter_activated/marker` — both the **28th**
+publisher declare. `CONFIG_MAX_PTHREAD_MUTEX_COUNT=32` (inherited from
+the copied example conf) minus the session/task mutexes leaves ~27;
+each declared entity takes one, and zenoh-pico surfaced the exhaustion
+as a bare `z_declare_publisher: -1`. Same class as nano-ros's upstream
+wall #9 (cyclone on Zephyr). Raised to 256 (+128 conds): **all 10 nodes
+register** — `zephyr workspace entry up (10 nodes)`.
+
+**Still dark: the host-side ROS graph.** With all 10 nodes registered
+the guest is up, but `ros2 node list` / `topic list` from the host see
+nothing and the router logs no liveliness traffic. Note the shim
+deliberately disables liveliness on FreeRTOS
+(`should_declare_liveliness()` → `!cfg!(feature = "platform-freertos")`,
+which also explains that lane's invisibility as BY DESIGN), while
+Zephyr should declare. Next probes: confirm `Z_FEATURE_LIVELINESS` is
+actually on in the Zephyr zenoh-pico build (the header writes it
+unconditionally in `nros-zpico-build`, so verify it survives the Kconfig
+path), and instrument `declare_entity_liveliness` on the Zephyr lane.
 
 **SPE: still blocked (nano-ros 0271).** The MINIMAL image (executor +
 spin, no nodes) already overflows the 256 KB BTCM by 164 KB on the

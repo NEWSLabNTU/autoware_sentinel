@@ -381,11 +381,25 @@ nros-zephyr-build `NROS_LOCATOR` bake) the guest logs
 `Network ready (NSOS — host kernel sockets)` and the executor opens —
 the earlier `Transport(ConnectionFailed)` is gone.
 
-**Current Zephyr state:** boots, net-ready, session opens, then the
-guest goes SILENT — no registration marker, no error, no host-visible
-graph. Next step is instrumenting the register pass (the 10-node graph
-is ~3× the largest in-tree Zephyr example; suspect a resource cap that
-fails quietly rather than a privilege issue).
+**Zephyr gap, root-caused (2026-07-26):** the silent hang was
+**zenoh shim slot exhaustion**. On Zephyr those caps come from Kconfig
+(`CONFIG_NROS_MAX_PUBLISHERS` / `_SUBSCRIBERS` / `_QUERYABLES` /
+`_LIVELINESS`), NOT the `ZPICO_*` build envs the freertos/nuttx lanes
+use — and the defaults are 8/8/8/16 while the vehicle_cmd_gate node
+ALONE declares 17 publishers. Overflow hung the register pass with no
+error. Bisection: 1 node OK → gate-only hung → gate-only OK after
+raising the caps to 56/32/32/160. That fix is in
+`src/zephyr_entry/prj-zenoh.conf`.
+
+**Residual (open):** with the full 10-node model exactly ONE declare
+fails — `z_declare_publisher: -1` for the gate's
+`is_filter_activated/marker` MarkerArray publisher (~38 pubs total,
+well under the 56 cap; raising the kernel heap to 8 MiB, the picolibc
+arena to 8 MiB, and `NROS_BATCH_UNICAST_SIZE`/`FRAG_MAX_SIZE` did not
+move it). The failure is inside zenoh-pico's own declare path, not the
+shim's slot table. Next probes: whether the same topic declares fine in
+isolation (name/type-specific vs position-in-sequence), and
+zenoh-pico's session-side declaration limits.
 
 **SPE: still blocked (nano-ros 0271).** The MINIMAL image (executor +
 spin, no nodes) already overflows the 256 KB BTCM by 164 KB on the

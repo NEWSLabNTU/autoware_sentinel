@@ -29,6 +29,10 @@ path = "src/lib.rs"
 
 # Integration tests
 [[test]]
+name = "preflight_gate"
+path = "tests/preflight_gate.rs"
+
+[[test]]
 name = "bringup_consistency"
 path = "tests/bringup_consistency.rs"
 

@@ -679,8 +679,35 @@ cross-check:
     # Core with controller-node (Linux dev profile, but checked for thumb).
     cargo check -p autoware_sentinel_core --no-default-features --features platform-zephyr,controller-node --target thumbv7em-none-eabihf
 
-# CI: format-check, cross-check, and test
-ci: format-check cross-check test
+# Phase 15.5 — prerequisite gate. Runs first in CI: two seconds to learn a
+# missing artifact, versus ten minutes of integration runs that silently
+# skip (phase 14 shipped a suite that "passed" 14/14 while running nothing).
+preflight:
+    #!/usr/bin/env bash
+    set -eo pipefail
+    source /opt/ros/humble/setup.bash >/dev/null 2>&1 || true
+    source /opt/autoware/1.5.0/local_setup.bash >/dev/null 2>&1 || true
+    source external/rmw_zenoh_ws/install/local_setup.bash 2>/dev/null || true
+    cd tests && cargo nextest run --test preflight_gate
+
+# Phase 15.4/15.5 — boot every lane and record its ROS 2 graph size. A silent
+# discovery regression shows up here as a count diff instead of as a green
+# build. Exit codes: 2 router-down, 3 guest-not-ready, 4 graph-empty.
+probe-lanes:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    rc=0
+    for lane in native freertos nuttx; do
+        echo "=== $lane"
+        if ! scripts/probe_mcu_graph.sh "$lane" 2>&1 | grep -E "^STATE|^== topics" -A1; then
+            rc=1
+        fi
+    done
+    echo "(zephyr: build with west first, then ZEPHYR_EXE=… scripts/probe_mcu_graph.sh zephyr)"
+    exit $rc
+
+# CI: preflight, format-check, cross-check, and test
+ci: preflight format-check cross-check test
 
 # Run Kani verification on all harness crates
 verify-kani:

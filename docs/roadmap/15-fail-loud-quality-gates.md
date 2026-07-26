@@ -1,6 +1,6 @@
 # Phase 15: Fail-Loud Quality Gates
 
-**Status:** 15.1 + 15.2 + 15.3 LANDED 2026-07-26; 15.4–15.5 open
+**Status:** COMPLETE 2026-07-26 (15.1–15.5)
 **Depends on:** Phase 14 (multi-node workspace migration)
 **Motivation:** Phase 14 lost more time to *silent* failures than to real
 defects. Every one of them shared a shape: a missing prerequisite or an
@@ -79,7 +79,7 @@ topology, discovered at runtime as a hang.
 - Add the MCU lanes' knobs to the assert list: zpico slots, liveliness
   tokens, per-platform stack/heap where readable.
 
-### 15.4 — One probe path for every lane
+### - [x] 15.4 — One probe path for every lane — LANDED
 
 `scripts/probe_mcu_graph.sh` (Phase 14.5) already boots a lane, waits for
 its readiness marker, and queries nodes/topics/data with the RMW pinned.
@@ -89,7 +89,7 @@ its readiness marker, and queries nodes/topics/data with the RMW pinned.
 - It must distinguish "guest never became ready", "router never listened",
   and "graph empty" — the three states we kept conflating.
 
-### 15.5 — CI wiring
+### - [x] 15.5 — CI wiring — LANDED
 
 - `just ci` gains `preflight` as its first step.
 - A nightly lane runs `probe_mcu_graph.sh` per target and records
@@ -148,6 +148,31 @@ of `wire_executor` before a single entity is created:
 Today's numbers for the full-feature Linux build: 13 nodes, 38 callbacks,
 51 publishers, 101 liveliness tokens.
 
+## What landed (15.4 + 15.5)
+
+`scripts/probe_mcu_graph.sh {native|freertos|nuttx|zephyr}` — one path for
+humans, CI and upstream bug reports. It waits for each lane's readiness
+marker, pins the RMW env, uses the lane's BAKED locator port, and settles
++ retries once before judging the graph (discovery lags the marker; the
+first sweep against a loaded router can miss everything — phase 14 read
+both as "empty"). Failure states are now distinct exit codes rather than
+one ambiguous "it didn't work": **2** router-down, **3** guest-not-ready,
+**4** graph-empty, **0** ok. Missing binaries print the build command for
+that lane.
+
+`just preflight` — the gate as a CI step (`tests/tests/preflight_gate.rs`),
+now the FIRST thing `just ci` runs: two seconds to learn about a missing
+artifact instead of ten minutes of runs that silently skip.
+
+`just probe-lanes` — boots every lane and records its graph size, so a
+silent discovery regression appears as a count diff. Today's baseline:
+
+| lane | nodes | topics |
+|------|-------|--------|
+| native | 13 | 62 |
+| freertos | 10 | 44 |
+| nuttx | 10 | 44 |
+
 ## Acceptance
 
 - [x] Removing `rmw_zenoh_cpp` makes the transport suite **fail**, naming
@@ -156,11 +181,13 @@ Today's numbers for the full-feature Linux build: 13 nodes, 38 callbacks,
       with the knob and both numbers instead of hanging. Verified:
       `capacity: NROS_EXECUTOR_MAX_CBS needs 38 but this binary compiled 4
       — set NROS_EXECUTOR_MAX_CBS=38 and REBUILD`.
-- [ ] `probe_mcu_graph.sh` covers native + freertos + nuttx + zephyr and
-      reports the three failure states distinctly.
-- [ ] No test in the repo can report success without having exercised its
-      subject: every early return is either a hard failure or an explicit,
-      counted skip.
+- [x] `probe_mcu_graph.sh` covers native + freertos + nuttx + zephyr and
+      reports the three failure states distinctly (exit 2 router-down,
+      3 guest-not-ready, 4 graph-empty, 0 ok).
+- [x] No test in the repo can report success without having exercised its
+      subject: `require_*` delegates to preflight (hard fail unless
+      `SENTINEL_ALLOW_SKIP=1`), fixtures use the strict variant, and
+      `just ci` runs the gate first.
 
 ## Non-goals
 

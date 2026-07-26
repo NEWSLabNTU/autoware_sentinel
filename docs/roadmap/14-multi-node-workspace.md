@@ -405,10 +405,13 @@ register** — `zephyr workspace entry up (10 nodes)`.
 **Still dark: the host-side ROS graph.** With all 10 nodes registered
 the guest is up, but `ros2 node list` / `topic list` from the host see
 nothing and the router logs no liveliness traffic. Note the shim
-deliberately disables liveliness on FreeRTOS
-(`should_declare_liveliness()` → `!cfg!(feature = "platform-freertos")`,
-which also explains that lane's invisibility as BY DESIGN), while
-Zephyr should declare. Next probes: confirm `Z_FEATURE_LIVELINESS` is
+disables liveliness on FreeRTOS
+(`should_declare_liveliness()` → `!cfg!(feature = "platform-freertos")`)
+— a phase-127.B workaround (`6866903ab`) for a blocking declare bug,
+which explains that lane's invisibility and is filed upstream as
+**nano-ros 0283** (re-test at HEAD; the 0269-era declare fixes may have
+removed the trigger; if not, narrow the escape hatch so hardware images
+are visible by default). Zephyr is NOT gated and should declare. Next probes: confirm `Z_FEATURE_LIVELINESS` is
 actually on in the Zephyr zenoh-pico build (the header writes it
 unconditionally in `nros-zpico-build`, so verify it survives the Kconfig
 path), and instrument `declare_entity_liveliness` on the Zephyr lane.

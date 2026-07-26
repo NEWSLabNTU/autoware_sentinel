@@ -415,14 +415,21 @@ platform with a `no-liveliness` cargo feature as the deliberate opt-out,
 and a failed `z_liveliness_declare_token` is now logged instead of
 silently dropping the graph.
 
-**Both MCU lanes still show an empty host graph** even with tokens
-declared error-free (0283 residual, distinct from the blocking bug):
-FreeRTOS declares with no error yet nothing appears, while NuttX —
-identical code path — is fully visible. Next probes recorded upstream:
-whether the tokens reach the router at all, and the FreeRTOS session's
-read/lease-task state (`Z_FEATURE_MULTI_THREAD`) versus NuttX's.
-Zephyr, never gated, is in the same "registers but invisible" bucket —
-likely the same root cause. Next probes: confirm `Z_FEATURE_LIVELINESS` is
+**Both MCU lanes are now host-visible: 10 nodes / 42 topics / live
+command data** (`scripts/probe_mcu_graph.sh {freertos,nuttx}`). The
+"invisible" readings that chased us through 14.5 were a BROKEN PROBE,
+not firmware: `external/rmw_zenoh_ws/install` symlinked into the
+sibling nano-ros checkout's build tree, which that repo's own work
+wiped — twice — so every `ros2` call answered from an absent RMW, and
+the router binary went with it. The overlay is now built in-repo
+(`scripts/build_rmw_zenoh.sh`, with `external/` excluded from the cargo
+workspace so `zenoh_cpp_vendor` stops being adopted), and the probe
+script takes its router from that same overlay (`rmw_zenohd`).
+
+Lesson worth keeping: every "silently invisible" symptom this phase —
+skip-as-pass prerequisites, empty graphs — traced back to that dangling
+overlay. Any host-side ROS check should fail loudly when the RMW is
+missing rather than return an empty list. Next probes: confirm `Z_FEATURE_LIVELINESS` is
 actually on in the Zephyr zenoh-pico build (the header writes it
 unconditionally in `nros-zpico-build`, so verify it survives the Kconfig
 path), and instrument `declare_entity_liveliness` on the Zephyr lane.

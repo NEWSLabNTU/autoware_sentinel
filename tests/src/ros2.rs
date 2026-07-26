@@ -14,7 +14,13 @@ pub const DEFAULT_ROS_DISTRO: &str = "humble";
 /// Check if ROS 2 is available
 pub fn is_ros2_available() -> bool {
     Command::new("bash")
-        .args(["-c", "source /opt/ros/humble/setup.bash && ros2 --help"])
+        // Phase 15.2 — unset RMW_IMPLEMENTATION: with a broken/absent
+        // overlay selected, EVERY ros2 invocation fails, which made the
+        // preflight report "ROS 2 missing" on a machine that has it.
+        .args([
+            "-c",
+            "unset RMW_IMPLEMENTATION; source /opt/ros/humble/setup.bash && ros2 --help",
+        ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
@@ -24,10 +30,29 @@ pub fn is_ros2_available() -> bool {
 
 /// Check if rmw_zenoh_cpp is available
 pub fn is_rmw_zenoh_available() -> bool {
+    let overlay = crate::process::project_root()
+        .join("external/rmw_zenoh_ws/install/local_setup.bash");
+    let script = format!(
+        "unset RMW_IMPLEMENTATION; source /opt/ros/humble/setup.bash && \
+         source {} 2>/dev/null; ros2 pkg list | grep -q rmw_zenoh_cpp",
+        overlay.display()
+    );
+    return Command::new("bash")
+        .args(["-c", &script])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    #[allow(unreachable_code)]
     Command::new("bash")
         .args([
             "-c",
-            "source /opt/ros/humble/setup.bash && ros2 pkg list | grep -q rmw_zenoh_cpp",
+            // The overlay is what we are testing for; source it explicitly
+            // and keep the ambient RMW selection out of the way.
+            "unset RMW_IMPLEMENTATION; source /opt/ros/humble/setup.bash && \
+             source \"$(dirname \"$0\")\"/../external/rmw_zenoh_ws/install/local_setup.bash 2>/dev/null; \
+             ros2 pkg list | grep -q rmw_zenoh_cpp",
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -41,7 +66,7 @@ pub fn is_autoware_msgs_available() -> bool {
     Command::new("bash")
         .args([
             "-c",
-            "source /opt/ros/humble/setup.bash && \
+            "unset RMW_IMPLEMENTATION; source /opt/ros/humble/setup.bash && \
              source /opt/autoware/1.5.0/local_setup.bash 2>/dev/null && \
              ros2 pkg list | grep -q autoware_vehicle_msgs",
         ])
@@ -54,19 +79,9 @@ pub fn is_autoware_msgs_available() -> bool {
 
 /// Require ROS 2 + rmw_zenoh + Autoware msgs for a test
 pub fn require_ros2_autoware() -> bool {
-    if !is_ros2_available() {
-        eprintln!("Skipping test: ROS 2 not available");
-        return false;
-    }
-    if !is_rmw_zenoh_available() {
-        eprintln!("Skipping test: rmw_zenoh_cpp not available");
-        return false;
-    }
-    if !is_autoware_msgs_available() {
-        eprintln!("Skipping test: Autoware message packages not available");
-        return false;
-    }
-    true
+    // Phase 15.1 — was: print + return false (a pass). Now the preflight
+    // gate hard-fails with remediation text unless SENTINEL_ALLOW_SKIP=1.
+    crate::preflight::transport()
 }
 
 /// Get ROS 2 + Autoware environment setup command with custom locator

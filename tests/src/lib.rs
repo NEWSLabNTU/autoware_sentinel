@@ -10,6 +10,7 @@
 
 pub mod autoware;
 pub mod fixtures;
+pub mod preflight;
 pub mod process;
 pub mod ros2;
 

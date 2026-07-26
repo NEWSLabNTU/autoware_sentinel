@@ -1,6 +1,6 @@
 # Phase 15: Fail-Loud Quality Gates
 
-**Status:** Proposed
+**Status:** 15.1 + 15.2 LANDED 2026-07-26; 15.3–15.5 open
 **Depends on:** Phase 14 (multi-node workspace migration)
 **Motivation:** Phase 14 lost more time to *silent* failures than to real
 defects. Every one of them shared a shape: a missing prerequisite or an
@@ -39,7 +39,7 @@ usually one line; the *diagnosis* was hours of bisection.
 
 ## What to build
 
-### 15.1 — Preflight: prerequisites hard-fail by default
+### - [x] 15.1 — Preflight: prerequisites hard-fail by default — LANDED
 
 The harness has four `require_*` helpers (`require_ros2_autoware`,
 `require_zenohd`, `require_autoware_map`, `require_play_launch`) that
@@ -53,7 +53,7 @@ The harness has four `require_*` helpers (`require_ros2_autoware`,
 - Report skips in the summary line, so "0 tests ran" can never read as
   green.
 
-### 15.2 — Environment integrity, not just presence
+### - [x] 15.2 — Environment integrity, not just presence — LANDED
 
 A1–A3 passed a naive "does the path exist" check for months (the symlink
 existed; its target did not).
@@ -96,9 +96,40 @@ its readiness marker, and queries nodes/topics/data with the RMW pinned.
   nodes/topics counts, so a silent regression shows up as a diff, not as
   a green build.
 
+## What landed (15.1 + 15.2)
+
+`tests/src/preflight.rs` — one gate per test class (`transport()`,
+`planning_simulator()`), each check carrying a remediation line. The old
+`require_*` helpers now delegate to it, so every call site inherited the
+behaviour. Fixtures call `transport_strict()`: a fixture cannot skip a
+test that is already running, so skipping belongs at the top of a test
+body, not here.
+
+Integrity, not presence:
+- the overlay check demands `librmw_zenoh_cpp.so` EXISTS and that
+  `ros2 pkg list` sees it — the phase-14 failure was a symlink that
+  resolved to a wiped tree;
+- `external/*` must canonicalize INSIDE the repo (the sibling-checkout
+  trap that cost three mis-diagnoses);
+- the ROS probes `unset RMW_IMPLEMENTATION` first: with a broken RMW
+  selected, every `ros2` call fails, and the gate used to report "ROS 2
+  missing" on a machine that has it;
+- router liveness is flavour-aware — classic `zenohd` answers
+  `--version`, while the overlay's `rmw_zenohd` ignores flags and starts
+  routing, so probing it that way hung and then read as "missing".
+
+The harness is now self-contained: `zenohd_binary_path()` prefers the
+in-repo overlay's `rmw_zenohd`, and `ZenohRouter` knows how to launch
+both flavours (the overlay one needs its env sourced and takes its
+endpoint from `ZENOH_CONFIG_OVERRIDE`).
+
+Verified by deliberate breakage — with the overlay hidden, the suite
+FAILS naming exactly the two missing artifacts and their fixes; with it
+present, 14/14 transport tests pass against the in-repo router.
+
 ## Acceptance
 
-- [ ] Removing `rmw_zenoh_cpp` makes the transport suite **fail**, naming
+- [x] Removing `rmw_zenoh_cpp` makes the transport suite **fail**, naming
       the fix — verified by deliberately hiding the overlay.
 - [ ] Setting `NROS_EXECUTOR_MAX_CBS=4` makes the sentinel abort at wiring
       with "needs ~50, compiled 4 (NROS_EXECUTOR_MAX_CBS)" instead of

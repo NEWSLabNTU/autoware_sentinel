@@ -60,9 +60,31 @@ impl ZenohRouter {
 
         let locator = format!("tcp/0.0.0.0:{}", port);
 
-        let mut cmd = std::process::Command::new(zenohd_binary_path());
-        cmd.args(["--listen", &locator, "--no-multicast-scouting"])
-            .stdout(std::process::Stdio::null())
+        // Phase 15.2 — two router flavours. `rmw_zenohd` (shipped by the
+        // in-repo overlay) takes no flags: endpoint + scouting ride the
+        // zenoh config env, and it needs the overlay sourced for its shared
+        // libraries. Classic `zenohd` keeps the flag form.
+        let bin = zenohd_binary_path();
+        let mut cmd = if bin.file_name().is_some_and(|n| n == "rmw_zenohd") {
+            let root = crate::process::project_root();
+            let mut c = std::process::Command::new("bash");
+            c.arg("-c").arg(format!(
+                "source /opt/ros/humble/setup.bash >/dev/null 2>&1; \
+                 source {root}/external/rmw_zenoh_ws/install/local_setup.bash; \
+                 export ZENOH_CONFIG_OVERRIDE='listen/endpoints=[\"{locator}\"];\
+scouting/multicast/enabled=false'; \
+                 unset ZENOH_SESSION_CONFIG_URI ZENOH_ROUTER_CONFIG_URI; \
+                 exec {bin}",
+                root = root.display(),
+                bin = bin.display(),
+            ));
+            c
+        } else {
+            let mut c = std::process::Command::new(&bin);
+            c.args(["--listen", &locator, "--no-multicast-scouting"]);
+            c
+        };
+        cmd.stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null());
         #[cfg(unix)]
         crate::process::set_new_process_group(&mut cmd);
@@ -100,8 +122,13 @@ impl Drop for ZenohRouter {
 }
 
 /// rstest fixture for zenohd on an OS-assigned ephemeral port.
+///
+/// Phase 15.1 — runs the preflight gate FIRST. Before this, a missing
+/// prerequisite surfaced here as an opaque `ProcessStart(NotFound)` (or,
+/// worse, as a suite that passed without running anything).
 #[rstest::fixture]
 pub fn zenohd_unique() -> ZenohRouter {
+    crate::preflight::transport_strict();
     ZenohRouter::start_unique().expect("Failed to start zenohd")
 }
 

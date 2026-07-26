@@ -371,6 +371,14 @@ pub fn zenohd_binary_path() -> std::path::PathBuf {
     if local.exists() {
         return local;
     }
+    // Phase 15.2 — the rmw_zenoh overlay ships a router; prefer it over any
+    // sibling checkout's build tree (those get wiped by that repo's work,
+    // which is exactly how phase 14 lost the router mid-session).
+    let overlay = project_root()
+        .join("external/rmw_zenoh_ws/install/rmw_zenoh_cpp/lib/rmw_zenoh_cpp/rmw_zenohd");
+    if overlay.exists() {
+        return overlay;
+    }
     if let Some(home) = std::env::home_dir() {
         let nano_ros = home.join("repos/nano-ros/build/zenohd/zenohd");
         if nano_ros.exists() {
@@ -380,17 +388,42 @@ pub fn zenohd_binary_path() -> std::path::PathBuf {
     local
 }
 
-/// Check if the locally-built zenohd is available.
+/// Is a usable router binary present?
+///
+/// Phase 15.2 — two router flavours, two liveness probes. Classic `zenohd`
+/// answers `--version`; the rmw_zenoh overlay's `rmw_zenohd` ignores flags
+/// and starts routing immediately, so probing it with `--version` hangs (and
+/// then reads as "missing"). For that one, prove the file is executable and
+/// its shared libraries resolve — the failure mode we actually hit was a
+/// dangling symlink / wiped tree, which `ldd` catches.
 pub fn is_zenohd_available() -> bool {
     let path = zenohd_binary_path();
-    path.exists()
-        && Command::new(&path)
-            .arg("--version")
+    if !path.exists() {
+        return false;
+    }
+    if path.file_name().is_some_and(|n| n == "rmw_zenohd") {
+        return Command::new("bash")
+            .arg("-c")
+            .arg(format!(
+                "source /opt/ros/humble/setup.bash >/dev/null 2>&1; \
+                 source {}/external/rmw_zenoh_ws/install/local_setup.bash 2>/dev/null; \
+                 ldd {} 2>/dev/null | grep -qv 'not found'",
+                project_root().display(),
+                path.display()
+            ))
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()
             .map(|s| s.success())
-            .unwrap_or(false)
+            .unwrap_or(false);
+    }
+    Command::new(&path)
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 /// Skip test if zenohd is not available.

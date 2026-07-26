@@ -166,19 +166,10 @@ pub const LOCALIZATION_TOPICS: &[&str] = &["/tf", "/localization/kinematic_state
 ///
 /// Returns false (and prints skip message) if any prerequisite is missing.
 pub fn require_planning_simulator_prerequisites() -> bool {
-    if !require_play_launch() {
-        return false;
-    }
-    if !require_autoware_map() {
-        return false;
-    }
-    if !crate::ros2::require_ros2_autoware() {
-        return false;
-    }
-    if !crate::process::require_zenohd() {
-        return false;
-    }
-    true
+    // Phase 15.1 — hard-fails with remediation text unless
+    // SENTINEL_ALLOW_SKIP=1. The old body returned false on every missing
+    // prerequisite, which read as a pass.
+    crate::preflight::planning_simulator()
 }
 
 /// Check if a file looks like a valid play_launch record.json.

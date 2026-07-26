@@ -407,11 +407,22 @@ the guest is up, but `ros2 node list` / `topic list` from the host see
 nothing and the router logs no liveliness traffic. Note the shim
 disables liveliness on FreeRTOS
 (`should_declare_liveliness()` → `!cfg!(feature = "platform-freertos")`)
-— a phase-127.B workaround (`6866903ab`) for a blocking declare bug,
-which explains that lane's invisibility and is filed upstream as
-**nano-ros 0283** (re-test at HEAD; the 0269-era declare fixes may have
-removed the trigger; if not, narrow the escape hatch so hardware images
-are visible by default). Zephyr is NOT gated and should declare. Next probes: confirm `Z_FEATURE_LIVELINESS` is
+— was a phase-127.B workaround (`6866903ab`) for a blocking declare bug.
+**Fixed upstream (nano-ros 0283, `88512340f`)**: re-tested at HEAD with
+this repo's 10-node MPS2 image — no hang with a zenohd peer connected,
+so the platform cfg is gone; liveliness is ON by default on every
+platform with a `no-liveliness` cargo feature as the deliberate opt-out,
+and a failed `z_liveliness_declare_token` is now logged instead of
+silently dropping the graph.
+
+**Both MCU lanes still show an empty host graph** even with tokens
+declared error-free (0283 residual, distinct from the blocking bug):
+FreeRTOS declares with no error yet nothing appears, while NuttX —
+identical code path — is fully visible. Next probes recorded upstream:
+whether the tokens reach the router at all, and the FreeRTOS session's
+read/lease-task state (`Z_FEATURE_MULTI_THREAD`) versus NuttX's.
+Zephyr, never gated, is in the same "registers but invisible" bucket —
+likely the same root cause. Next probes: confirm `Z_FEATURE_LIVELINESS` is
 actually on in the Zephyr zenoh-pico build (the header writes it
 unconditionally in `nros-zpico-build`, so verify it survives the Kconfig
 path), and instrument `declare_entity_liveliness` on the Zephyr lane.

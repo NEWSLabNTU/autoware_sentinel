@@ -436,8 +436,20 @@ fn test_sentinel_replaces_autoware_nodes(
     // service replies are occasionally dropped (the known zenohd interest-
     // propagation weakness under many sessions — see the drive-latency
     // research doc). Isolated calls succeed on the first try.
+    // Wait for the service to be discoverable before spending attempts on
+    // it (phase 15: under load it disappears from discovery for tens of
+    // seconds at a time).
+    match ros2::wait_for_service(
+        "/api/operation_mode/change_to_autonomous",
+        &zenoh_env,
+        Duration::from_secs(60),
+    ) {
+        Ok(()) => eprintln!("engage service discoverable"),
+        Err(e) => eprintln!("WARNING: {e}"),
+    }
+
     let mut engaged = false;
-    for attempt in 1..=3 {
+    for attempt in 1..=5 {
         match ros2::service_call(
             "/api/operation_mode/change_to_autonomous",
             "autoware_adapi_v1_msgs/srv/ChangeOperationMode",
@@ -451,6 +463,13 @@ fn test_sentinel_replaces_autoware_nodes(
             }
             Err(e) => eprintln!("WARNING: engage attempt {attempt} failed: {e}"),
         }
+        // Re-wait rather than hammering: discovery, not the service, is what
+        // is flapping.
+        let _ = ros2::wait_for_service(
+            "/api/operation_mode/change_to_autonomous",
+            &zenoh_env,
+            Duration::from_secs(30),
+        );
         std::thread::sleep(Duration::from_secs(5));
     }
     if !engaged {

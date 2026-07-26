@@ -19,17 +19,25 @@ max-threads = 1
 [[profile.default.overrides]]
 filter = "binary(transport_smoke)"
 test-group = "transport-smoke"
-slow-timeout = { period = "60s", terminate-after = 2 }
+# 60s x 3: under contention individual flows reached ~120 s.
+slow-timeout = { period = "60s", terminate-after = 3 }
 
 # Planning simulator tests: very heavyweight (Autoware + sentinel + ROS 2),
 # run sequentially with longer timeouts.
 [test-groups.planning-simulator]
 max-threads = 1
 
+# Phase 14/15 — these boot a FULL Autoware (~150 processes) twice over and
+# drive a route. Measured on a contended box (a second Autoware session
+# live): baseline drive 135 s, sentinel-replacement 335 s. The old
+# 120s x 2 = 240 s kill was BELOW the observed pass time — a latent flake
+# that would have read as a sentinel regression. Domain isolation
+# (ros2::TEST_DDS_DOMAIN) keeps the runs from colliding; this gives them
+# room to be slow.
 [[profile.default.overrides]]
 filter = "binary(planning_simulator)"
 test-group = "planning-simulator"
-slow-timeout = { period = "120s", terminate-after = 2 }
+slow-timeout = { period = "180s", terminate-after = 4 }
 
 # Controller node tests: heavyweight (zenohd + sentinel + multiple ROS 2 pubs),
 # run sequentially to avoid resource contention.

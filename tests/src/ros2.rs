@@ -369,6 +369,42 @@ pub fn check_topic_active(topic: &str, env_setup: &str) -> TestResult<bool> {
 ///
 /// Polls `ros2 topic info` for each topic until all are active or timeout.
 /// `env_setup` is the shell environment setup string.
+/// Wait until a service NAME appears in `ros2 service list`.
+///
+/// Phase 15 — under a loaded zenohd (100+ sessions from a full Autoware),
+/// a service that was discoverable a moment ago can drop out of discovery
+/// entirely: the drive gate saw `change_to_autonomous` answer once, then
+/// report "waiting for service to become available" on both retries. Blind
+/// retry loops just burn the budget; wait for the name to come BACK, then
+/// call.
+pub fn wait_for_service(
+    service: &str,
+    env_setup: &str,
+    timeout: std::time::Duration,
+) -> TestResult<()> {
+    let start = std::time::Instant::now();
+    loop {
+        let out = Command::new("bash")
+            .args([
+                "-c",
+                &format!("{env_setup} && timeout 15 ros2 service list --no-daemon"),
+            ])
+            .output();
+        if let Ok(o) = out
+            && String::from_utf8_lossy(&o.stdout).lines().any(|l| l.trim() == service)
+        {
+            return Ok(());
+        }
+        if start.elapsed() > timeout {
+            return Err(TestError::ProcessFailed(format!(
+                "service {service} never appeared in discovery within {:?}",
+                timeout
+            )));
+        }
+        std::thread::sleep(std::time::Duration::from_secs(3));
+    }
+}
+
 pub fn wait_for_topics(
     topics: &[&str],
     env_setup: &str,

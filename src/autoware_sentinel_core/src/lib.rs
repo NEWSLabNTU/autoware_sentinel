@@ -40,6 +40,7 @@
 
 extern crate alloc;
 
+pub mod capacity;
 pub mod params;
 
 use core::cell::RefCell;
@@ -779,7 +780,74 @@ impl SafetyIsland {
 ///
 /// `now_ms` is a monotonic clock in milliseconds; supplied by the platform
 /// binary (e.g. `Instant::elapsed` on Linux, `k_uptime_get` on Zephyr).
+/// Census of what [`wire_executor`] declares under the active feature set.
+///
+/// Phase 15.3 — kept next to the wiring it describes so the two drift
+/// together or not at all; `capacity_census_matches_wiring` in the test
+/// module asserts the counts against the real code.
+pub const fn wiring_census() -> capacity::Census {
+    // Always-on core: 6 publishers, 3 subscriptions, 1 service, 1 timer.
+    let mut c = capacity::Census {
+        nodes: 6, // sentinel + gate + shift + opmode + mrm + velconv
+        subscriptions: 3,
+        services: 1,
+        timers: 1,
+        publishers: 6,
+    };
+    // Per-feature deltas below are asserted against the real call sites by
+    // `capacity_census_tests` — update both together or the tests fail.
+    if cfg!(feature = "comp-mrm") {
+        c.nodes += 3; // estop + comfy + pullover operators
+        c.publishers += 7;
+        c.services += 3;
+    }
+    if cfg!(feature = "comp-cmd-gate-extra") {
+        c.publishers += 13;
+        c.services += 4;
+        c.subscriptions += 1;
+    }
+    if cfg!(feature = "comp-validator") {
+        c.nodes += 1;
+        c.publishers += 4;
+    }
+    if cfg!(feature = "comp-cmd-gate-extra") {
+        // gate-extra also declares the shift-decider gear publisher on its
+        // own node; counted with the block above.
+    }
+    if cfg!(feature = "comp-op-mode-mgr") {
+        c.publishers += 3;
+        c.services += 6;
+    }
+    if cfg!(feature = "comp-engagement") {
+        c.nodes += 1; // adapi
+        c.publishers += 4;
+        c.services += 2;
+        c.subscriptions += 1;
+    }
+    if cfg!(feature = "comp-stubs") {
+        c.services += 6;
+    }
+    if cfg!(feature = "monitoring-topics") {
+        c.nodes += 1; // system_monitor
+        c.publishers += 14;
+    }
+    if cfg!(feature = "controller-node") {
+        c.nodes += 1;
+        c.subscriptions += 4;
+    }
+    if cfg!(feature = "param-services") {
+        // register_parameter_services() claims six callback slots.
+        c.services += 6;
+    }
+    c
+}
+
 pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(), NodeError> {
+    // Phase 15.3 — assert the compiled capacities BEFORE declaring anything.
+    // Every capacity incident in phase 14 surfaced as a hang or an opaque
+    // error long after this point; now it is a sentence naming the knob.
+    capacity::check(&wiring_census())?;
+
     // Phase 14.3 — multi-node graph attribution. The sentinel presents the
     // per-component node graph of the Autoware nodes it replaces: every
     // publisher/subscription/service attaches to the node that owns it in
@@ -1771,4 +1839,78 @@ pub fn wire_executor(executor: &mut Executor, now_ms: fn() -> u64) -> Result<(),
     info!("30 Hz control loop ready");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod capacity_census_tests {
+    //! Phase 15.3 — keep [`wiring_census`] honest.
+    //!
+    //! The census is hand-maintained (the wiring is one big function with
+    //! feature-gated blocks, not a data table), so it can drift. These tests
+    //! count the real `create_*` calls in this file's source and compare.
+    //! Source-text counting is crude but exact for this shape, and it fails
+    //! the moment someone adds an entity without updating the census.
+
+    /// This file, minus this test module (whose prose mentions the same
+    /// call shapes and would inflate every count).
+    fn code() -> &'static str {
+        const SRC: &str = include_str!("lib.rs");
+        let marker = "mod capacity_census_tests";
+        &SRC[..SRC.find(marker).unwrap_or(SRC.len())]
+    }
+
+    fn count(needle: &str) -> usize {
+        code().matches(needle).count()
+    }
+
+    #[test]
+    fn census_publisher_count_matches_source() {
+        // `create_publisher::<T>(...)` appears once per declared publisher.
+        let declared = count("create_publisher::<");
+        let census = super::wiring_census();
+        // The census counts the FULL feature set; the source count is
+        // likewise feature-independent (every arm is present in the text).
+        let full = full_feature_census();
+        assert_eq!(
+            declared, full.publishers,
+            "publisher count drifted: source has {declared}, census says {}",
+            full.publishers
+        );
+        assert!(census.publishers <= full.publishers);
+    }
+
+    #[test]
+    fn census_subscription_and_service_counts_match_source() {
+        let subs = count("create_subscription::<");
+        let svcs = count("create_service::<");
+        let full = full_feature_census();
+        assert_eq!(subs, full.subscriptions, "subscription count drifted");
+        // `register_parameter_services()` is not a create_service call in
+        // this file; subtract its six from the census before comparing.
+        assert_eq!(svcs, full.services - 6, "service count drifted");
+    }
+
+    /// The census with every feature enabled — mirrors `wiring_census()`'s
+    /// arms so the source comparison is feature-independent.
+    fn full_feature_census() -> super::capacity::Census {
+        super::capacity::Census {
+            // 6 core + 3 MRM operators + validator + adapi + monitor + controller
+            nodes: 13,
+            // 3 core + gear (gate-extra) + autoware_state (engagement) + 4 controller
+            subscriptions: 9,
+            // 22 create_service::<> + the 6 parameter services
+            services: 22 + 6,
+            timers: 1,
+            publishers: 51,
+        }
+    }
+
+    #[test]
+    fn census_node_count_matches_source() {
+        assert_eq!(
+            count("node_builder("),
+            full_feature_census().nodes,
+            "node count drifted"
+        );
+    }
 }

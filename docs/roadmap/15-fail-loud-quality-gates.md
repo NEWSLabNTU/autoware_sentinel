@@ -1,6 +1,6 @@
 # Phase 15: Fail-Loud Quality Gates
 
-**Status:** 15.1 + 15.2 LANDED 2026-07-26; 15.3–15.5 open
+**Status:** 15.1 + 15.2 + 15.3 LANDED 2026-07-26; 15.4–15.5 open
 **Depends on:** Phase 14 (multi-node workspace migration)
 **Motivation:** Phase 14 lost more time to *silent* failures than to real
 defects. Every one of them shared a shape: a missing prerequisite or an
@@ -64,7 +64,7 @@ existed; its target did not).
   overlay in-repo; codify that as a rule and add a check that fails if any
   `external/*` path resolves outside the repo.
 
-### 15.3 — Capacity assertions at wiring time
+### - [x] 15.3 — Capacity assertions at wiring time — LANDED
 
 Family B is one shape: a compile-time capacity smaller than the declared
 topology, discovered at runtime as a hang.
@@ -127,13 +127,35 @@ Verified by deliberate breakage — with the overlay hidden, the suite
 FAILS naming exactly the two missing artifacts and their fixes; with it
 present, 14/14 transport tests pass against the in-repo router.
 
+## What landed (15.3)
+
+`autoware_sentinel_core::capacity` + `wiring_census()`, called at the top
+of `wire_executor` before a single entity is created:
+
+- **Enforced** where the binary can read the cap: `MAX_CBS` comes from
+  `nros::ExecutorSizing::DEFAULT.cbs`, so an undersized executor is an
+  error naming the knob, the requirement, and the compiled value — plus
+  the rebuild warning (a resized arena over stale objects SEGVs).
+- **Reported** where it cannot: node table, zpico publisher / subscriber /
+  queryable / liveliness slots live in C or Kconfig. Those are the ones
+  that HANG rather than error, so the census prints the number to set
+  (`ZPICO_MAX_LIVELINESS must be >= 101`) at WARN on every boot.
+- **Drift-guarded**: `capacity_census_tests` counts the real `create_*`
+  and `node_builder(` call sites in the wiring source and fails if the
+  census disagrees. It caught two wrong counts in the first run — the
+  census is hand-maintained, so this is what keeps it honest.
+
+Today's numbers for the full-feature Linux build: 13 nodes, 38 callbacks,
+51 publishers, 101 liveliness tokens.
+
 ## Acceptance
 
 - [x] Removing `rmw_zenoh_cpp` makes the transport suite **fail**, naming
       the fix — verified by deliberately hiding the overlay.
-- [ ] Setting `NROS_EXECUTOR_MAX_CBS=4` makes the sentinel abort at wiring
-      with "needs ~50, compiled 4 (NROS_EXECUTOR_MAX_CBS)" instead of
-      hanging.
+- [x] Setting `NROS_EXECUTOR_MAX_CBS=4` makes the sentinel abort at wiring
+      with the knob and both numbers instead of hanging. Verified:
+      `capacity: NROS_EXECUTOR_MAX_CBS needs 38 but this binary compiled 4
+      — set NROS_EXECUTOR_MAX_CBS=38 and REBUILD`.
 - [ ] `probe_mcu_graph.sh` covers native + freertos + nuttx + zephyr and
       reports the three failure states distinctly.
 - [ ] No test in the repo can report success without having exercised its

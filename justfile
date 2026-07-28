@@ -331,6 +331,8 @@ build-spe-firmware: orin_spe-bsp-stage
         ZPICO_MAX_PENDING_GETS=2 \
         ZPICO_SUBSCRIBER_BUFFER_SIZE=256 \
         ZPICO_SERVICE_BUFFER_SIZE=256 \
+        ZPICO_MAX_LARGE_SUBSCRIBERS=1 \
+        ZPICO_SUBSCRIBER_LARGE_SIZE=512 \
         NROS_EXECUTOR_MAX_CBS=8 \
         NROS_SUBSCRIPTION_BUFFER_SIZE=256 \
         cargo +nightly build --release $FEATURE_FLAG

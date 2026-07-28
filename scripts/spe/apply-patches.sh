@@ -75,6 +75,13 @@ else
             print "# from libsentinel_spe_firmware.a inside the group scan,"
             print "# overriding newlib`s float-aware vsnprintf (which would"
             print "# otherwise drag _dtoa_r + fmaf128 + ~25 KB BTCM)."
+            print "# newlib-nano (nano-ros #271). The `-u printf/vprintf`"
+            print "# forcing below pulls newlib`s formatted-output machinery,"
+            print "# and full newlib brings its locale/Unicode tables with it:"
+            print "# libc_a-jp2uc.o (14 KB) + libc_a-categories.o (13.9 KB) +"
+            print "# svfiscanf (6 KB) landed in a 256 KB BTCM image. nano.specs"
+            print "# swaps in the reduced implementations: -13,244 bytes."
+            print "LDFLAGS += --specs=nano.specs"
             print "LDFLAGS += -L$(SENTINEL_FW_OUT) -Wl,-u,nros_app_rust_entry -Wl,-u,vsnprintf -Wl,-u,printf -Wl,-u,vprintf -Wl,--start-group -lsentinel_spe_firmware -Wl,--end-group"
             print "endif"
             ldflags_done = 1

@@ -23,6 +23,7 @@ BSP_DEFAULT="$SCRIPT_DIR/downloads/spe-freertos-bsp"
 BSP="${SPE_BSP_SRC_DIR:-$BSP_DEFAULT}"
 
 info(){ printf '\033[1;34m==> %s\033[0m\n' "$*"; }
+warn(){ printf '\033[1;33m==> %s\033[0m\n' "$*" >&2; }
 die(){  printf '\033[1;31m==> %s\033[0m\n' "$*" >&2; exit 1; }
 
 [ -d "$BSP/rt-aux-cpu-demo-fsp" ] || \
@@ -75,13 +76,6 @@ else
             print "# from libsentinel_spe_firmware.a inside the group scan,"
             print "# overriding newlib`s float-aware vsnprintf (which would"
             print "# otherwise drag _dtoa_r + fmaf128 + ~25 KB BTCM)."
-            print "# newlib-nano (nano-ros #271). The `-u printf/vprintf`"
-            print "# forcing below pulls newlib`s formatted-output machinery,"
-            print "# and full newlib brings its locale/Unicode tables with it:"
-            print "# libc_a-jp2uc.o (14 KB) + libc_a-categories.o (13.9 KB) +"
-            print "# svfiscanf (6 KB) landed in a 256 KB BTCM image. nano.specs"
-            print "# swaps in the reduced implementations: -13,244 bytes."
-            print "LDFLAGS += --specs=nano.specs"
             print "LDFLAGS += -L$(SENTINEL_FW_OUT) -Wl,-u,nros_app_rust_entry -Wl,-u,vsnprintf -Wl,-u,printf -Wl,-u,vprintf -Wl,--start-group -lsentinel_spe_firmware -Wl,--end-group"
             print "endif"
             ldflags_done = 1
@@ -112,6 +106,41 @@ fi
 # Edit 2: main.c — add nros_app_init() call inside main_task.
 # Anchor: the `rtosTaskDelete(NULL);` line that ends main_task.
 # ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# Edit 1b: Makefile — link against newlib-nano (nano-ros #271).
+#
+# GUARDED BY ITS OWN MARKER, deliberately. Edit 1 above is gated on
+# `ENABLE_NROS_APP`, which is present the moment ANY of its injections has run
+# — so a new edit added inside that block silently never reaches a checkout
+# that was patched before the edit existed. This one cost a debugging cycle:
+# the rebuild came back at the identical byte count and the script had cheerily
+# reported "already present — skipping".
+#
+# Convention: one marker per edit, checking for the thing THIS edit injects.
+#
+# Why the flag: the `-u printf/vprintf/vsnprintf` forcing in Edit 1 pulls
+# newlib's formatted-output machinery, and FULL newlib brings its
+# locale/Unicode tables — libc_a-jp2uc.o (14 KB) + libc_a-categories.o
+# (13.9 KB) + svfiscanf (6 KB) — into a 256 KB BTCM image that never formats a
+# locale. nano.specs swaps in the reduced implementations: -13,244 bytes.
+# ----------------------------------------------------------------------
+
+if grep -q 'nano\.specs' "$MAKEFILE"; then
+    info "Makefile: --specs=nano.specs already present — skipping"
+elif ! grep -q 'SENTINEL_FW_OUT' "$MAKEFILE"; then
+    warn "Makefile: LDFLAGS block missing — run Edit 1 first (nano.specs skipped)"
+else
+    info "Makefile: injecting --specs=nano.specs (newlib-nano)"
+    awk '
+        /^LDFLAGS \+= -L\$\(SENTINEL_FW_OUT\)/ && !done {
+            print "LDFLAGS += --specs=nano.specs"
+            done = 1
+        }
+        { print }
+    ' "$MAKEFILE" > "$MAKEFILE.new"
+    mv "$MAKEFILE.new" "$MAKEFILE"
+fi
 
 if grep -q 'ENABLE_NROS_APP' "$MAINC"; then
     info "main.c: ENABLE_NROS_APP already present — skipping"
